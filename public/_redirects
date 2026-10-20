@@ -1,0 +1,6 @@
+/api/stripe-webhook /.netlify/functions/stripe-webhook 200
+/api/create-checkout-session /.netlify/functions/create-checkout-session 200
+/api/confirm-sponsor-session /.netlify/functions/confirm-sponsor-session 200
+/api/generate-career-summary /.netlify/functions/generate-career-summary 200
+/api/* /.netlify/functions/:splat 200
+/* /index.html 200

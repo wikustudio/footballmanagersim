@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://footballmanagersim.com/sitemap.xml

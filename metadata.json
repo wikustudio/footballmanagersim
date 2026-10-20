@@ -1,0 +1,6 @@
+{
+  "name": "Football Manager Sim",
+  "description": "A browser-based football management simulation game featuring a 198-club pyramid, youth academy, realistic transfer market, stadium expansions, and dynamic 35-season careers across European leagues.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

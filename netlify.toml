@@ -1,0 +1,48 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/stripe-webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/create-checkout-session"
+  to = "/.netlify/functions/create-checkout-session"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/confirm-sponsor-session"
+  to = "/.netlify/functions/confirm-sponsor-session"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/submit-highscore"
+  to = "/.netlify/functions/submit-highscore"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/generate-career-summary"
+  to = "/.netlify/functions/generate-career-summary"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,16 @@
+# Static asset cache headers
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Favicons and manifest
+/icon-*.png
+  Cache-Control: public, max-age=604800
+/favicon.*
+  Cache-Control: public, max-age=604800
+/manifest.json
+  Cache-Control: public, max-age=86400
+
+# Default security & crawling headers
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
