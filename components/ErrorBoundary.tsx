@@ -1,0 +1,66 @@
+import React, { ErrorInfo, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends React.Component<Props, State> {
+  props: Props;
+  state: State = {
+    hasError: false,
+  };
+
+  constructor(props: Props) {
+    super(props);
+    this.props = props;
+  }
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Uncaught error in UI:', error, errorInfo);
+    (window as any).RENDER_ERROR_DUMP = error.message + ' ' + error.stack;
+  }
+
+  handleReset = () => {
+    try {
+      localStorage.removeItem('footy_manager_sim_state_v2');
+    } catch (e) {
+      console.error(e);
+    }
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0d0d0e] text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+          <div className="bg-[#1c1c1e] border border-red-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <div className="w-16 h-16 bg-red-500/20 border border-red-500/50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-triangle-exclamation text-red-400 text-2xl"></i>
+            </div>
+            <h1 className="text-xl font-black mb-2 text-red-400">
+              Session Recovered
+            </h1>
+            <p className="text-xs text-gray-400 mb-6 leading-relaxed">An unexpected error occurred during rendering.</p><pre className="text-[10px] text-red-300 text-left overflow-auto max-h-32 mb-4">{(window as any).RENDER_ERROR_DUMP}</pre>
+            <button
+              onClick={this.handleReset}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <i className="fas fa-rotate-right"></i>
+              Reset & Start Fresh
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
