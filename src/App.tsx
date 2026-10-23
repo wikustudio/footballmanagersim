@@ -406,7 +406,7 @@ export const sanitizeGameState = (state: any): GameState | null => {
       return parseAndNormalizeModBudget(state.budget, tier, country);
     })(),
     immunityShields: (() => {
-      const maxShields = 2 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0);
+      const maxShields = Math.min(8, 3 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0));
       return (typeof state.immunityShields === 'number' && !isNaN(state.immunityShields))
         ? Math.max(0, Math.min(maxShields, Math.round(state.immunityShields)))
         : 2;
@@ -5558,6 +5558,12 @@ export default function App() {
       updated.stockHistory = undefined;
       updated.ipoCooldown = undefined;
       updated.immunityShields = 2;
+      updated.prestigeUpgrades = {
+        statueBuilt: false,
+        stadiumRenamed: false,
+        feederClubPurchased: false,
+        managerialImmortality: false,
+      };
       // Preserve true career start year so career chronology is never lost
       const careerStart = updated.careerStartYear || updated.startYear || 2026;
       updated.careerStartYear = careerStart;
@@ -6277,8 +6283,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       );
     }
 
-    // Apply OVR Growth & Decay Mechanics
-    // decayReasons moved to top of season sim
+    // Calculate total seasonal investments (off-season OVR decay is evaluated after Decision Day, Cup Runs, and Season History)
     const totalInvestments =
       (state.regTransfersThisSeason || 0) +
       (state.keyTransfersThisSeason || 0) +
@@ -6294,89 +6299,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       ((state.youthSpend || 0) > 0 ? 1 : 0) +
       (state.winterCampDone ? 1 : 0) +
       (state.teamBondingThisSeason ? 1 : 0);
-
-    // Fix 3: Big Fish Small Pond / Complacency
-    const top5 = ['ENG', 'ESP', 'GER', 'ITA', 'FRA'];
-    const currentCountry = state.club.country || 'GER';
-    const currentLeagueAvg = getLeagueInfo(state.club.tier, currentCountry).avgOvr;
-    const poachThreshold = !top5.includes(currentCountry) ? Math.min(84, currentLeagueAvg + 7) : 85;
-    if (!top5.includes(currentCountry) && state.club.baseOvr >= poachThreshold) {
-      const poachDecay = rand(2, 4);
-      const poachCash = getLeagueScaledVal(1, poachDecay * 6500, currentCountry);
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -poachDecay);
-      state.budget = adjustBudget(state.budget, poachCash);
-      decayReasons.push(isDe ? `Spieler an Top-Ligen verloren (-${poachDecay} GES, +${formatMoney(poachCash)})` : `Stars poached by Top 5 Leagues (-${poachDecay} OVR, +${formatMoney(poachCash)})`);
-    }
-
-    if (state.club.baseOvr > currentLeagueAvg + 15) {
-      const hasSystemicImmunity = (state.club.medicalLevel || 1) >= 5 && (state.club.academyLevel || 1) >= 5;
-      const rawComplDecay = rand(1, 3);
-      const complDecay = hasSystemicImmunity ? Math.max(1, rawComplDecay - 1) : rawComplDecay;
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -complDecay);
-      decayReasons.push(hasSystemicImmunity
-        ? (isDe ? `Mangelnde Konkurrenz (abgemildert durch Elite-Infrastruktur, -${complDecay} GES)` : `League Complacency (cushioned by Level 5 Facilities, -${complDecay} OVR)`)
-        : (isDe ? `Mangelnde Konkurrenz (-${complDecay} GES)` : `League Complacency (-${complDecay} OVR)`));
-    }
-
-    // 1. Stagnation Penalty: 0 investments in a season => lose -1 to -3 OVR
-    if (totalInvestments === 0) {
-      const stagDecay = rand(1, 2);
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -stagDecay);
-      decayReasons.push(isDe ? `Stagnation (-${stagDecay} GES)` : `Stagnation (-${stagDecay} OVR)`);
-    }
-
-    // 2. Tactical Ceiling Penalty: OVR > manager's maxOvrCap => lose -1 to -3 OVR
-    if (state.club.baseOvr > state.maxOvrCap) {
-      const capDecay = rand(1, 2);
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -capDecay);
-      decayReasons.push(isDe ? `Director-Cap (-${capDecay} GES)` : `Director Cap (-${capDecay} OVR)`);
-    }
-
-    // 3. Age/Complacency & Off-Season Wear-and-Tear Protection (Medical Center Levels 1–5)
-    // Level 5 (Longevity Institute): 100% immunity from natural wear-and-tear OVR decay
-    // Level 4 (Biomechanical Suite): 80% probability to completely negate natural off-season OVR decay
-    // Level 3 (High-Performance Lab): Shields squad from severe wear-and-tear (caps max decay at 1.0 OVR)
-    if (state.club.baseOvr > 80) {
-      const medicalLevel = state.club.medicalLevel || 1;
-      // Level 5 Longevity Institute grants 100% immunity up to 92 OVR, and 65% protection at 93+ OVR
-      // so 93-100 OVR superteams still experience occasional veteran turnover (-1 OVR max) requiring Academy/Transfer refreshment.
-      const preventChance =
-        medicalLevel >= 5
-          ? (state.club.baseOvr >= 93 ? 0.65 : 1.0)
-          : medicalLevel === 4
-          ? (state.club.baseOvr >= 93 ? 0.55 : 0.80)
-          : medicalLevel * 0.05;
-
-      if (Math.random() > preventChance) {
-        const medicalMitigation = Math.floor(medicalLevel / 4); // -1 decay at lvl 4+
-        let ageDecay: number;
-        if (state.club.baseOvr >= 93) {
-          ageDecay = Math.max(2, rand(3, 4) - medicalMitigation);
-        } else if (state.club.baseOvr >= 88) {
-          ageDecay = Math.max(1, rand(2, 3) - medicalMitigation);
-        } else {
-          const rawAgeDecay = state.club.baseOvr > 84 ? rand(1, 2) : rand(0, 1);
-          ageDecay = Math.max(1, rawAgeDecay - medicalMitigation);
-        }
-
-        // Level 3 High-Performance Lab: Cap maximum wear-and-tear decay at 1.0 OVR
-        if (medicalLevel >= 3) {
-          ageDecay = Math.min(1, ageDecay);
-        }
-
-        state.club.baseOvr = adjustOvr(state.club.baseOvr, -ageDecay);
-        decayReasons.push(isDe ? `Kader-Alterung (-${ageDecay} GES)` : `Squad Aging (-${ageDecay} OVR)`);
-      }
-    }
-
-    if (decayReasons.length > 0) {
-      showToast(
-        isDe
-          ? `GES-Anpassung: ${decayReasons.join(', ')}`
-          : `OVR Penalty: ${decayReasons.join(', ')}`,
-        'warning'
-      );
-    }
 
     // Match Simulation with Realistic Points & League Standings Alignment
     const seasonLeague = state.club.tier;
@@ -7526,6 +7448,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // Handle forced relegation sacks
     if (isSackedRelegation) {
         state.immunityShields = 2; // Reset for next job
+        state.prestigeUpgrades = { statueBuilt: false, stadiumRenamed: false, feederClubPurchased: false, managerialImmortality: false };
         const trophyPrestige = state.clWins * 18 + state.totals.intTrophies * 10 + state.totals.domTrophies * 4;
         const repFloor = Math.max(25, Math.min(85, 35 + trophyPrestige));
         state.reputation = Math.max(repFloor, state.reputation - 10);
@@ -8306,6 +8229,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         } else {
             // SACKED!
             state.immunityShields = 2; // Reset for next job
+            state.prestigeUpgrades = { statueBuilt: false, stadiumRenamed: false, feederClubPurchased: false, managerialImmortality: false };
             const trophyPrestige = state.clWins * 18 + state.totals.intTrophies * 10 + state.totals.domTrophies * 4;
             const repFloor = Math.max(25, Math.min(85, 35 + trophyPrestige));
             state.reputation = Math.max(repFloor, state.reputation - 10);
@@ -8360,6 +8284,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     state.boardTargetFinish = newTargetPos;
 
 
+    // Capture the authentic squad OVR used during this season before off-season turnover & decay run
+    const completedSeasonOvr = state.club.baseOvr;
+
     // End of season turnover mechanic
     // 1. Loaned players return to their parent clubs
     if (state.loansThisSeason) {
@@ -8413,7 +8340,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       fallbackLogo: isModActive ? state.club.fallbackLogo : undefined,
       leagueTag: league?.tag || `T${seasonLeague}`,
       leagueCss: league?.css || '',
-      ovr: state.club.baseOvr,
+      ovr: completedSeasonOvr,
       tier: seasonLeague, // Must be seasonLeague (the tier played this season!)
       wins,
       draws,
@@ -8487,7 +8414,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       year: state.year,
       tier: seasonLeague,
       position: approxPos,
-      ovr: state.club.baseOvr,
+      ovr: completedSeasonOvr,
       leagueName: league?.name || `Tier ${seasonLeague}`,
       status: seasonStatus,
       points: netPts,
@@ -8499,6 +8426,83 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       isManagerTenure: true
     });
     state.club.leagueHistory = state.clubLeagueHistories[currentClubKey];
+
+    // Apply Off-Season OVR Decay Mechanics (after Decision Day, Cup Finals, and Season History are finalized)
+    const top5 = ['ENG', 'ESP', 'GER', 'ITA', 'FRA'];
+    const currentCountry = state.club.country || 'GER';
+    const currentLeagueAvg = getLeagueInfo(seasonLeague, currentCountry).avgOvr;
+    const poachThreshold = !top5.includes(currentCountry) ? Math.min(84, currentLeagueAvg + 7) : 85;
+    if (!top5.includes(currentCountry) && state.club.baseOvr >= poachThreshold) {
+      const poachDecay = rand(2, 4);
+      const poachCash = getLeagueScaledVal(1, poachDecay * 6500, currentCountry);
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -poachDecay);
+      state.budget = adjustBudget(state.budget, poachCash);
+      decayReasons.push(isDe ? `Spieler an Top-Ligen verloren (-${poachDecay} GES, +${formatMoney(poachCash)})` : `Stars poached by Top 5 Leagues (-${poachDecay} OVR, +${formatMoney(poachCash)})`);
+    }
+
+    if (state.club.baseOvr > currentLeagueAvg + 15) {
+      const hasSystemicImmunity = (state.club.medicalLevel || 1) >= 5 && (state.club.academyLevel || 1) >= 5;
+      const rawComplDecay = rand(1, 3);
+      const complDecay = hasSystemicImmunity ? Math.max(1, rawComplDecay - 1) : rawComplDecay;
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -complDecay);
+      decayReasons.push(hasSystemicImmunity
+        ? (isDe ? `Mangelnde Konkurrenz (abgemildert durch Elite-Infrastruktur, -${complDecay} GES)` : `League Complacency (cushioned by Level 5 Facilities, -${complDecay} OVR)`)
+        : (isDe ? `Mangelnde Konkurrenz (-${complDecay} GES)` : `League Complacency (-${complDecay} OVR)`));
+    }
+
+    // 1. Stagnation Penalty: 0 investments in a season => lose -1 to -3 OVR
+    if (totalInvestments === 0) {
+      const stagDecay = rand(1, 2);
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -stagDecay);
+      decayReasons.push(isDe ? `Stagnation (-${stagDecay} GES)` : `Stagnation (-${stagDecay} OVR)`);
+    }
+
+    // 2. Tactical Ceiling Penalty: OVR > manager's maxOvrCap => lose -1 to -3 OVR
+    if (state.club.baseOvr > state.maxOvrCap) {
+      const capDecay = rand(1, 2);
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -capDecay);
+      decayReasons.push(isDe ? `Director-Cap (-${capDecay} GES)` : `Director Cap (-${capDecay} OVR)`);
+    }
+
+    // 3. Age/Complacency & Off-Season Wear-and-Tear Protection (Medical Center Levels 1–5)
+    if (state.club.baseOvr > 80) {
+      const medicalLevel = state.club.medicalLevel || 1;
+      const preventChance =
+        medicalLevel >= 5
+          ? (state.club.baseOvr >= 93 ? 0.65 : 1.0)
+          : medicalLevel === 4
+          ? (state.club.baseOvr >= 93 ? 0.55 : 0.80)
+          : medicalLevel * 0.05;
+
+      if (Math.random() > preventChance) {
+        const medicalMitigation = Math.floor(medicalLevel / 4);
+        let ageDecay: number;
+        if (state.club.baseOvr >= 93) {
+          ageDecay = Math.max(2, rand(3, 4) - medicalMitigation);
+        } else if (state.club.baseOvr >= 88) {
+          ageDecay = Math.max(1, rand(2, 3) - medicalMitigation);
+        } else {
+          const rawAgeDecay = state.club.baseOvr > 84 ? rand(1, 2) : rand(0, 1);
+          ageDecay = Math.max(1, rawAgeDecay - medicalMitigation);
+        }
+
+        if (medicalLevel >= 3) {
+          ageDecay = Math.min(1, ageDecay);
+        }
+
+        state.club.baseOvr = adjustOvr(state.club.baseOvr, -ageDecay);
+        decayReasons.push(isDe ? `Kader-Alterung (-${ageDecay} GES)` : `Squad Aging (-${ageDecay} OVR)`);
+      }
+    }
+
+    if (decayReasons.length > 0) {
+      showToast(
+        isDe
+          ? `GES-Anpassung: ${decayReasons.join(', ')}`
+          : `OVR Penalty: ${decayReasons.join(', ')}`,
+        'warning'
+      );
+    }
 
     
 
@@ -9116,8 +9120,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     
     // Re-scale bonuses for lower tiers so their battles matter!
     if (nextTier < seasonLeague) {
-       // Scaled promotion bonus (Tier 5 to 4 is huge for that level)
-       const promoBonus = { 5: 3500, 4: 3000, 3: 2500, 2: 2000 }[seasonLeague] || 2000;
+       // Scaled promotion bonus (Tier 5+ Road-to-Glory climbs are deeply rewarded)
+       const promoBonus = seasonLeague >= 6 ? 4000 : ({ 5: 3500, 4: 3000, 3: 2500, 2: 2000 }[seasonLeague] || 2000);
        seasonScore += promoBonus;
     }
     
@@ -9947,7 +9951,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           state.clubImpactScore = Math.min(100, Math.max(impactFloor, (state.clubImpactScore || 50) + visionResult.trustReward));
         }
         if (visionResult.immunityReward) {
-          state.immunityShields = (state.immunityShields || 0) + visionResult.immunityReward;
+          const maxVisionShields = Math.min(8, 3 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0));
+          state.immunityShields = Math.min(maxVisionShields, (state.immunityShields || 0) + visionResult.immunityReward);
         }
         if (visionResult.skillPointsReward) {
           state.skillPoints = (state.skillPoints || 0) + visionResult.skillPointsReward;
@@ -9967,6 +9972,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         } else {
           // Zero shields left: SACKED!
           state.immunityShields = 2; // Reset for next job
+          state.prestigeUpgrades = { statueBuilt: false, stadiumRenamed: false, feederClubPurchased: false, managerialImmortality: false };
           const trophyPrestige = state.clWins * 18 + state.totals.intTrophies * 10 + state.totals.domTrophies * 4;
           const repFloor = Math.max(25, Math.min(85, 35 + trophyPrestige));
           state.reputation = Math.max(repFloor, state.reputation - 10);
