@@ -59,7 +59,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
           <i className="fa-solid fa-compass text-sky-400"></i>
           <span>{isDe ? 'Kompendium & Spielmechaniken' : 'Rulebook & Game Mechanics'}</span>
           <span className="text-zinc-600">·</span>
-          <span className="text-zinc-400">v2.1</span>
+          <span className="text-zinc-400">v2.2</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] mb-5">
@@ -119,21 +119,119 @@ export const AboutPage: React.FC<AboutPageProps> = ({
 
       {/* Main Bento Grid */}
       <div className="space-y-6">
-        {/* v2.1 Spotlight Bento Box */}
+        {/* v2.2 Spotlight Bento Box */}
         {(activeSection === 'all' || activeSection === 'updates') && (
           <div className="bg-gradient-to-br from-[#131724]/90 via-[#10121a]/90 to-[#0e1017]/90 border border-sky-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
-                  v2.1 Spotlight
+                  v2.2 Spotlight
                 </span>
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  360° Engine Parity, Global Fanbases & Facility Mastery
+                  11-Tier Road-to-Glory, Finals Integrity & Delta Save Engine
                 </h2>
               </div>
               <span className="text-xs text-amber-300 font-semibold flex items-center gap-1.5">
                 <i className="fa-solid fa-sparkles text-amber-400"></i>
                 <span>Latest Release</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. True Finals Strength & Post-Season Decay */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-emerald-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm mb-3 border border-emerald-500/20">
+                    <i className="fa-solid fa-ranking-star"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    True Crunch-Final OVR Timing
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Squad aging, Top-5 league poaching, and off-season decay now execute strictly after Decision Day, Cup Finals, and Season History—so your squad plays every final at full current-season strength.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-emerald-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Post-Final Off-Season Turnover</span>
+                </div>
+              </div>
+
+              {/* 2. Tier 1–11 Road-to-Glory & Leaderboard Scaling */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-sky-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm mb-3 border border-sky-500/20">
+                    <i className="fa-solid fa-stairs"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Tier 1–11 Road-to-Glory Scaling
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Full Global Leaderboard badge support and +4,000 pt promotion bonuses across Tiers 6–11, plus authentic winter transfer accounting and fresh club Prestige Legacy milestones whenever you switch clubs.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-sky-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Deep Pyramid Progression</span>
+                </div>
+              </div>
+
+              {/* 3. Dynamic Immunity Shield Cap */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-purple-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm mb-3 border border-purple-500/20">
+                    <i className="fa-solid fa-shield-heart"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Persistent Prestige & Vision Shields
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Bronze Statue (+1), Managerial Immortality (+3), and Board Vision roadmap Immunity Shield rewards now persist across browser reloads and restore up to your dynamic Prestige ceiling on trophy wins.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-purple-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Up to 6+ Prestige & Vision Shields</span>
+                </div>
+              </div>
+
+              {/* 4. Delta-Compressed Multi-Slot Saves */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-amber-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm mb-3 border border-amber-500/20">
+                    <i className="fa-solid fa-floppy-disk"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Delta-Compressed Save Slots
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Multi-slot career saves now delta-compress 1,200+ clubs and strip non-active league standings archives, cutting save payloads by ~85% so 35-season and Endless careers never hit storage limits.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-amber-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Zero-Bloat Multi-Slot Storage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* v2.1 Historical Archive Bento Box */}
+        {(activeSection === 'all' || activeSection === 'updates') && (
+          <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300 bg-white/[0.08] border border-white/[0.12] px-2.5 py-1 rounded-xl">
+                  v2.1 Archive
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-zinc-200 tracking-tight">
+                  360° Engine Parity, Global Fanbases & Facility Mastery
+                </h2>
+              </div>
+              <span className="text-xs text-zinc-400 font-medium flex items-center gap-1.5">
+                <i className="fa-solid fa-clock-rotate-left text-zinc-500"></i>
+                <span>Archived Milestone</span>
               </span>
             </div>
 
