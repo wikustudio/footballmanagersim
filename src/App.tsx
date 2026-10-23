@@ -405,9 +405,12 @@ export const sanitizeGameState = (state: any): GameState | null => {
       }
       return parseAndNormalizeModBudget(state.budget, tier, country);
     })(),
-    immunityShields: (typeof state.immunityShields === 'number' && !isNaN(state.immunityShields))
-      ? Math.max(0, Math.min(2, Math.round(state.immunityShields)))
-      : 2,
+    immunityShields: (() => {
+      const maxShields = 2 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0);
+      return (typeof state.immunityShields === 'number' && !isNaN(state.immunityShields))
+        ? Math.max(0, Math.min(maxShields, Math.round(state.immunityShields)))
+        : 2;
+    })(),
     reputation: (typeof state.reputation === 'number' && !isNaN(state.reputation))
       ? Math.max(10, Math.min(100, Math.round(state.reputation)))
       : 50,
@@ -440,7 +443,7 @@ export const sanitizeGameState = (state: any): GameState | null => {
         ),
         country: cleanClub?.country || 'GER',
         baseOvr: (typeof cleanClub?.baseOvr === 'number' && !Number.isNaN(cleanClub?.baseOvr))
-          ? Math.max(30, Math.min(100, Math.round(cleanClub.baseOvr)))
+          ? Math.max(10, Math.min(100, Math.round(cleanClub.baseOvr)))
           : 60,
         stadium: cleanClub?.stadium || 20000,
         fanBase: healedFans,
@@ -926,19 +929,9 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const sponsorStatus = params.get('sponsor_status');
-      if (sponsorStatus || params.get('view')) {
-        if (sponsorStatus === 'success') {
-          showToast('Thank you for sponsoring! Activating your press banner...', 'success');
-        } else if (sponsorStatus === 'cancelled') {
-          showToast('Sponsor checkout cancelled.', 'info');
-        }
-        const timer = setTimeout(() => {
-          if (sponsorStatus === 'success') {
-            fetchPressSponsors().catch(() => {});
-          }
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }, 2500);
-        return () => clearTimeout(timer);
+      // Only clean up URL if it's a plain ?view=leaderboard link without a pending Stripe checkout return
+      if (!sponsorStatus && params.get('view')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, []);
@@ -2168,6 +2161,10 @@ export default function App() {
       setShowYouthModal(false);
       setShowConfirmReset(false);
       setShowTransferModal(false);
+      setClubIntroData(null);
+      setShowProfileModal(false);
+      setShowClubProfileModal(false);
+      setInternationalTournament(null);
       setViewMode('game');
     }, 'Resetting Career...', 'Returning to Club Selection');
   };
@@ -5810,9 +5807,6 @@ export default function App() {
       if (!state.seasonPhase || state.seasonPhase === 'start') {
         state.seasonPhase = 'mid';
 
-        // Give a winter break transfer boost (allow 1 more regular transfer)
-        state.regTransfersThisSeason = Math.max(0, (state.regTransfersThisSeason || 0) - 1);
-
         // NEW: Rare Mid-Season Coach Resignation
         if (state.currentCoach && (state.trophyDrought || 0) >= 1 && !isTacticalSynergy(state.currentCoach.style, state.tactic)) {
           // 20% chance if there's a tactical mismatch and no trophies last year
@@ -6288,6 +6282,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     const totalInvestments =
       (state.regTransfersThisSeason || 0) +
       (state.keyTransfersThisSeason || 0) +
+      (state.winterTransfers || 0) +
+      (state.winterKeyTransfers || 0) +
       (state.stadiumExpandedThisSeason || 0) +
       (state.sponsorsPitchedThisSeason || 0) +
       (state.globalToursThisSeason || 0) +
@@ -8211,7 +8207,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     const hasDarling = (state.managerSkills || []).includes('vorstandsliebling') || (state.managerSkills || []).includes('untouchable');
     
-    const totalSigningsThisSeason = (state.regTransfersThisSeason || 0) + (state.keyTransfersThisSeason || 0) + (state.galacticosThisSeason || 0) + (state.loansThisSeason || 0);
+    const totalSigningsThisSeason = (state.regTransfersThisSeason || 0) + (state.keyTransfersThisSeason || 0) + (state.winterTransfers || 0) + (state.winterKeyTransfers || 0) + (state.galacticosThisSeason || 0) + (state.loansThisSeason || 0);
     let coachImpactMod = 0;
     if (state.currentCoach) {
       if (state.currentCoach.ovrBoost > 0) {
@@ -8434,7 +8430,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       pointsDeducted: pointsDeducted > 0 ? pointsDeducted : undefined,
       graduatedYouths,
       departedYouths,
-      transfersIn: (state.regTransfersThisSeason || 0) + (state.keyTransfersThisSeason || 0) + (state.galacticosThisSeason || 0) + (state.loansThisSeason || 0),
+      transfersIn: (state.regTransfersThisSeason || 0) + (state.keyTransfersThisSeason || 0) + (state.winterTransfers || 0) + (state.winterKeyTransfers || 0) + (state.galacticosThisSeason || 0) + (state.loansThisSeason || 0),
       transfersOut: (state.squadSalesThisSeason || 0) + retirees,
       country: state.club.country || 'GER',
       status: approxPos === 1 ? 'C' : nextTier < seasonLeague ? 'P' : nextTier > seasonLeague ? 'R' : undefined,
@@ -8969,8 +8965,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       };
     }
 
-    const prevRegTransfers = state.regTransfersThisSeason || 0;
-    const prevKeyTransfers = state.keyTransfersThisSeason || 0;
+    const prevRegTransfers = (state.regTransfersThisSeason || 0) + (state.winterTransfers || 0);
+    const prevKeyTransfers = (state.keyTransfersThisSeason || 0) + (state.winterKeyTransfers || 0);
     const prevGalacticos = state.galacticosThisSeason || 0;
     const prevLoans = state.loansThisSeason || 0;
     const prevSquadSales = state.squadSalesThisSeason || 0;
@@ -9080,8 +9076,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     if (wonTrophy) {
       // Restore Immunity Shields upon winning hardware!
-      if (state.immunityShields < 2) {
-        state.immunityShields = Math.min(2, (state.immunityShields || 0) + 1);
+      const maxShields = 2 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0);
+      if (state.immunityShields < maxShields) {
+        state.immunityShields = Math.min(maxShields, (state.immunityShields || 0) + 1);
       }
     }
     if (nextTier < seasonLeague) pointsEarned += 5; // Promoted!

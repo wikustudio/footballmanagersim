@@ -521,7 +521,7 @@ export async function submitAuthenticatedHighscore(entry: {
         score: numScore,
         trophies: numTrophies,
         date: entry.date || new Date().toISOString(),
-        start_tier: typeof entry.start_tier === 'number' ? Math.max(1, Math.min(6, entry.start_tier)) : 1
+        start_tier: typeof entry.start_tier === 'number' ? Math.max(1, Math.min(11, entry.start_tier)) : 1
       });
       return !error;
     } catch (e) {

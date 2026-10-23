@@ -101,7 +101,7 @@ export const handler = async (event: any) => {
     const safeManager = String(managerName).trim().slice(0, 50);
     const safeClub = String(clubName).trim().slice(0, 50);
     const safeDate = date || new Date().toISOString();
-    const safeTier = typeof start_tier === 'number' ? Math.max(1, Math.min(6, start_tier)) : 1;
+    const safeTier = typeof start_tier === 'number' ? Math.max(1, Math.min(11, start_tier)) : 1;
 
     const record = {
       managerName: safeManager,
