@@ -120,7 +120,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
       {/* Main Bento Grid */}
       <div className="space-y-6">
         {/* v2.2 Spotlight Bento Box */}
-        {(activeSection === 'all' || activeSection === 'updates') && (
+        {activeSection === 'updates' && (
           <div className="bg-gradient-to-br from-[#131724]/90 via-[#10121a]/90 to-[#0e1017]/90 border border-sky-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
         )}
 
         {/* v2.1 Historical Archive Bento Box */}
-        {(activeSection === 'all' || activeSection === 'updates') && (
+        {activeSection === 'updates' && (
           <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
         )}
 
         {/* v2.0 Historical Archive Bento Box */}
-        {(activeSection === 'all' || activeSection === 'updates') && (
+        {activeSection === 'updates' && (
           <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
@@ -414,7 +414,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
         )}
 
         {/* v1.9 Historical Archive Bento Box */}
-        {(activeSection === 'all' || activeSection === 'updates') && (
+        {activeSection === 'updates' && (
           <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">

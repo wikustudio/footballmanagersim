@@ -950,7 +950,7 @@ export const normalizeAndValidateCustomDb = (data: any): CustomDbValidationResul
     const rawOvr = item.baseOvr ?? item.ovr ?? item.rating ?? item.overall ?? item.base_ovr ?? item.score;
     const parsedOvr = rawOvr != null && rawOvr !== '' ? Number(rawOvr) : NaN;
     const baseOvr = Number.isFinite(parsedOvr)
-      ? Math.max(35, Math.min(99, Math.round(parsedOvr)))
+      ? Math.max(10, Math.min(99, Math.round(parsedOvr)))
       : undefined;
 
     const rawStadium = item.stadium ?? item.capacity ?? item.stadiumCapacity ?? item.ground;

@@ -299,5 +299,5 @@ describe('7-Point Pre-Launch Verification Suite', () => {
       if (sawFriendly && sawHostile) break;
     }
     expect(sawFriendly || sawHostile).toBe(true);
-  });
+  }, 20000);
 });

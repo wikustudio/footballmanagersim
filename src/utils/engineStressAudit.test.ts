@@ -144,7 +144,7 @@ describe('Comprehensive Game Logic Stress Audit & State Guardians', () => {
           name: 'Test FC',
           country: 'POL', // 5-tier country in database (max tier 5)
           tier: 9,        // Corrupted tier beyond max tier 5
-          baseOvr: 15,    // Corrupted low OVR
+          baseOvr: 5,     // Corrupted low OVR below minimum 10
           academyLevel: 8, // Corrupted level beyond max 5
           medicalLevel: 6, // Corrupted level beyond max 5
         },
@@ -157,8 +157,8 @@ describe('Comprehensive Game Logic Stress Audit & State Guardians', () => {
       expect(healed).not.toBeNull();
       // Tier clamped to max tier 5 for POL
       expect(healed?.club.tier).toBe(5);
-      // Base OVR clamped to minimum 30
-      expect(healed?.club.baseOvr).toBe(30);
+      // Base OVR clamped to minimum 10
+      expect(healed?.club.baseOvr).toBe(10);
       // Academy & Medical clamped to maximum 5
       expect(healed?.club.academyLevel).toBe(5);
       expect(healed?.club.medicalLevel).toBe(5);

@@ -76,10 +76,8 @@ describe('Sponsor Wall & Leaderboard Package Configuration', () => {
     expect(partitioned.gridSlots[0]?.brand_name).toBe('Grid 1');
   });
 
-  it('provides rich default press room sponsors for immediate immersion', () => {
-    expect(DEFAULT_PRESS_SPONSORS.length).toBeGreaterThanOrEqual(4);
-    const hasHeadline = DEFAULT_PRESS_SPONSORS.some(s => s.is_headline);
-    expect(hasHeadline).toBe(true);
+  it('starts with an empty default sponsor list so expired sponsors leave all 18 slots open', () => {
+    expect(DEFAULT_PRESS_SPONSORS).toEqual([]);
   });
 
   it('stores and retrieves purchased sponsor slots in local storage', async () => {
