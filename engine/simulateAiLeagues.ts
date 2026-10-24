@@ -21,11 +21,18 @@ const topHeavyweightNames = new Set([
 
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+const reserveNameCache = new Map<string, boolean>();
+
 // Exception logic for clubs ending in II that are not actually reserve teams
-export const isReserveTeamLocal = (name: string) => {
+export const isReserveTeamLocal = (name: string): boolean => {
   if (!name) return false;
-  if (name === 'SSV Jeddeloh II' || name.toLowerCase().includes('jeddeloh ii')) return false;
-  return isReserveClub(name);
+  const cached = reserveNameCache.get(name);
+  if (cached !== undefined) return cached;
+  const res = (name === 'SSV Jeddeloh II' || name.toLowerCase().includes('jeddeloh ii'))
+    ? false
+    : isReserveClub(name);
+  reserveNameCache.set(name, res);
+  return res;
 };
 
 const RESERVE_ID_TO_PARENT_IDS: Record<number, number[]> = {
@@ -475,8 +482,9 @@ function* simulateAiLeaguesGen(
         ga,
         pts,
         gd: gd > 0 ? `+${gd}` : `${gd}`,
+        _gdNum: gd,
         isUser: c.id === userClubId,
-        isReserve: isReserveClub(c.name) || Boolean(c.isReserve),
+        isReserve: Boolean(c.isReserve) || isReserveTeamLocal(c.name),
         form: []
       };
     });
@@ -484,9 +492,7 @@ function* simulateAiLeaguesGen(
     // Ensure table is strictly sorted by points descending, then GD descending, then GF
     table.sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts;
-      const bGd = parseInt(b.gd, 10) || 0;
-      const aGd = parseInt(a.gd, 10) || 0;
-      if (bGd !== aGd) return bGd - aGd;
+      if (b._gdNum !== a._gdNum) return b._gdNum - a._gdNum;
       if (b.gf !== a.gf) return b.gf - a.gf;
       return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
     });
@@ -554,8 +560,16 @@ function* simulateAiLeaguesGen(
     yield;
     const countryClubs = clubsByCountry.get(country) || [];
     let maxTierInDb = 0;
+    const clubsByTier = new Map<number, Club[]>();
     for (let i = 0; i < countryClubs.length; i++) {
-      if (countryClubs[i].tier > maxTierInDb) maxTierInDb = countryClubs[i].tier;
+      const c = countryClubs[i];
+      if (c.tier > maxTierInDb) maxTierInDb = c.tier;
+      let list = clubsByTier.get(c.tier);
+      if (!list) {
+        list = [];
+        clubsByTier.set(c.tier, list);
+      }
+      list.push(c);
     }
     const maxTier = getMaxTier(country, maxTierInDb);
 
@@ -565,7 +579,7 @@ function* simulateAiLeaguesGen(
 
     for (let tier = 1; tier <= maxTier; tier++) {
       yield;
-      const tierClubs = countryClubs.filter((c) => c.tier === tier);
+      const tierClubs = clubsByTier.get(tier) || [];
       if (tierClubs.length === 0) continue;
 
       // Identify potential Cinderella candidate in Tier 1 (~12% chance) or Ambition/Consortium Surge in Tiers 2-3 (~10% chance)
@@ -706,7 +720,7 @@ function* simulateAiLeaguesGen(
       if (tier === 1) {
         const topRow = table[0];
         if (topRow) {
-          const champClubObj = tierClubs.find(tc => tc.id === topRow.id);
+          const champClubObj = clubById.get(topRow.id);
           if (champClubObj) {
             tier1ChampionsByCountry.set(country, champClubObj);
             if (champClubObj.id !== userClubId && champClubObj.baseOvr < 94 && Math.random() < 0.65) {
@@ -717,7 +731,7 @@ function* simulateAiLeaguesGen(
         const top6Rows = table.slice(0, 6);
         top6Rows.forEach((r) => {
           if (r.id !== userClubId && cinderellaClubIds.has(r.id)) {
-            const clubObj = tierClubs.find(tc => tc.id === r.id);
+            const clubObj = clubById.get(r.id);
             if (clubObj) {
               // Reward breakout Cinderella clubs with +1 to +2 permanent OVR from continental prize money
               clubObj.baseOvr = Math.min(88, (clubObj.baseOvr || 72) + (r.pos <= 3 ? 2 : 1));
@@ -866,7 +880,7 @@ function* simulateAiLeaguesGen(
         if (isUserUpperPlayoffParticipant) {
           // User is the 16th-place upper-tier club defending against ddOpponentId from tier + 1.
           // Do NOT pull an additional AI club from upperTable into the playoff.
-          const oppObj = updated.find(c => c.id === simContext!.ddOpponentId);
+          const oppObj = clubById.get(simContext!.ddOpponentId!);
           const oppRow = lowerTable.find(r => r.id === simContext!.ddOpponentId) || remainingLower[0];
           if (oppObj) {
             movedClubIds.add(oppObj.id);
@@ -899,7 +913,7 @@ function* simulateAiLeaguesGen(
         } else if (isUserLowerPlayoffParticipant) {
           // User is the lower-tier playoff club challenging ddOpponentId from tier.
           // Do NOT pull an additional AI club from lowerTable into the playoff.
-          const oppObj = updated.find(c => c.id === simContext!.ddOpponentId);
+          const oppObj = clubById.get(simContext!.ddOpponentId!);
           const oppRow = upperTable.find(r => r.id === simContext!.ddOpponentId) || remainingUpper[0];
           if (oppObj) {
             movedClubIds.add(oppObj.id);
@@ -948,8 +962,8 @@ function* simulateAiLeaguesGen(
         } else if (remainingUpper.length > 0 && remainingLower.length > 0) {
           const upperPlayoffRow = remainingUpper[0];
           const lowerPlayoffRow = remainingLower[0];
-          const upperClubObj = updated.find(c => c.id === upperPlayoffRow.id);
-          const lowerClubObj = updated.find(c => c.id === lowerPlayoffRow.id);
+          const upperClubObj = clubById.get(upperPlayoffRow.id);
+          const lowerClubObj = clubById.get(lowerPlayoffRow.id);
 
           if (upperClubObj && lowerClubObj) {
             const isUserPlayoffBoundary = simContext?.ddOpponentId &&
@@ -1124,65 +1138,65 @@ function* simulateAiLeaguesGen(
     // Step 3: Strict Parent-Reserve Separation Pushdown
     // If a senior parent club was relegated into the same division as its reserve club,
     // demote the reserve club to tier + 1 and elevate an eligible senior club to maintain invariant size
-    for (let t = 1; t < maxTier; t++) {
-      const clubsInTier = countryClubs.filter(c => c.tier === t);
-      const minReserveTier = getMinAllowedTierForReserve(country);
-      for (const club of clubsInTier) {
-        if (isReserveClub(club.name) || club.isReserve) {
-          const parent = getParentClub(club, countryClubs, country);
-          const violatesMinTier = t < minReserveTier;
-          const violatesParentTier = Boolean(parent && parent.tier >= t);
-          if (violatesMinTier || violatesParentTier) {
-            const targetDemoteTier = Math.min(
-              maxTier,
-              Math.max(t + 1, violatesMinTier ? minReserveTier : t + 1, parent ? parent.tier + 1 : t + 1)
-            );
-            if (targetDemoteTier > t) {
-              const eligibleSeniorClubs = countryClubs
-                .filter(c => c.tier === targetDemoteTier && !isReserveClub(c.name) && !c.isReserve && c.id !== userClubId && !movedClubIds.has(c.id))
-                .sort((a, b) => b.baseOvr - a.baseOvr);
-              const lowerSeniorClubs = eligibleSeniorClubs.length > 0
-                ? eligibleSeniorClubs
-                : countryClubs
-                    .filter(c => c.tier === targetDemoteTier && !isReserveClub(c.name) && !c.isReserve && c.id !== userClubId)
-                    .sort((a, b) => b.baseOvr - a.baseOvr);
-              if (lowerSeniorClubs.length > 0) {
-                club.tier = targetDemoteTier;
-                const promotedSenior = lowerSeniorClubs[0];
-                promotedSenior.tier = t;
-                movedClubIds.add(club.id);
-                movedClubIds.add(promotedSenior.id);
-                generatedMovements.push({
-                  id: `sim-res-pushdown-${club.id}-${seasonYear}`,
-                  year: seasonYear,
-                  clubId: club.id,
-                  clubName: club.name,
-                  country,
-                  fromTier: t,
-                  toTier: targetDemoteTier,
-                  fromLeagueName: getLeagueInfo(t, country).name,
-                  toLeagueName: getLeagueInfo(targetDemoteTier, country).name,
-                  type: 'relegation',
-                  pos: 16,
-                  reason: violatesParentTier && parent
-                    ? `Administrative Demotion · Senior club ${parent.name} in same or higher division`
-                    : `Administrative Demotion · Reserve sides ineligible for ${getLeagueInfo(t, country).name}`
-                });
-                generatedMovements.push({
-                  id: `sim-res-rep-${promotedSenior.id}-${seasonYear}`,
-                  year: seasonYear,
-                  clubId: promotedSenior.id,
-                  clubName: promotedSenior.name,
-                  country,
-                  fromTier: targetDemoteTier,
-                  toTier: t,
-                  fromLeagueName: getLeagueInfo(targetDemoteTier, country).name,
-                  toLeagueName: getLeagueInfo(t, country).name,
-                  type: 'promotion',
-                  pos: 1,
-                  reason: `Administrative Promotion · Elevated to replace demoted reserve side`
-                });
-              }
+    const minReserveTier = getMinAllowedTierForReserve(country);
+    for (let i = 0; i < countryClubs.length; i++) {
+      const club = countryClubs[i];
+      const t = club.tier;
+      if (t >= maxTier) continue;
+      if (club.isReserve || isReserveTeamLocal(club.name)) {
+        const parent = getParentClub(club, countryClubs, country);
+        const violatesMinTier = t < minReserveTier;
+        const violatesParentTier = Boolean(parent && parent.tier >= t);
+        if (violatesMinTier || violatesParentTier) {
+          const targetDemoteTier = Math.min(
+            maxTier,
+            Math.max(t + 1, violatesMinTier ? minReserveTier : t + 1, parent ? parent.tier + 1 : t + 1)
+          );
+          if (targetDemoteTier > t) {
+            const eligibleSeniorClubs = countryClubs
+              .filter(c => c.tier === targetDemoteTier && !c.isReserve && !isReserveTeamLocal(c.name) && c.id !== userClubId && !movedClubIds.has(c.id))
+              .sort((a, b) => b.baseOvr - a.baseOvr);
+            const lowerSeniorClubs = eligibleSeniorClubs.length > 0
+              ? eligibleSeniorClubs
+              : countryClubs
+                  .filter(c => c.tier === targetDemoteTier && !c.isReserve && !isReserveTeamLocal(c.name) && c.id !== userClubId)
+                  .sort((a, b) => b.baseOvr - a.baseOvr);
+            if (lowerSeniorClubs.length > 0) {
+              club.tier = targetDemoteTier;
+              const promotedSenior = lowerSeniorClubs[0];
+              promotedSenior.tier = t;
+              movedClubIds.add(club.id);
+              movedClubIds.add(promotedSenior.id);
+              generatedMovements.push({
+                id: `sim-res-pushdown-${club.id}-${seasonYear}`,
+                year: seasonYear,
+                clubId: club.id,
+                clubName: club.name,
+                country,
+                fromTier: t,
+                toTier: targetDemoteTier,
+                fromLeagueName: getLeagueInfo(t, country).name,
+                toLeagueName: getLeagueInfo(targetDemoteTier, country).name,
+                type: 'relegation',
+                pos: 16,
+                reason: violatesParentTier && parent
+                  ? `Administrative Demotion · Senior club ${parent.name} in same or higher division`
+                  : `Administrative Demotion · Reserve sides ineligible for ${getLeagueInfo(t, country).name}`
+              });
+              generatedMovements.push({
+                id: `sim-res-rep-${promotedSenior.id}-${seasonYear}`,
+                year: seasonYear,
+                clubId: promotedSenior.id,
+                clubName: promotedSenior.name,
+                country,
+                fromTier: targetDemoteTier,
+                toTier: t,
+                fromLeagueName: getLeagueInfo(targetDemoteTier, country).name,
+                toLeagueName: getLeagueInfo(t, country).name,
+                type: 'promotion',
+                pos: 1,
+                reason: `Administrative Promotion · Elevated to replace demoted reserve side`
+              });
             }
           }
         }
@@ -1202,9 +1216,11 @@ function* simulateAiLeaguesGen(
   const isUserAfc = AFC_COUNTRIES.includes(userCountry);
   const isUserUefa = UEFA_COUNTRIES.includes(userCountry);
 
+  const tier1AiClubs = updated.filter((c) => c.tier === 1 && c.id !== userClubId);
+
   // 1. CONMEBOL: Copa Libertadores & Copa Sudamericana
-  const conmebolT1 = updated.filter(
-    (c) => c.tier === 1 && CONMEBOL_COUNTRIES.includes(c.country || 'BRA') && c.id !== userClubId
+  const conmebolT1 = tier1AiClubs.filter(
+    (c) => CONMEBOL_COUNTRIES.includes(c.country || 'BRA')
   );
   if (conmebolT1.length > 0) {
     const scoredConmebol = conmebolT1
@@ -1259,8 +1275,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 2. CONCACAF: Concacaf Champions Cup & Leagues Challenge
-  const concacafT1 = updated.filter(
-    (c) => c.tier === 1 && CONCACAF_COUNTRIES.includes(c.country || 'USA') && c.id !== userClubId
+  const concacafT1 = tier1AiClubs.filter(
+    (c) => CONCACAF_COUNTRIES.includes(c.country || 'USA')
   );
   if (concacafT1.length > 0) {
     const scoredConcacaf = concacafT1
@@ -1316,8 +1332,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 3. AFC: AFC Champions League
-  const afcT1 = updated.filter(
-    (c) => c.tier === 1 && AFC_COUNTRIES.includes(c.country || 'JPN') && c.id !== userClubId
+  const afcT1 = tier1AiClubs.filter(
+    (c) => AFC_COUNTRIES.includes(c.country || 'JPN')
   );
   if (afcT1.length > 0) {
     const scoredAfc = afcT1
@@ -1350,8 +1366,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 4. UEFA: Champions Cup & Euro Cup
-  const uefaT1 = updated.filter(
-    (c) => c.tier === 1 && UEFA_COUNTRIES.includes(c.country || 'GER') && c.id !== userClubId
+  const uefaT1 = tier1AiClubs.filter(
+    (c) => UEFA_COUNTRIES.includes(c.country || 'GER')
   );
   if (uefaT1.length > 0) {
     const scoredUefa = uefaT1
@@ -1471,7 +1487,7 @@ function* simulateAiLeaguesGen(
       continue;
     }
 
-    const t1Clubs = updated.filter(c => c.tier === 1 && (c.country || 'GER') === cCode && c.id !== userClubId);
+    const t1Clubs = tier1AiClubs.filter(c => (c.country || 'GER') === cCode);
     if (t1Clubs.length > 0) {
       const tableChamp = tier1ChampionsByCountry.get(cCode);
       let champ = (tableChamp && tableChamp.id !== userClubId) ? tableChamp : undefined;
@@ -1514,8 +1530,8 @@ function* simulateAiLeaguesGen(
     'Marco Gomez', 'Enzo Alvarez', 'Stefan Bauer', 'Leo Schmidt'
   ];
   const POS_LIST = ['FWD', 'MID', 'DEF', 'GK'];
-  const eligibleSellers = updated.filter(c => c.tier === 1 && c.id !== userClubId && c.baseOvr >= 80);
-  const eligibleBuyers = updated.filter(c => c.tier === 1 && c.id !== userClubId && c.baseOvr >= 80);
+  const eligibleSellers = tier1AiClubs.filter(c => c.baseOvr >= 80);
+  const eligibleBuyers = eligibleSellers;
 
   if (eligibleSellers.length >= 2 && eligibleBuyers.length >= 2) {
     const numDeals = rand(2, 3);

@@ -482,6 +482,7 @@ function* simulateAiLeaguesGen(
         ga,
         pts,
         gd: gd > 0 ? `+${gd}` : `${gd}`,
+        _gdNum: gd,
         isUser: c.id === userClubId,
         isReserve: Boolean(c.isReserve) || isReserveTeamLocal(c.name),
         form: []
@@ -491,9 +492,7 @@ function* simulateAiLeaguesGen(
     // Ensure table is strictly sorted by points descending, then GD descending, then GF
     table.sort((a, b) => {
       if (b.pts !== a.pts) return b.pts - a.pts;
-      const bGd = parseInt(b.gd, 10) || 0;
-      const aGd = parseInt(a.gd, 10) || 0;
-      if (bGd !== aGd) return bGd - aGd;
+      if (b._gdNum !== a._gdNum) return b._gdNum - a._gdNum;
       if (b.gf !== a.gf) return b.gf - a.gf;
       return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
     });
@@ -1217,9 +1216,11 @@ function* simulateAiLeaguesGen(
   const isUserAfc = AFC_COUNTRIES.includes(userCountry);
   const isUserUefa = UEFA_COUNTRIES.includes(userCountry);
 
+  const tier1AiClubs = updated.filter((c) => c.tier === 1 && c.id !== userClubId);
+
   // 1. CONMEBOL: Copa Libertadores & Copa Sudamericana
-  const conmebolT1 = updated.filter(
-    (c) => c.tier === 1 && CONMEBOL_COUNTRIES.includes(c.country || 'BRA') && c.id !== userClubId
+  const conmebolT1 = tier1AiClubs.filter(
+    (c) => CONMEBOL_COUNTRIES.includes(c.country || 'BRA')
   );
   if (conmebolT1.length > 0) {
     const scoredConmebol = conmebolT1
@@ -1274,8 +1275,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 2. CONCACAF: Concacaf Champions Cup & Leagues Challenge
-  const concacafT1 = updated.filter(
-    (c) => c.tier === 1 && CONCACAF_COUNTRIES.includes(c.country || 'USA') && c.id !== userClubId
+  const concacafT1 = tier1AiClubs.filter(
+    (c) => CONCACAF_COUNTRIES.includes(c.country || 'USA')
   );
   if (concacafT1.length > 0) {
     const scoredConcacaf = concacafT1
@@ -1331,8 +1332,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 3. AFC: AFC Champions League
-  const afcT1 = updated.filter(
-    (c) => c.tier === 1 && AFC_COUNTRIES.includes(c.country || 'JPN') && c.id !== userClubId
+  const afcT1 = tier1AiClubs.filter(
+    (c) => AFC_COUNTRIES.includes(c.country || 'JPN')
   );
   if (afcT1.length > 0) {
     const scoredAfc = afcT1
@@ -1365,8 +1366,8 @@ function* simulateAiLeaguesGen(
   }
 
   // 4. UEFA: Champions Cup & Euro Cup
-  const uefaT1 = updated.filter(
-    (c) => c.tier === 1 && UEFA_COUNTRIES.includes(c.country || 'GER') && c.id !== userClubId
+  const uefaT1 = tier1AiClubs.filter(
+    (c) => UEFA_COUNTRIES.includes(c.country || 'GER')
   );
   if (uefaT1.length > 0) {
     const scoredUefa = uefaT1
@@ -1486,7 +1487,7 @@ function* simulateAiLeaguesGen(
       continue;
     }
 
-    const t1Clubs = updated.filter(c => c.tier === 1 && (c.country || 'GER') === cCode && c.id !== userClubId);
+    const t1Clubs = tier1AiClubs.filter(c => (c.country || 'GER') === cCode);
     if (t1Clubs.length > 0) {
       const tableChamp = tier1ChampionsByCountry.get(cCode);
       let champ = (tableChamp && tableChamp.id !== userClubId) ? tableChamp : undefined;
@@ -1529,8 +1530,8 @@ function* simulateAiLeaguesGen(
     'Marco Gomez', 'Enzo Alvarez', 'Stefan Bauer', 'Leo Schmidt'
   ];
   const POS_LIST = ['FWD', 'MID', 'DEF', 'GK'];
-  const eligibleSellers = updated.filter(c => c.tier === 1 && c.id !== userClubId && c.baseOvr >= 80);
-  const eligibleBuyers = updated.filter(c => c.tier === 1 && c.id !== userClubId && c.baseOvr >= 80);
+  const eligibleSellers = tier1AiClubs.filter(c => c.baseOvr >= 80);
+  const eligibleBuyers = eligibleSellers;
 
   if (eligibleSellers.length >= 2 && eligibleBuyers.length >= 2) {
     const numDeals = rand(2, 3);

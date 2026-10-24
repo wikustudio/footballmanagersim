@@ -69,7 +69,10 @@ export const handler = async (event: any) => {
 
     const brandName = metadata.brandName || 'Official Partner';
     const logoUrl = resolveLogoUrl(metadata.logoUrl || 'tactical_lab');
-    const linkUrl = metadata.linkUrl || 'https://footballmanagersim.com';
+    const rawLinkUrl = (metadata.linkUrl || '').trim();
+    const linkUrl = rawLinkUrl
+      ? (rawLinkUrl.startsWith('http://') || rawLinkUrl.startsWith('https://') ? rawLinkUrl : `https://${rawLinkUrl}`)
+      : 'https://footballmanagersim.com';
     const packageType = (metadata.packageType as '30_days' | '90_days' | '1_year' | '1_day' | '1_week' | '1_month') || '30_days';
     const tagline = metadata.tagline || brandName;
 

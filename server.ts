@@ -86,6 +86,9 @@ async function startServer() {
         const now = new Date();
         const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
         const resolvedLogo = resolveLogoUrl(logoUrl);
+        const normalizedWebhookLink = linkUrl
+          ? (linkUrl.startsWith('http://') || linkUrl.startsWith('https://') ? linkUrl : `https://${linkUrl}`)
+          : 'https://footballmanagersim.com';
 
         try {
           const { data: existing } = await supabaseServer
@@ -101,7 +104,7 @@ async function startServer() {
               .from('press_sponsors')
               .update({
                 logo_url: resolvedLogo,
-                link_url: linkUrl || '',
+                link_url: normalizedWebhookLink,
                 package_type: packageType,
                 tagline: tagline || brandName,
                 expires_at: expiresAt.toISOString(),
@@ -113,7 +116,7 @@ async function startServer() {
             await supabaseServer.from('press_sponsors').insert({
               brand_name: brandName,
               logo_url: resolvedLogo,
-              link_url: linkUrl || '',
+              link_url: normalizedWebhookLink,
               package_type: packageType,
               tagline: tagline || brandName,
               starts_at: now.toISOString(),
@@ -333,11 +336,14 @@ async function startServer() {
       const now = new Date();
       const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
       const finalResolvedLogo = resolveLogoUrl(verifiedLogo);
+      const normalizedVerifiedLink = verifiedLink
+        ? (verifiedLink.startsWith('http://') || verifiedLink.startsWith('https://') ? verifiedLink : `https://${verifiedLink}`)
+        : 'https://footballmanagersim.com';
 
       const sponsorData = {
         brand_name: verifiedBrand,
         logo_url: finalResolvedLogo,
-        link_url: verifiedLink || '',
+        link_url: normalizedVerifiedLink,
         package_type: verifiedPackage,
         tagline: verifiedTagline,
         starts_at: now.toISOString(),

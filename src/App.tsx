@@ -2228,7 +2228,8 @@ export default function App() {
     setGameState(prev => {
       if (!prev) return prev;
       const updated = { ...prev, club: { ...prev.club } };
-      if (!updated.currentCoach) {
+      const wasEjected = !updated.currentCoach;
+      if (wasEjected) {
         updated.currentCoach = { ...targetCoach, contractYearsLeft: newTotalYears };
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, targetCoach.ovrBoost);
       } else {
@@ -2246,6 +2247,7 @@ export default function App() {
           ...updated.pendingSeasonFinishData,
           coachAtStartOfSim: updatedFinishCoach,
           endBudget: updated.budget,
+          newBaseOvr: updated.club.baseOvr,
         };
       }
       return updated;
@@ -2256,7 +2258,15 @@ export default function App() {
       const updatedCoach = prev.coachAtStartOfSim 
         ? { ...prev.coachAtStartOfSim, contractYearsLeft: newTotalYears } 
         : undefined;
-      return { ...prev, coachAtStartOfSim: updatedCoach };
+      const wasEjectedInFinish = !gameState?.currentCoach;
+      return {
+        ...prev,
+        coachAtStartOfSim: updatedCoach,
+        endBudget: (typeof prev.endBudget === 'number' ? prev.endBudget : gameState.budget) - renewCost,
+        newBaseOvr: wasEjectedInFinish && typeof prev.newBaseOvr === 'number'
+          ? adjustOvr(prev.newBaseOvr, targetCoach.ovrBoost)
+          : prev.newBaseOvr,
+      };
     });
 
     showToast(lang === 'de' ? `Vertrag verlängert! (${newTotalYears} Jahre Gesamt)` : `Contract renewed! (${newTotalYears} years total)`, 'success');
@@ -5849,7 +5859,7 @@ export default function App() {
         if (state.currentCoach && (state.trophyDrought || 0) >= 1 && !isTacticalSynergy(state.currentCoach.style, state.tactic)) {
           // 20% chance if there's a tactical mismatch and no trophies last year
           if (Math.random() < 0.20) {
-            state.club.baseOvr -= state.currentCoach.ovrBoost;
+            state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
             const coachName = state.currentCoach.name;
             const coachStyle = state.currentCoach.style;
             state.currentCoach = undefined;
@@ -8590,7 +8600,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     }
 
     if (state.youthChampOvrBoost) {
-      state.club.baseOvr -= state.youthChampOvrBoost;
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.youthChampOvrBoost);
       state.youthChampOvrBoost = 0;
     }
     
@@ -8743,7 +8753,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           isPoached: isCoachPoached,
           buyoutFeeK: coachBuyoutFeeK,
         };
-        state.club.baseOvr -= state.currentCoach.ovrBoost;
+        state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
         state.currentCoach = undefined;
         state.coachTenure = 0;
         state.hasNewManagerBounce = false;
@@ -8766,7 +8776,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         // Schrödinger’s Coach Fix: Eject expired coach from state now so a reload
         // never leaves a ghost coach with 0 contract years giving free OVR boosts forever!
         expiredCoachToOffer = JSON.parse(JSON.stringify(state.currentCoach));
-        state.club.baseOvr -= state.currentCoach.ovrBoost;
+        state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
         state.currentCoach = undefined;
       } else if (state.currentCoach) {
         delete (state.currentCoach as any).extendedThisSeason;
@@ -10090,7 +10100,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     if ((state.history || []).length >= MAX_SEASONS && !state.endlessModeActive) {
       state.isCareerOver = true;
       state.pendingSeasonFinishData = null;
-      saveHighscore(state); // <-- ADD THIS LINE
+      setSeasonFinishData(null);
+      saveHighscore(state);
       setGameState(state);
       setActiveModal({
         title: isDe ? 'KARRIERE-ENDE' : 'CAREER COMPLETE',
