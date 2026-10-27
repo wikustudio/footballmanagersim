@@ -72,7 +72,7 @@ import { MarketingModal } from './components/MarketingModal';
 import { IPOModal } from './components/IPOModal';
 import { initGA, trackEvent } from './analytics';
 import { ConsentBanner } from './components/ConsentBanner';
-import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta } from './utils/storageManager';
+import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta, isNewerSaveOfSameCareer } from './utils/storageManager';
 import { mergeClubsDbSafeguards, autoRepairClubsDb, autoRepairSingleClub } from './utils/modSafeguards';
 import { EventUI } from './components/EventUI';
 import { SeasonHistoryTable } from './components/SeasonHistoryTable';
@@ -212,6 +212,10 @@ export const sanitizeGameState = (state: any): GameState | null => {
   return {
     ...state,
     pendingForcedEvent: isForcedJobOfferAlreadySigned ? undefined : state.pendingForcedEvent,
+    // Reserve teams don't play cups: drop any unclaimed TV cup draw carried over from older saves
+    ...(isReserveClub(cleanClub?.name || '') && state.tvCupJackpotAvailable && !state.tvCupJackpotClaimed
+      ? { tvCupJackpotAvailable: false, tvCupJackpotOpponent: undefined }
+      : {}),
     currentRival: cleanRival,
     tactic: state.tactic || 'Total Football',
     skillPoints: typeof state.skillPoints === 'number' ? state.skillPoints : 0,
@@ -1034,6 +1038,24 @@ export default function App() {
       
       // Yield the main thread to allow the browser to instantly paint the UI
       await new Promise(resolve => setTimeout(resolve, 50)); 
+
+      // Save recovery: the full IndexedDB backup is written on every save, while the localStorage copy can fall
+      // behind (quota full, or a reload during the season-end screens). Resume from whichever is further along.
+      let bootState: GameState | null = gameState;
+      try {
+        const idbState = await loadFromIndexedDB(LOCAL_STORAGE_KEY);
+        if (isMounted && latestGameStateRef.current === gameState && isNewerSaveOfSameCareer(idbState, gameState)) {
+          const recovered = sanitizeGameState(JSON.parse(JSON.stringify(idbState)));
+          if (recovered) {
+            bootState = recovered;
+            latestGameStateRef.current = recovered;
+            setGameState(recovered);
+            setSeasonFinishData(recovered.pendingSeasonFinishData || null);
+          }
+        }
+      } catch (e) {
+        console.warn('Error checking save backup:', e);
+      }
       
       let loadedClubs: Club[] = [];
       
@@ -1124,29 +1146,29 @@ export default function App() {
       // (like TSV Vestenbergsgreuth) retain their achieved tiers and OVRs across sessions and club switches!
       const existingClubsForMerge: Club[] = dynamicSavedClubs.length > 0
         ? [...dynamicSavedClubs]
-        : (gameState?.club ? [{ ...gameState.club }] : []);
+        : (bootState?.club ? [{ ...bootState.club }] : []);
 
-      if (gameState?.club) {
+      if (bootState?.club) {
         const cIdx = existingClubsForMerge.findIndex(c => 
-          (gameState.club.id != null && c.id === gameState.club.id) ||
-          c.name.toLowerCase().trim() === gameState.club.name.toLowerCase().trim()
+          (bootState.club.id != null && c.id === bootState.club.id) ||
+          c.name.toLowerCase().trim() === bootState.club.name.toLowerCase().trim()
         );
         if (cIdx !== -1) {
           existingClubsForMerge[cIdx] = {
             ...existingClubsForMerge[cIdx],
-            ...gameState.club,
-            stadium: Math.max(existingClubsForMerge[cIdx].stadium || 0, gameState.club.stadium || 0),
-            academyLevel: Math.max(existingClubsForMerge[cIdx].academyLevel || 1, gameState.club.academyLevel || 1),
-            medicalLevel: Math.max(existingClubsForMerge[cIdx].medicalLevel || 1, gameState.club.medicalLevel || 1),
+            ...bootState.club,
+            stadium: Math.max(existingClubsForMerge[cIdx].stadium || 0, bootState.club.stadium || 0),
+            academyLevel: Math.max(existingClubsForMerge[cIdx].academyLevel || 1, bootState.club.academyLevel || 1),
+            medicalLevel: Math.max(existingClubsForMerge[cIdx].medicalLevel || 1, bootState.club.medicalLevel || 1),
           };
         } else {
-          existingClubsForMerge.push({ ...gameState.club });
+          existingClubsForMerge.push({ ...bootState.club });
         }
       }
 
       // Ensure all previously managed clubs from managedClubFacilities are represented with their authentic tiers and peak OVRs
-      if (gameState?.managedClubFacilities) {
-        Object.entries(gameState.managedClubFacilities).forEach(([key, rawFac]) => {
+      if (bootState?.managedClubFacilities) {
+        Object.entries(bootState.managedClubFacilities).forEach(([key, rawFac]) => {
           const fac = rawFac as { tier?: number; peakOvr?: number };
           const mIdx = existingClubsForMerge.findIndex(c => String(c.id) === key || c.name.toLowerCase().trim() === key.toLowerCase().trim());
           if (mIdx !== -1) {
@@ -1161,10 +1183,10 @@ export default function App() {
       }
 
       const merged = existingClubsForMerge.length > 0
-        ? mergeClubsDbSafeguards(loadedClubs, existingClubsForMerge, gameState)
+        ? mergeClubsDbSafeguards(loadedClubs, existingClubsForMerge, bootState)
         : loadedClubs;
 
-      setClubsDb(autoRepairClubsDb(merged, modActive, gameState));
+      setClubsDb(autoRepairClubsDb(merged, modActive, bootState));
       setIsAppReady(true);
     };
 
@@ -1760,13 +1782,31 @@ export default function App() {
     initGA(import.meta.env.VITE_GA_MEASUREMENT_ID);
   }, []);
 
+  const saveFailureWarnedRef = useRef(false);
   useEffect(() => {
     if (gameState) {
       setGlobalYear(gameState.year);
       setGlobalCurrencyCountry(gameState.club.country || 'GER');
-      safeSaveGameState(LOCAL_STORAGE_KEY, gameState);
+      const saved = safeSaveGameState(LOCAL_STORAGE_KEY, gameState);
+      if (!saved && !saveFailureWarnedRef.current) {
+        saveFailureWarnedRef.current = true;
+        showToast('Browser storage is full. Your progress is kept in backup storage, but freeing up space for this site is recommended.', 'warning');
+      } else if (saved) {
+        saveFailureWarnedRef.current = false;
+      }
     }
   }, [gameState]);
+
+  // Reloading or closing the tab mid-simulation would discard the unsaved season, so ask the browser to confirm first
+  useEffect(() => {
+    if (!isSimulating) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSimulating]);
 
   useEffect(() => {
     syncGameStoreClub(gameState?.club);
@@ -2087,7 +2127,7 @@ export default function App() {
       veteranRingerActive: false,
       veteranRingerWageK: 0,
       ...(() => {
-        const initCupDraw = rollGrassrootsTvCupDraw(selectedClub.tier, selectedClub.country || 'GER', freshClubs);
+        const initCupDraw = rollGrassrootsTvCupDraw(selectedClub.tier, selectedClub.country || 'GER', freshClubs, false, isReserveClub(selectedClub.name));
         return {
           tvCupJackpotAvailable: initCupDraw.drawn,
           tvCupJackpotClaimed: false,
@@ -2144,6 +2184,7 @@ export default function App() {
     triggerScreenTransition(() => {
       if (gameState && !gameState.isCareerOver) saveHighscore(gameState);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
+      removeFromIndexedDB(LOCAL_STORAGE_KEY);
       localStorage.removeItem(DYNAMIC_UNIVERSE_STORAGE_KEY);
       if (!isModActive) {
         setClubsDb(getSafeDefaultClubs());
@@ -3685,7 +3726,7 @@ export default function App() {
 
   // --- PILLAR 3: GRASSROOTS TV CUP JACKPOT ("DAVID VS. GOLIATH" DRAW, TIERS 3–11) ---
   const handleClaimTvCupJackpot = () => {
-    if (!gameState || !gameState.tvCupJackpotAvailable || gameState.tvCupJackpotClaimed) return;
+    if (!gameState || !gameState.tvCupJackpotAvailable || gameState.tvCupJackpotClaimed || isReserveClub(gameState.club.name)) return;
     const giantName = gameState.tvCupJackpotOpponent || 'Top-Flight Giant';
     setGameState((prev) => {
       if (!prev || prev.tvCupJackpotClaimed) return prev;
@@ -5427,7 +5468,7 @@ export default function App() {
     const assignedRival = assignRival(resolvedNewClub, clubsDb);
     const rivalName = assignedRival?.name;
     const assignedBoardVision = generateBoardVision(resolvedNewClub, currentSnap?.year || 2026);
-    const newClubCupDraw = rollGrassrootsTvCupDraw(targetTier, resolvedNewClub.country || 'GER', clubsDb);
+    const newClubCupDraw = rollGrassrootsTvCupDraw(targetTier, resolvedNewClub.country || 'GER', clubsDb, false, isReserveClub(resolvedNewClub.name));
 
     if (currentSnap && currentSnap.club) {
       const departingClub = currentSnap.club;
@@ -9076,7 +9117,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     }
 
     // Pillar 3: Roll Grassroots TV Cup Jackpot ("David vs. Goliath" Draw, Tiers 3–11) for the upcoming season
-    const nextCupDraw = rollGrassrootsTvCupDraw(nextTier, clubCountry, clubsDb);
+    const nextCupDraw = rollGrassrootsTvCupDraw(nextTier, clubCountry, clubsDb, false, isReserveClub(state.club.name));
     state.tvCupJackpotAvailable = nextCupDraw.drawn;
     state.tvCupJackpotClaimed = false;
     state.tvCupJackpotOpponent = nextCupDraw.opponentName || undefined;
@@ -10297,6 +10338,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.isCareerOver = true;
         saveHighscore(updated);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        removeFromIndexedDB(LOCAL_STORAGE_KEY);
         setGameState(updated);
         popEvent();
         showToast(lang === 'de' ? 'Karriere beendet.' : 'Career ended.', 'info');
