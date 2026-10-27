@@ -13,7 +13,15 @@ if ('serviceWorker' in navigator) {
       registration.update();
     }
   });
-  registerSW({ immediate: true });
+  // Apply a new version only if it is detected right at launch; otherwise it waits for the next visit,
+  // so a deploy can never reload the page in the middle of a season.
+  const bootedAt = Date.now();
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      if (Date.now() - bootedAt < 4000) updateSW(true);
+    },
+  });
 }
 
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GameState, Language } from '../types';
-import { LEAGUES, getLeagueInfo, formatMoney, formatNum, getLeagueStadiumRequirement, getClubMaxBankLoan } from '../data/gameConstants';
+import { LEAGUES, getLeagueInfo, formatMoney, formatNum, getLeagueStadiumRequirement, getClubMaxBankLoan, isReserveClub } from '../data/gameConstants';
 import { getStadiumOptions } from './StadiumModal';
 import { AnimatedTreasury } from './AnimatedTreasury';
 import { BankLoanModal } from './BankLoanModal';
@@ -1178,7 +1178,7 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         </>
       )}
       {/* Grassroots TV Cup Jackpot ("David vs. Goliath" Draw, Tiers 3–11) */}
-      {state.club.tier >= 3 && state.club.tier <= 11 && (state.tvCupJackpotAvailable || state.tvCupJackpotClaimed) && (
+      {state.club.tier >= 3 && state.club.tier <= 11 && !isReserveClub(state.club.name) && (state.tvCupJackpotAvailable || state.tvCupJackpotClaimed) && (
         <div className="mb-2.5">
           {state.tvCupJackpotAvailable && !state.tvCupJackpotClaimed ? (
             <button

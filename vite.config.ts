@@ -17,7 +17,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // never auto-reload mid-session (an unsaved season-end would be lost)
       devOptions: {
         enabled: false // PWA is mostly for prod
       },
