@@ -244,6 +244,20 @@
         <p>Please enable JavaScript in your browser to play the full 35-season football managerial career simulation.</p>
       </div>
     </noscript>
+    <!-- Native Netlify Forms declaration for zero-key feedback & crash reporting -->
+    <form name="hms-feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="hms-feedback" />
+      <input type="text" name="bot-field" />
+      <input type="email" name="recipient" value="kuehnewilly@gmail.com" />
+      <input type="text" name="type" />
+      <input type="text" name="subject" />
+      <input type="text" name="title" />
+      <input type="email" name="contactEmail" />
+      <textarea name="description"></textarea>
+      <textarea name="diagnostics"></textarea>
+      <textarea name="crashSummary"></textarea>
+      <input type="text" name="timestamp" />
+    </form>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
