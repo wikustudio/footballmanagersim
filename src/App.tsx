@@ -70,9 +70,11 @@ import { ActionPanel } from './components/ActionPanel';
 import { PrestigeModal } from './components/PrestigeModal';
 import { MarketingModal } from './components/MarketingModal';
 import { IPOModal } from './components/IPOModal';
+import { FeedbackModal } from './components/FeedbackModal';
+import { getCrashReports, subscribeCrashReports, recordCrashReport } from './utils/crashReporter';
 import { initGA, trackEvent } from './analytics';
 import { ConsentBanner } from './components/ConsentBanner';
-import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta, isNewerSaveOfSameCareer } from './utils/storageManager';
+import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta } from './utils/storageManager';
 import { mergeClubsDbSafeguards, autoRepairClubsDb, autoRepairSingleClub } from './utils/modSafeguards';
 import { EventUI } from './components/EventUI';
 import { SeasonHistoryTable } from './components/SeasonHistoryTable';
@@ -212,10 +214,6 @@ export const sanitizeGameState = (state: any): GameState | null => {
   return {
     ...state,
     pendingForcedEvent: isForcedJobOfferAlreadySigned ? undefined : state.pendingForcedEvent,
-    // Reserve teams don't play cups: drop any unclaimed TV cup draw carried over from older saves
-    ...(isReserveClub(cleanClub?.name || '') && state.tvCupJackpotAvailable && !state.tvCupJackpotClaimed
-      ? { tvCupJackpotAvailable: false, tvCupJackpotOpponent: undefined }
-      : {}),
     currentRival: cleanRival,
     tactic: state.tactic || 'Total Football',
     skillPoints: typeof state.skillPoints === 'number' ? state.skillPoints : 0,
@@ -785,6 +783,16 @@ export default function App() {
   }, []);
 
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
+  const [unreadCrashCount, setUnreadCrashCount] = useState<number>(() =>
+    getCrashReports().filter((r) => !r.read).length
+  );
+
+  useEffect(() => {
+    return subscribeCrashReports(() => {
+      setUnreadCrashCount(getCrashReports().filter((r) => !r.read).length);
+    });
+  }, []);
 
   // --- Highscore Leaderboard with Local Fallback ---
   const LOCAL_HIGHSCORES_KEY = 'fms_local_highscores_v1';
@@ -1038,24 +1046,6 @@ export default function App() {
       
       // Yield the main thread to allow the browser to instantly paint the UI
       await new Promise(resolve => setTimeout(resolve, 50)); 
-
-      // Save recovery: the full IndexedDB backup is written on every save, while the localStorage copy can fall
-      // behind (quota full, or a reload during the season-end screens). Resume from whichever is further along.
-      let bootState: GameState | null = gameState;
-      try {
-        const idbState = await loadFromIndexedDB(LOCAL_STORAGE_KEY);
-        if (isMounted && latestGameStateRef.current === gameState && isNewerSaveOfSameCareer(idbState, gameState)) {
-          const recovered = sanitizeGameState(JSON.parse(JSON.stringify(idbState)));
-          if (recovered) {
-            bootState = recovered;
-            latestGameStateRef.current = recovered;
-            setGameState(recovered);
-            setSeasonFinishData(recovered.pendingSeasonFinishData || null);
-          }
-        }
-      } catch (e) {
-        console.warn('Error checking save backup:', e);
-      }
       
       let loadedClubs: Club[] = [];
       
@@ -1146,29 +1136,29 @@ export default function App() {
       // (like TSV Vestenbergsgreuth) retain their achieved tiers and OVRs across sessions and club switches!
       const existingClubsForMerge: Club[] = dynamicSavedClubs.length > 0
         ? [...dynamicSavedClubs]
-        : (bootState?.club ? [{ ...bootState.club }] : []);
+        : (gameState?.club ? [{ ...gameState.club }] : []);
 
-      if (bootState?.club) {
+      if (gameState?.club) {
         const cIdx = existingClubsForMerge.findIndex(c => 
-          (bootState.club.id != null && c.id === bootState.club.id) ||
-          c.name.toLowerCase().trim() === bootState.club.name.toLowerCase().trim()
+          (gameState.club.id != null && c.id === gameState.club.id) ||
+          c.name.toLowerCase().trim() === gameState.club.name.toLowerCase().trim()
         );
         if (cIdx !== -1) {
           existingClubsForMerge[cIdx] = {
             ...existingClubsForMerge[cIdx],
-            ...bootState.club,
-            stadium: Math.max(existingClubsForMerge[cIdx].stadium || 0, bootState.club.stadium || 0),
-            academyLevel: Math.max(existingClubsForMerge[cIdx].academyLevel || 1, bootState.club.academyLevel || 1),
-            medicalLevel: Math.max(existingClubsForMerge[cIdx].medicalLevel || 1, bootState.club.medicalLevel || 1),
+            ...gameState.club,
+            stadium: Math.max(existingClubsForMerge[cIdx].stadium || 0, gameState.club.stadium || 0),
+            academyLevel: Math.max(existingClubsForMerge[cIdx].academyLevel || 1, gameState.club.academyLevel || 1),
+            medicalLevel: Math.max(existingClubsForMerge[cIdx].medicalLevel || 1, gameState.club.medicalLevel || 1),
           };
         } else {
-          existingClubsForMerge.push({ ...bootState.club });
+          existingClubsForMerge.push({ ...gameState.club });
         }
       }
 
       // Ensure all previously managed clubs from managedClubFacilities are represented with their authentic tiers and peak OVRs
-      if (bootState?.managedClubFacilities) {
-        Object.entries(bootState.managedClubFacilities).forEach(([key, rawFac]) => {
+      if (gameState?.managedClubFacilities) {
+        Object.entries(gameState.managedClubFacilities).forEach(([key, rawFac]) => {
           const fac = rawFac as { tier?: number; peakOvr?: number };
           const mIdx = existingClubsForMerge.findIndex(c => String(c.id) === key || c.name.toLowerCase().trim() === key.toLowerCase().trim());
           if (mIdx !== -1) {
@@ -1183,10 +1173,10 @@ export default function App() {
       }
 
       const merged = existingClubsForMerge.length > 0
-        ? mergeClubsDbSafeguards(loadedClubs, existingClubsForMerge, bootState)
+        ? mergeClubsDbSafeguards(loadedClubs, existingClubsForMerge, gameState)
         : loadedClubs;
 
-      setClubsDb(autoRepairClubsDb(merged, modActive, bootState));
+      setClubsDb(autoRepairClubsDb(merged, modActive, gameState));
       setIsAppReady(true);
     };
 
@@ -1782,31 +1772,13 @@ export default function App() {
     initGA(import.meta.env.VITE_GA_MEASUREMENT_ID);
   }, []);
 
-  const saveFailureWarnedRef = useRef(false);
   useEffect(() => {
     if (gameState) {
       setGlobalYear(gameState.year);
       setGlobalCurrencyCountry(gameState.club.country || 'GER');
-      const saved = safeSaveGameState(LOCAL_STORAGE_KEY, gameState);
-      if (!saved && !saveFailureWarnedRef.current) {
-        saveFailureWarnedRef.current = true;
-        showToast('Browser storage is full. Your progress is kept in backup storage, but freeing up space for this site is recommended.', 'warning');
-      } else if (saved) {
-        saveFailureWarnedRef.current = false;
-      }
+      safeSaveGameState(LOCAL_STORAGE_KEY, gameState);
     }
   }, [gameState]);
-
-  // Reloading or closing the tab mid-simulation would discard the unsaved season, so ask the browser to confirm first
-  useEffect(() => {
-    if (!isSimulating) return;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isSimulating]);
 
   useEffect(() => {
     syncGameStoreClub(gameState?.club);
@@ -1831,7 +1803,7 @@ export default function App() {
 
   // Synchronize gameState.club & gameState.history with modded club in clubsDb whenever clubsDb updates
   useEffect(() => {
-    if (!gameState || !clubsDb || clubsDb.length === 0) return;
+    if (!gameState || !clubsDb || clubsDb.length === 0 || isSimulating) return;
     const dbClub = clubsDb.find(c => 
       c.id === gameState.club.id || 
       String(c.id) === String(gameState.club.id) ||
@@ -1847,8 +1819,8 @@ export default function App() {
 
     const expectedLogo = isModActive ? resolvedDbLogo : undefined;
     const expectedFallback = isModActive ? resolvedDbFallback : undefined;
-    const expectedNarrative = isModActive ? (dbClub?.narrative || modTeam?.historicContext) : undefined;
-    const expectedHistoric = isModActive ? (dbClub?.historicContext || modTeam?.historicContext) : undefined;
+    const expectedNarrative = isModActive ? (dbClub?.narrative || modTeam?.historicContext || gameState.club.narrative) : gameState.club.narrative;
+    const expectedHistoric = isModActive ? (dbClub?.historicContext || modTeam?.historicContext || gameState.club.historicContext) : gameState.club.historicContext;
 
     const clubNeedsUpdate = dbClub && (
       // Only force an update if the current name is NOT the customized name, OR if we are flipping the mod switch
@@ -2127,7 +2099,7 @@ export default function App() {
       veteranRingerActive: false,
       veteranRingerWageK: 0,
       ...(() => {
-        const initCupDraw = rollGrassrootsTvCupDraw(selectedClub.tier, selectedClub.country || 'GER', freshClubs, false, isReserveClub(selectedClub.name));
+        const initCupDraw = rollGrassrootsTvCupDraw(selectedClub.tier, selectedClub.country || 'GER', freshClubs, isModActive, selectedClub.name);
         return {
           tvCupJackpotAvailable: initCupDraw.drawn,
           tvCupJackpotClaimed: false,
@@ -2184,7 +2156,6 @@ export default function App() {
     triggerScreenTransition(() => {
       if (gameState && !gameState.isCareerOver) saveHighscore(gameState);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
-      removeFromIndexedDB(LOCAL_STORAGE_KEY);
       localStorage.removeItem(DYNAMIC_UNIVERSE_STORAGE_KEY);
       if (!isModActive) {
         setClubsDb(getSafeDefaultClubs());
@@ -2319,7 +2290,17 @@ export default function App() {
        setSeasonFinishData(null);
        return;
     }
-    setGameState(prev => prev ? { ...prev, pendingSeasonFinishData: null } : prev);
+    setGameState(prev => {
+      if (!prev) return prev;
+      const next = {
+        ...prev,
+        pendingSeasonFinishData: null,
+        seasonPhase: 'start' as const,
+        pendingSeasonState: null,
+      };
+      latestGameStateRef.current = next;
+      return next;
+    });
     const prevTier = seasonFinishData.tier;
     const nextTier = seasonFinishData.nextTier !== undefined
       ? seasonFinishData.nextTier
@@ -5468,7 +5449,7 @@ export default function App() {
     const assignedRival = assignRival(resolvedNewClub, clubsDb);
     const rivalName = assignedRival?.name;
     const assignedBoardVision = generateBoardVision(resolvedNewClub, currentSnap?.year || 2026);
-    const newClubCupDraw = rollGrassrootsTvCupDraw(targetTier, resolvedNewClub.country || 'GER', clubsDb, false, isReserveClub(resolvedNewClub.name));
+    const newClubCupDraw = rollGrassrootsTvCupDraw(targetTier, resolvedNewClub.country || 'GER', clubsDb, isModActive, resolvedNewClub.name);
 
     if (currentSnap && currentSnap.club) {
       const departingClub = currentSnap.club;
@@ -5882,6 +5863,10 @@ export default function App() {
     });
     setShowSimulatingOverlay(false);
 
+    let completedHistorySnap: SeasonHistory[] | null = null;
+    let completedClubHistorySnap: Record<string, any[]> | null = null;
+    let completedSeasonYearSnap: number | null = null;
+
     try {
       // Read latest state including any mid-season dilemma adjustments synchronously via latestGameStateRef
       const latestStateSnap: GameState = latestGameStateRef.current || stateWithPrecalc;
@@ -5893,7 +5878,7 @@ export default function App() {
       const coachAtStartOfSim = state.currentCoach ? JSON.parse(JSON.stringify(state.currentCoach)) : undefined;
 
       // MID-SEASON INTERCEPT
-      if (!state.seasonPhase || state.seasonPhase === 'start') {
+      if (isStartPhase) {
         state.seasonPhase = 'mid';
 
         // NEW: Rare Mid-Season Coach Resignation
@@ -6049,7 +6034,8 @@ export default function App() {
         for (const cupId of activeQFCups) {
             state.cupProgress[cupId] = 'QF'; // Mark as reached QF
         }
-        setGameState({...state});
+        latestGameStateRef.current = { ...state };
+        setGameState({ ...state });
         setIsSimulating(false);
         
         const processQFs = async () => {
@@ -6138,7 +6124,7 @@ export default function App() {
             setShowMidSeasonModal(true);
         };
         
-        processQFs();
+        await processQFs();
         return;
       }
 
@@ -8449,7 +8435,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         rivalName: finalRivalName,
         rivalPts: rivalFinalPts,
         rivalGd: rivalFinalGd > 0 ? rivalFinalGd : rivalFinalGd
-      } : state.currentRival ? {
+      } : (state.currentRival && !rivalIsPaused) ? {
         rivalName: state.currentRival.name,
         rivalPts: approxPos === 1
           ? Math.max(14, (targetPts || 50) - (Math.floor(Math.random() * 4) + 1))
@@ -8468,6 +8454,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     if (!state.history) state.history = [];
     state.history.push(historyItem);
+    completedHistorySnap = [...state.history];
+    completedSeasonYearSnap = completedSeasonYear;
 
     // Also persist into club-specific league history
     const currentClubKey = String(state.club.id || state.club.name);
@@ -8509,6 +8497,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       isManagerTenure: true
     });
     state.club.leagueHistory = state.clubLeagueHistories[currentClubKey];
+    completedClubHistorySnap = { ...state.clubLeagueHistories };
 
     // Apply Off-Season OVR Decay Mechanics (after Decision Day, Cup Finals, and Season History are finalized)
     const top5 = ['ENG', 'ESP', 'GER', 'ITA', 'FRA'];
@@ -9117,7 +9106,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     }
 
     // Pillar 3: Roll Grassroots TV Cup Jackpot ("David vs. Goliath" Draw, Tiers 3–11) for the upcoming season
-    const nextCupDraw = rollGrassrootsTvCupDraw(nextTier, clubCountry, clubsDb, false, isReserveClub(state.club.name));
+    const nextCupDraw = rollGrassrootsTvCupDraw(nextTier, clubCountry, clubsDb, isModActive, state.club.name);
     state.tvCupJackpotAvailable = nextCupDraw.drawn;
     state.tvCupJackpotClaimed = false;
     state.tvCupJackpotOpponent = nextCupDraw.opponentName || undefined;
@@ -9842,7 +9831,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       state.livingTiers[lower] = nextTier;
     }
 
-    setClubsDb(cleanNewClubsDb);
     safeSaveClubsDb(DYNAMIC_UNIVERSE_STORAGE_KEY, cleanNewClubsDb);
     safeSaveClubsDb(CLUBS_DB_STORAGE_KEY, cleanNewClubsDb);
 
@@ -10143,6 +10131,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       state.pendingSeasonFinishData = null;
       setSeasonFinishData(null);
       saveHighscore(state);
+      latestGameStateRef.current = state;
+      setClubsDb(cleanNewClubsDb);
       setGameState(state);
       setActiveModal({
         title: isDe ? 'KARRIERE-ENDE' : 'CAREER COMPLETE',
@@ -10171,7 +10161,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     state.lastOvr = state.club.baseOvr;
     state.isNewSeasonRender = true;
+    state.seasonPhase = 'start';
+    state.pendingSeasonState = null;
 
+    latestGameStateRef.current = state;
+    setClubsDb(cleanNewClubsDb);
     setGameState(state);
     
     
@@ -10235,10 +10229,37 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     }
   } catch (err: any) {
       console.error('Error during handleSimulateSeason:', err);
+      recordCrashReport(
+        err,
+        latestGameStateRef.current || gameState,
+        `handleSimulateSeason (${isStartPhase ? '1st Half' : '2nd Half'})`
+      );
+      // If an unexpected error occurred during 2nd-half completion, ensure we NEVER trap the user in the Winter Transfer Window ('mid') or drop their completed season history!
+      if (!isStartPhase) {
+        setGameState(prev => {
+          if (!prev) return prev;
+          const recovered: GameState = {
+            ...prev,
+            seasonPhase: 'start',
+            pendingSeasonState: null,
+            year: completedSeasonYearSnap != null ? Math.max(prev.year, completedSeasonYearSnap + 1) : prev.year,
+            seasonCount: completedHistorySnap ? Math.max(prev.seasonCount || 1, completedHistorySnap.length + 1) : prev.seasonCount,
+            history: completedHistorySnap || prev.history,
+            clubLeagueHistories: completedClubHistorySnap || prev.clubLeagueHistories,
+            regTransfersThisSeason: 0,
+            keyTransfersThisSeason: 0,
+            winterTransfers: 0,
+            winterKeyTransfers: 0,
+            winterCampDone: false,
+          };
+          latestGameStateRef.current = recovered;
+          return recovered;
+        });
+      }
       showToast(
         lang === 'de'
           ? 'Fehler bei der Saison-Simulation! Der Zustand wurde wiederhergestellt.'
-          : 'Error simulating season! State recovered.',
+          : 'Error simulating season! State recovered & crash log captured.',
         'error'
       );
     } finally {
@@ -10338,7 +10359,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.isCareerOver = true;
         saveHighscore(updated);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
-        removeFromIndexedDB(LOCAL_STORAGE_KEY);
         setGameState(updated);
         popEvent();
         showToast(lang === 'de' ? 'Karriere beendet.' : 'Career ended.', 'info');
@@ -13645,6 +13665,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         hasActiveGame={!!gameState}
         onOpenModModal={() => setShowModModal(true)}
         isModActive={isModActive}
+        onOpenFeedbackModal={() => setShowFeedbackModal(true)}
+        unreadCrashCount={unreadCrashCount}
       />
 
       {/* Main Content Area */}
@@ -14810,6 +14832,13 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       )}
       </AnimatePresence>
 
+
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        gameState={gameState}
+        onShowToast={showToast}
+      />
 
       <ConsentBanner />
 
