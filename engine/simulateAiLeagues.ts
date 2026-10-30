@@ -304,24 +304,50 @@ function* simulateAiLeaguesGen(
 ): Generator<void, Club[], void> {
   const generatedMovements: UniverseMovement[] = [];
 
+  const getAiFacilityProgression = (ovr: number, tier: number, isHeavyweight: boolean, isInsolvent?: boolean) => {
+    if (isInsolvent) return { floor: 1, cap: 1, upgradeProb: 0 };
+    if (ovr >= 90) return { floor: 5, cap: 5, upgradeProb: 0.75 };
+    if (ovr >= 85 || (isHeavyweight && tier === 1 && ovr >= 82)) return { floor: 4, cap: 5, upgradeProb: 0.55 };
+    if (ovr >= 80) return { floor: 3, cap: 4, upgradeProb: 0.40 };
+    if (ovr >= 75 || tier === 1) return { floor: 2, cap: 3, upgradeProb: 0.30 };
+    if (ovr >= 68 || tier === 2) return { floor: 1, cap: 2, upgradeProb: 0.20 };
+    return { floor: 1, cap: 1, upgradeProb: 0 };
+  };
+
   const updated = currentClubs.map((c) => {
     if (c.id === userClubId) return { ...c };
     
     const isGiant = c.baseOvr >= 78 || topHeavyweightNames.has(c.name);
-    
+    let newOvr = c.baseOvr;
+
     if (isGiant && !c.isInsolventGiant) {
       const ovrShift = rand(-1, 1);
-      const newOvr = Math.max(78, Math.min(98, c.baseOvr + ovrShift));
-      return { ...c, baseOvr: newOvr };
+      newOvr = Math.max(78, Math.min(98, c.baseOvr + ovrShift));
+    } else {
+      let ovrShift = rand(-1, 2);
+      // Steady Multi-Year Rise: non-giant clubs in Tier 2+ get 8% chance of an organic development surge (+1 to +3 OVR)
+      if (!isGiant && c.tier >= 2 && Math.random() < 0.08) {
+        ovrShift += Math.floor(Math.random() * 3) + 1; // +1 to +3
+      }
+      newOvr = Math.max(1, Math.min(98, c.baseOvr + ovrShift));
     }
-    
-    let ovrShift = rand(-1, 2);
-    // Steady Multi-Year Rise: non-giant clubs in Tier 2+ get 8% chance of an organic development surge (+1 to +3 OVR)
-    if (!isGiant && c.tier >= 2 && Math.random() < 0.08) {
-      ovrShift += Math.floor(Math.random() * 3) + 1; // +1 to +3
+
+    const facProg = getAiFacilityProgression(newOvr, c.tier, isGiant, c.isInsolventGiant);
+    let nextAcademy = Math.max(c.academyLevel || 1, facProg.floor);
+    let nextMedical = Math.max(c.medicalLevel || 1, facProg.floor);
+    if (nextAcademy < facProg.cap && Math.random() < facProg.upgradeProb) {
+      nextAcademy = Math.min(5, nextAcademy + 1);
     }
-    const newOvr = Math.max(1, Math.min(98, c.baseOvr + ovrShift));
-    return { ...c, baseOvr: newOvr };
+    if (nextMedical < facProg.cap && Math.random() < facProg.upgradeProb) {
+      nextMedical = Math.min(5, nextMedical + 1);
+    }
+
+    return {
+      ...c,
+      baseOvr: newOvr,
+      academyLevel: nextAcademy,
+      medicalLevel: nextMedical,
+    };
   });
 
   // ~1.5% (0.015) Realistic Fallen Giant Insolvency Event for Tier 1 Heavyweights
@@ -368,6 +394,8 @@ function* simulateAiLeaguesGen(
       
       const targetTier = Math.min(resetTier, getMaxTier(pickedGiant.country || 'GER', updated));
       pickedGiant.baseOvr = Math.max(15, pickedGiant.baseOvr - ovrPenalty);
+      pickedGiant.academyLevel = 1;
+      pickedGiant.medicalLevel = 1;
 
       insolventGiantMovement = {
         id: `sim-ins-${pickedGiant.id}-${seasonYear}`,
