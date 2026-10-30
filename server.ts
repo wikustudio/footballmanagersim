@@ -612,46 +612,107 @@ Walking out of the ${clubName} facilities for the final time, the dressing room 
 
       console.log(`[Feedback Report Routed to ${FEEDBACK_RECIPIENT_EMAIL}]:`, payloadSummary);
 
-      // Deliver email directly to kuehnewilly@gmail.com without requiring an API key via FormSubmit AJAX
-      let emailDelivered = false;
+      // 1. Save to Supabase `feedback_reports` table
+      let supabaseSaved = false;
       try {
-        const originHeader = req.headers.origin || 'https://footballmanagersim.com';
-        const refererHeader = req.headers.referer || `${originHeader}/`;
-
-        const formSubmitPayload: Record<string, string> = {
-          _subject: emailSubject,
-          _template: 'table',
-          _captcha: 'false',
-          Report_Type: reportTypeLabel,
-          Summary: title || 'Untitled Report',
-          User_Email: contactEmail || 'anonymous',
-          Description: description || '(No additional details provided)',
-          Diagnostics: diagnostics || '(No diagnostics attached)',
-          Crash_Details: crashSummary,
-          Timestamp: submittedAt
-        };
-        if (contactEmail && String(contactEmail).includes('@')) {
-          formSubmitPayload._replyto = String(contactEmail).trim();
-        }
-
-        const relayRes = await fetch(`https://formsubmit.co/ajax/${FEEDBACK_RECIPIENT_EMAIL}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Origin': originHeader,
-            'Referer': refererHeader,
-            'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.2)'
-          },
-          body: JSON.stringify(formSubmitPayload)
+        const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdycmhsaGhpbm1qZ2xudm1tYnpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1MDM3ODYsImV4cCI6MjEwMzA3OTc4Nn0.rqONT4AeXhmFNL-r9nrMc7V35cSDloCiELILkk1roYY';
+        const sbClient = supabaseServer || createClient(supabaseUrl, process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY);
+        const { error } = await sbClient.from('feedback_reports').insert({
+          report_type: type === 'feature' ? 'feature' : 'bug',
+          subject: emailSubject,
+          title: title || 'Untitled Report',
+          description: description || '(No additional details provided)',
+          contact_email: contactEmail || 'anonymous',
+          diagnostics: diagnostics || '(No diagnostics attached)',
+          crash_summary: crashSummary,
+          crash_report: crashReport || null,
+          recipient_email: FEEDBACK_RECIPIENT_EMAIL,
+          created_at: submittedAt
         });
-
-        emailDelivered = relayRes.ok;
-      } catch (relayErr) {
-        console.warn('FormSubmit relay warning:', relayErr);
+        supabaseSaved = !error;
+      } catch (sbErr) {
+        console.warn('Supabase feedback_reports insert warning:', sbErr);
       }
 
-      res.json({ ok: true, delivered: emailDelivered });
+      // 2. Deliver email (Resend if RESEND_API_KEY configured, else FormSubmit fallback)
+      let emailDelivered = false;
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey) {
+        try {
+          const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: 'Football Manager Sim <onboarding@resend.dev>',
+              to: [FEEDBACK_RECIPIENT_EMAIL],
+              reply_to: contactEmail && String(contactEmail).includes('@') ? String(contactEmail).trim() : undefined,
+              subject: emailSubject,
+              text: [
+                `Report Type: ${reportTypeLabel}`,
+                `Title: ${title || 'Untitled Report'}`,
+                `User Email: ${contactEmail || 'anonymous'}`,
+                `Timestamp: ${submittedAt}`,
+                '',
+                '--- DESCRIPTION ---',
+                description || '(No additional details provided)',
+                '',
+                '--- DIAGNOSTICS ---',
+                diagnostics || '(No diagnostics attached)',
+                '',
+                '--- CRASH DETAILS ---',
+                crashSummary
+              ].join('\n')
+            })
+          });
+          emailDelivered = resendRes.ok;
+        } catch (resendErr) {
+          console.warn('Resend email warning:', resendErr);
+        }
+      }
+
+      if (!emailDelivered) {
+        try {
+          const originHeader = req.headers.origin || 'https://footballmanagersim.com';
+          const refererHeader = req.headers.referer || `${originHeader}/`;
+
+          const formSubmitPayload: Record<string, string> = {
+            _subject: emailSubject,
+            _template: 'table',
+            _captcha: 'false',
+            Report_Type: reportTypeLabel,
+            Summary: title || 'Untitled Report',
+            User_Email: contactEmail || 'anonymous',
+            Description: description || '(No additional details provided)',
+            Diagnostics: diagnostics || '(No diagnostics attached)',
+            Crash_Details: crashSummary,
+            Timestamp: submittedAt
+          };
+          if (contactEmail && String(contactEmail).includes('@')) {
+            formSubmitPayload._replyto = String(contactEmail).trim();
+          }
+
+          const relayRes = await fetch(`https://formsubmit.co/ajax/${FEEDBACK_RECIPIENT_EMAIL}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Origin': originHeader,
+              'Referer': refererHeader,
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.2)'
+            },
+            body: JSON.stringify(formSubmitPayload)
+          });
+
+          emailDelivered = relayRes.ok;
+        } catch (relayErr) {
+          console.warn('FormSubmit relay warning:', relayErr);
+        }
+      }
+
+      res.json({ ok: true, supabaseSaved, delivered: emailDelivered });
     } catch (err) {
       console.error('Error recording feedback:', err);
       res.status(500).json({ error: 'Failed to record feedback' });
