@@ -1,6 +1,6 @@
 [build]
   publish = "dist"
-  command = "npm install --include=dev --no-audit --no-fund && npm run build"
+  command = "npm run build"
   functions = "netlify/functions"
 
 [functions]
@@ -33,6 +33,12 @@
 [[redirects]]
   from = "/api/generate-career-summary"
   to = "/.netlify/functions/generate-career-summary"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/feedback"
+  to = "/.netlify/functions/feedback"
   status = 200
   force = true
 
