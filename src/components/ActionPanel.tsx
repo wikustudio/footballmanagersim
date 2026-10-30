@@ -1177,7 +1177,7 @@ export const ActionPanel: React.FC<ActionPanelProps> = ({
         </div>
         </>
       )}
-      {/* Grassroots TV Cup Jackpot ("David vs. Goliath" Draw, Tiers 3–11) */}
+      {/* Grassroots TV Cup Jackpot ("David vs. Goliath" Draw, Tiers 3–11, Non-Reserve Clubs Only) */}
       {state.club.tier >= 3 && state.club.tier <= 11 && !isReserveClub(state.club.name) && (state.tvCupJackpotAvailable || state.tvCupJackpotClaimed) && (
         <div className="mb-2.5">
           {state.tvCupJackpotAvailable && !state.tvCupJackpotClaimed ? (

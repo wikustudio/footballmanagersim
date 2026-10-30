@@ -251,11 +251,14 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   // Sourcing candidate clubs: Strictly query immediate adjacent tier (T+1) sorted by baseOvr DESC
   const existingClubIds = new Set([effectiveUserClub.id, ...leagueClubs.map((c) => c.id)]);
   if (leagueClubs.length < targetAiCount) {
+    const rivalNameLower = (state.currentRival?.name || '').toLowerCase().trim();
     const sameCountryOtherClubs = sanitizedClubsDb
       .filter(
         (c) =>
           (c.country || 'GER') === currentCountry &&
           !existingClubIds.has(c.id) &&
+          c.id !== state.currentRival?.id &&
+          (!rivalNameLower || c.name.toLowerCase().trim() !== rivalNameLower) &&
           c.tier === effectiveSelectedTier + 1 &&
           (effectiveSelectedTier < minReserveTier ? !isReserveTeam(c.name) : true) &&
           (effectiveSelectedTier === 1 ? c.baseOvr >= 70 : true)
@@ -322,10 +325,18 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
     [];
 
   const neededFillers = Math.max(0, targetAiCount - leagueClubs.length);
+  const allKnownDbNames = new Set([
+    ...sanitizedClubsDb.map((c) => c.name.toLowerCase().trim()),
+    effectiveUserClub.name.toLowerCase().trim(),
+    ...(state.currentRival?.name ? [state.currentRival.name.toLowerCase().trim()] : []),
+  ]);
   for (let i = 0; i < neededFillers; i++) {
-    const existingNames = new Set([...leagueClubs.map((c) => c.name), effectiveUserClub.name]);
+    const existingNames = new Set([
+      ...allKnownDbNames,
+      ...leagueClubs.map((c) => c.name.toLowerCase().trim()),
+    ]);
     const availableFallback =
-      fallbackList.find((n) => !existingNames.has(n)) ||
+      fallbackList.find((n) => !existingNames.has(n.toLowerCase().trim())) ||
       `${COUNTRIES[currentCountry]?.name || currentCountry} Club ${i + 1}`;
 
     leagueClubs.push({
@@ -378,10 +389,19 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
   const tableData: TableRow[] = [];
 
-  // Identify rival
+  // Identify rival (only if the rival genuinely belongs to effectiveSelectedTier)
   const isRivalMatch = (clubName: string, clubId?: number | string) => {
     if (!state.currentRival) return false;
-    return clubName === state.currentRival.name || (clubId && clubId === state.currentRival.id);
+    const matchesIdentity =
+      clubName === state.currentRival.name ||
+      (clubId != null && clubId === state.currentRival.id);
+    if (!matchesIdentity) return false;
+    const rivalNameLower = (state.currentRival.name || '').toLowerCase().trim();
+    const rivalInDb = sanitizedClubsDb.find(
+      (c) => c.id === state.currentRival?.id || (rivalNameLower && c.name.toLowerCase().trim() === rivalNameLower)
+    );
+    if (rivalInDb && rivalInDb.tier !== effectiveSelectedTier) return false;
+    return true;
   };
 
   if (isCurrentView) {

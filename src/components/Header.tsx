@@ -12,6 +12,8 @@ interface HeaderProps {
   hasActiveGame: boolean;
   onOpenModModal?: () => void;
   isModActive?: boolean;
+  onOpenFeedbackModal?: () => void;
+  unreadCrashCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   hasActiveGame,
   onOpenModModal,
   isModActive,
+  onOpenFeedbackModal,
+  unreadCrashCount = 0,
 }) => {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -125,6 +129,27 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Leaderboard</span>
           </button>
 
+          {/* Feedback & Crash Report Button */}
+          {onOpenFeedbackModal && (
+            <button
+              onClick={onOpenFeedbackModal}
+              className={`relative transition px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                unreadCrashCount > 0
+                  ? 'text-rose-200 bg-rose-500/20 border border-rose-400/40 shadow-[0_0_14px_rgba(244,63,94,0.25)]'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/[0.06] border border-white/[0.06]'
+              }`}
+              title="Submit Crash Report, Bug Fix, or Feature Request"
+            >
+              <i className={`fa-solid ${unreadCrashCount > 0 ? 'fa-bug text-rose-400 animate-pulse' : 'fa-comment-dots text-emerald-400'} text-xs`}></i>
+              <span className="hidden md:inline">Feedback</span>
+              {unreadCrashCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black leading-tight">
+                  {unreadCrashCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Consolidated "More" Dropdown Menu */}
           <div ref={moreMenuRef} className="relative shrink-0">
             <button
@@ -168,6 +193,30 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <span className="truncate">{tr('About & Rules', 'Über & Regeln')}</span>
                   </button>
+
+                  {onOpenFeedbackModal && (
+                    <button
+                      onClick={() => {
+                        onOpenFeedbackModal();
+                        setMoreMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.06] text-zinc-300 hover:text-white text-xs font-semibold transition cursor-pointer text-left gap-2"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center shrink-0">
+                          <i className="fa-solid fa-bug text-xs"></i>
+                        </div>
+                        <span className="truncate">Report Bug / Feedback</span>
+                      </div>
+                      {unreadCrashCount > 0 ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
+                          {unreadCrashCount} Log{unreadCrashCount > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-zinc-500 font-normal shrink-0">Email</span>
+                      )}
+                    </button>
+                  )}
 
                   {onOpenModModal && (
                     <button

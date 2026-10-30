@@ -291,19 +291,19 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 disabled={isRegDisabled || isLocalProcessing}
                 className="w-full bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
+                  <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-user-plus"></i>
                     </div>
-                    <div>
-                      <div className="text-xs sm:text-sm font-semibold text-white flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-white flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Squad Player', 'Stammspieler verpflichten')}</span>
                         {isUnderdog && (
                           <span className="text-[10px] text-amber-400 font-normal">· 20% Underdog Off</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal">
+                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
                         {t('Solid starting quality to strengthen depth and base team OVR.', 'Solider Stammspieler zur Stärkung der Kaderbreite und Basis-GES.')}
                       </div>
                     </div>
@@ -326,19 +326,19 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 disabled={isKeyDisabled || isLocalProcessing}
                 className="w-full bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
+                  <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-400/20 flex items-center justify-center text-purple-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-star"></i>
                     </div>
-                    <div>
-                      <div className="text-xs sm:text-sm font-semibold text-white flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-white flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Key Player', 'Schlüsselspieler verpflichten')}</span>
                         {isUnderdog && (
                           <span className="text-[10px] text-amber-400 font-normal">· 20% Underdog Off</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal">
+                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
                         {isMoneyball ? (
                           <span className="text-amber-400 font-medium">
                             {t('Moneyball Syndicate: Locked out of Key Player signings.', 'Moneyball-Syndikat: Keine Verpflichtung von Schlüsselspielern erlaubt.')}
@@ -381,17 +381,17 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 disabled={isGalacticoDisabled || isLocalProcessing}
                 className="w-full bg-amber-500/[0.04] hover:bg-amber-500/[0.08] p-4 rounded-2xl border border-amber-400/20 text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
+                  <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-crown"></i>
                     </div>
-                    <div>
-                      <div className="text-xs sm:text-sm font-semibold text-amber-200 flex items-center gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-amber-200 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Galactico', 'Galactico Verpflichten')}</span>
                         <span className="text-[10px] text-amber-400/80 font-normal">· League 1 Exclusive</span>
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal">
+                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
                         {isMoneyball ? (
                           <span className="text-amber-400 font-medium">
                             {t('Moneyball Syndicate: Locked out of Galactico signings.', 'Moneyball-Syndikat: Keine Verpflichtung von Galacticos erlaubt.')}

@@ -234,72 +234,80 @@ export const YouthModal: React.FC<YouthModalProps> = ({
                         : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.04]'
                     }`}
                   >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0">
-                        <div className="text-white font-semibold text-xs sm:text-sm flex items-center gap-2 truncate">
-                          <span className="truncate">{sanitizePlayerName(p.name) || `Talent #${idx + 1}`}</span>
-                          {p.position && (
-                            <span className="text-zinc-400 font-mono text-[11px] shrink-0">
-                              · {p.position}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-white font-semibold text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+                            <span className="truncate max-w-full">{sanitizePlayerName(p.name) || `Talent #${idx + 1}`}</span>
+                            {p.position && (
+                              <span className="text-zinc-400 font-mono text-[11px] shrink-0">
+                                · {p.position}
+                              </span>
+                            )}
+                            {p.nationality && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.05] text-zinc-300 border border-white/[0.08] shrink-0">
+                                {p.nationality}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5 font-normal flex-wrap">
+                            <span className={isGenerational ? 'text-amber-300 font-semibold' : isTop ? 'text-emerald-300 font-semibold' : 'text-sky-300'}>
+                              {isGenerational ? t('Generational', 'Ausnahmetalent') : isTop ? t('Top Prospect', 'Top-Talent') : t('Local Prospect', 'Lokales Talent')}
                             </span>
-                          )}
-                          {p.nationality && (
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.05] text-zinc-300 border border-white/[0.08] shrink-0">
-                              {p.nationality}
-                            </span>
-                          )}
+                            <span className="text-zinc-600">·</span>
+                            <span className=" whitespace-nowrap">{p.age || 17} {t('yrs', 'Jahre')}</span>
+                            {p.playstyle && (
+                              <>
+                                <span className="text-zinc-600">·</span>
+                                <span className="text-zinc-300 text-[11px]">{p.playstyle}</span>
+                              </>
+                            )}
+                            {isReady && (
+                              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold rounded-full whitespace-nowrap">
+                                {t('Ready to Graduate', 'Absolvent')}
+                              </span>
+                            )}
+                            {isLoaned && (
+                              <span className="bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 text-[10px] font-bold rounded-full whitespace-nowrap">
+                                {t('On Loan Farm', 'Leihe')}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2 font-normal flex-wrap">
-                          <span className={isGenerational ? 'text-amber-300 font-semibold' : isTop ? 'text-emerald-300 font-semibold' : 'text-sky-300'}>
-                            {isGenerational ? t('Generational', 'Ausnahmetalent') : isTop ? t('Top Prospect', 'Top-Talent') : t('Local Prospect', 'Lokales Talent')}
+
+                        <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                          <span className="text-emerald-400 font-bold font-mono text-sm sm:text-base whitespace-nowrap">
+                            +{effectiveGraduateBoost} {t('OVR', 'GES')}
                           </span>
-                          <span className="text-zinc-600">·</span>
-                          <span>{p.age || 17} {t('yrs', 'Jahre')}</span>
-                          {p.playstyle && (
-                            <>
-                              <span className="text-zinc-600">·</span>
-                              <span className="text-zinc-300 text-[11px]">{p.playstyle}</span>
-                            </>
-                          )}
-                          {isReady && (
-                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 text-[10px] font-bold rounded-full">
-                              {t('Ready to Graduate', 'Absolvent')}
-                            </span>
-                          )}
-                          {isLoaned && (
-                            <span className="bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.2 text-[10px] font-bold rounded-full">
-                              {t('On Loan Farm', 'Leihe')}
-                            </span>
-                          )}
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                            {hasNlzBonus && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold whitespace-nowrap">
+                                +{t('1 NLZ Bonus', '1 NLZ-Bonus')}
+                              </span>
+                            )}
+                            {hasFeederBonus && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold whitespace-nowrap">
+                                +{t('1 Feeder', '1 Farmteam')}
+                              </span>
+                            )}
+                            {coachYouthTrait === 'boost' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold whitespace-nowrap" title="Head Coach Youth Development Bonus">
+                                +1 Coach
+                              </span>
+                            )}
+                            {coachYouthTrait === 'penalty' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold whitespace-nowrap" title="Head Coach Youth Apathy / Disciplinarian Bottleneck">
+                                -50% Coach
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-emerald-400 font-bold font-mono text-sm sm:text-base flex items-center justify-end gap-1.5 flex-wrap">
-                          <span>+{effectiveGraduateBoost} {t('OVR', 'GES')}</span>
-                          {hasNlzBonus && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
-                              +{t('1 NLZ Bonus', '1 NLZ-Bonus')}
-                            </span>
-                          )}
-                          {hasFeederBonus && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold">
-                              +{t('1 Feeder', '1 Farmteam')}
-                            </span>
-                          )}
-                          {coachYouthTrait === 'boost' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold" title="Head Coach Youth Development Bonus">
-                              +1 Coach
-                            </span>
-                          )}
-                          {coachYouthTrait === 'penalty' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold" title="Head Coach Youth Apathy / Disciplinarian Bottleneck">
-                              -50% Coach
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-zinc-400 mt-0.5 font-mono flex items-center justify-end gap-1.5 flex-wrap">
+
+                      <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-white/[0.05]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span
-                            className={`px-1.5 py-0.5 rounded border font-semibold ${
+                            className={`px-1.5 py-0.5 rounded border font-semibold whitespace-nowrap ${
                               clickChancePct >= 60
                                 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
                                 : clickChancePct >= 40
@@ -311,20 +319,20 @@ export const YouthModal: React.FC<YouthModalProps> = ({
                             {clickChancePct}% Senior Click
                           </span>
                           {(p.loansServed || 0) > 0 && (
-                            <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold">
+                            <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 font-semibold whitespace-nowrap">
                               Loan-Tested ({p.loansServed}/2)
                             </span>
                           )}
-                          <span>
-                            {isReady 
-                              ? t('Matured', 'Ausgebildet') 
-                              : isLoaned 
-                              ? t('Developing off-site', 'Extern in Leihe') 
-                              : p.timer === 1 
-                              ? t('Next season', 'Nächste Saison') 
-                              : t(`In ${p.timer} seasons`, `In ${p.timer} Saisons`)}
-                          </span>
                         </div>
+                        <span className="text-zinc-400 whitespace-nowrap ml-auto">
+                          {isReady 
+                            ? t('Matured', 'Ausgebildet') 
+                            : isLoaned 
+                            ? t('Developing off-site', 'Extern in Leihe') 
+                            : p.timer === 1 
+                            ? t('Next season', 'Nächste Saison') 
+                            : t(`In ${p.timer} seasons`, `In ${p.timer} Saisons`)}
+                        </span>
                       </div>
                     </div>
 

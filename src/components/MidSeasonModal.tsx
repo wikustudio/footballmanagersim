@@ -397,8 +397,8 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
             <p className="text-[11px] sm:text-xs text-sky-200/90 leading-snug">
               {t(
                 lang,
-                'January Window Open: +1 Regular Transfer slot unlocked. Optional Training Camp & Squad Bonding available in the dashboard.',
-                'Januar-Transferfenster geöffnet: +1 regulärer Transfer-Slot freigeschaltet. Optionales Trainingslager & Fan-Aktionen im Dashboard verfügbar.'
+                'January Window Open: +2 Regular & +1 Key Transfer slots unlocked. Optional Training Camp & Squad Bonding available in the dashboard.',
+                'Januar-Transferfenster geöffnet: +2 reguläre & +1 Schlüssel-Transfer-Slots freigeschaltet. Optionales Trainingslager & Fan-Aktionen im Dashboard verfügbar.'
               )}
             </p>
           </div>

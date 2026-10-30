@@ -134,8 +134,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       { en: 'Gegenpressing', de: 'Gegenpressing' },
       { en: 'Direct Counter', de: 'Direktes Konterspiel' },
       { en: 'Park the Bus', de: 'Catenaccio' },
-      { en: 'Tiki-Taka', de: 'Tiki-Taka' },
-      { en: 'Total Football', de: 'Total Football' }
+      { en: 'Tiki-Taka', de: 'Tiki-Taka' }
     ];
     return tactics[Math.floor(Math.random() * tactics.length)];
   });
@@ -724,12 +723,66 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     return 'text-sky-400';
   };
 
-  const getRpsWinProb = (choice: string) => {
-    let eff = playerOvr;
+  const getTacticalStyleOffset = (choice: string) => {
+    const familiarityBonus = gameState.tactic === choice ? 1.5 : 0;
+    if (choice === 'Total Football') return 2 + familiarityBonus;
+    if (choice === 'Gegenpressing') return 1 + familiarityBonus;
+    if (choice === 'Tiki-Taka') return -1 + familiarityBonus;
+    if (choice === 'Direct Counter') return -2 + familiarityBonus;
+    if (choice === 'Park the Bus' || choice === 'Catenaccio') return -3 + familiarityBonus;
+    return familiarityBonus;
+  };
+
+  const isRelegationSpecialistBoost = ddType === 'relegation' && gameState.currentCoach?.strength === 'Relegation Specialist';
+
+  const calcProb = (ovrMod: number) => {
+    const base = 50 + ((playerOvr + ovrMod - localOpponentOvr) * 2.5) + (isRelegationSpecialistBoost ? 15 : 0);
+    return Math.round(Math.max(5, Math.min(95, base)));
+  };
+
+  const computeRawRpsWinProb = (choice: string) => {
+    let eff = playerOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, oppTacticInfo.en);
     if (adv === 1) eff += 8;
     if (adv === -1) eff -= 8;
     return calcProb(eff - playerOvr);
+  };
+
+  const rpsProbMap = (() => {
+    const usedRps = new Set<number>();
+    const choices = ['Total Football', 'Gegenpressing', 'Tiki-Taka', 'Direct Counter', 'Park the Bus'];
+    const map: Record<string, number> = {};
+    choices.forEach((ch, idx) => {
+      const raw = computeRawRpsWinProb(ch);
+      let candidate = Math.max(5, Math.min(95, raw));
+      if (!usedRps.has(candidate)) {
+        usedRps.add(candidate);
+        map[ch] = candidate;
+        return;
+      }
+      const step = idx % 2 === 0 ? -1 : 1;
+      for (let i = 1; i <= 12; i++) {
+        const next = Math.max(5, Math.min(95, candidate + step * i));
+        if (!usedRps.has(next)) {
+          usedRps.add(next);
+          map[ch] = next;
+          return;
+        }
+        const alt = Math.max(5, Math.min(95, candidate - step * i));
+        if (!usedRps.has(alt)) {
+          usedRps.add(alt);
+          map[ch] = alt;
+          return;
+        }
+      }
+      map[ch] = candidate;
+    });
+    return map;
+  })();
+
+  const getRpsWinProb = (choice: string) => {
+    const normalized = choice === 'Catenaccio' ? 'Park the Bus' : choice;
+    return rpsProbMap[normalized] ?? computeRawRpsWinProb(choice);
   };
 
   const handleProceedToLeg2 = () => {
@@ -742,8 +795,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       { en: 'Gegenpressing', de: 'Gegenpressing' },
       { en: 'Direct Counter', de: 'Direktes Konterspiel' },
       { en: 'Park the Bus', de: 'Catenaccio' },
-      { en: 'Tiki-Taka', de: 'Tiki-Taka' },
-      { en: 'Total Football', de: 'Total Football' }
+      { en: 'Tiki-Taka', de: 'Tiki-Taka' }
     ];
     setOppTacticInfo(tactics[Math.floor(Math.random() * tactics.length)]);
     setStage('choice');
@@ -751,7 +803,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
   const handleTacticalDuelChoice = (choice: string) => {
     setDecisionChoice(99);
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = playerOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, oppTacticInfo.en);
     let specialDesc = '';
 
@@ -765,14 +817,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       specialDesc = `A gritty, evenly matched tactical battle.`;
     }
 
-    executeMatch(myEffectiveOvr, null, `Directive: ${choice}`, specialDesc);
-  };
-
-  const isRelegationSpecialistBoost = ddType === 'relegation' && gameState.currentCoach?.strength === 'Relegation Specialist';
-
-  const calcProb = (ovrMod: number) => {
-    const base = 50 + ((playerOvr + ovrMod - localOpponentOvr) * 2.5) + (isRelegationSpecialistBoost ? 15 : 0);
-    return Math.round(Math.max(5, Math.min(95, base)));
+    executeMatch(myEffectiveOvr, getRpsWinProb(choice) / 100, `Directive: ${choice}`, specialDesc);
   };
 
   const getDynamicMods = (pOvr: number, oOvr: number, oName: string) => {
@@ -792,10 +837,38 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
   const getNetProb = (probGood: number, goodMod: number, badMod: number) => {
     return Math.round((probGood * calcProb(goodMod)) + ((1 - probGood) * calcProb(badMod)));
   };
-  const netSafe = getNetProb(0.75, mods.safeGood, mods.safeBad);
-  const netEmo = getNetProb(0.50, mods.emoGood, mods.emoBad);
-  const netTac = getNetProb(0.30, mods.tacGood, mods.tacBad);
-  const netRattle = getNetProb(0.60, mods.rattleGood, mods.rattleBad);
+  const rawSafe = getNetProb(0.75, mods.safeGood, mods.safeBad);
+  const rawEmo = getNetProb(0.55, mods.emoGood, mods.emoBad);
+  const rawTac = getNetProb(0.35, mods.tacGood, mods.tacBad);
+  const rawRattle = getNetProb(0.62, mods.rattleGood, mods.rattleBad);
+
+  // Ensure standard directives display distinct probabilities even when OVR gap is large
+  const usedProbs = new Set<number>();
+  const ensureDistinctProb = (val: number, fallbackDelta: number) => {
+    let candidate = Math.max(5, Math.min(95, val));
+    if (!usedProbs.has(candidate)) {
+      usedProbs.add(candidate);
+      return candidate;
+    }
+    const step = fallbackDelta >= 0 ? 1 : -1;
+    for (let i = 1; i <= 12; i++) {
+      const next = Math.max(5, Math.min(95, candidate + step * i));
+      if (!usedProbs.has(next)) {
+        usedProbs.add(next);
+        return next;
+      }
+      const alt = Math.max(5, Math.min(95, candidate - step * i));
+      if (!usedProbs.has(alt)) {
+        usedProbs.add(alt);
+        return alt;
+      }
+    }
+    return candidate;
+  };
+  const netSafe = ensureDistinctProb(rawSafe, 2);
+  const netEmo = ensureDistinctProb(rawEmo, -2);
+  const netTac = ensureDistinctProb(rawTac, -4);
+  const netRattle = ensureDistinctProb(rawRattle, 1);
 
   const handleChoice = (choiceIndex: number) => {
     setDecisionChoice(choiceIndex);
@@ -827,7 +900,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 2: // Emotional Speech
         dirName = 'Directive: High-Intensity Speech';
-        if (rand < 0.50) {
+        if (rand < 0.55) {
           myEffectiveOvr += mods.emoGood;
           resultDesc = `They ran through walls for the badge! Electric energy (+${mods.emoGood} OVR).`;
         } else {
@@ -838,7 +911,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 3: // Tactical Shift
         dirName = 'Directive: Last-Minute Tactical Shift';
-        if (rand < 0.30) {
+        if (rand < 0.35) {
           myEffectiveOvr += mods.tacGood;
           resultDesc = `Tactical masterstroke! The opponent was completely confounded (+${mods.tacGood} OVR).`;
         } else {
@@ -849,7 +922,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 4: // Mind Games
         dirName = 'Directive: Press Mind Games';
-        if (rand < 0.60) {
+        if (rand < 0.62) {
           myEffectiveOvr += mods.rattleGood;
           resultDesc = `The media pressure rattled the opposition (+${mods.rattleGood} OVR).`;
         } else {

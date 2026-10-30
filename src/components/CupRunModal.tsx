@@ -739,7 +739,11 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     }
   }, [stage]);
 
-  const calcProb = (ovrMod: number) => Math.round(Math.max(5, Math.min(95, 50 + ((playerOvr + ovrMod - (opponent?.ovr || playerOvr)) * 2.5))));
+  const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
+  const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
+  const coachCupBonusOvr = isContinentalLegend || isCupSpecialist ? 4 : 0;
+
+  const calcProb = (ovrMod: number) => Math.round(Math.max(5, Math.min(95, 50 + ((playerOvr + coachCupBonusOvr + ovrMod - (opponent?.ovr || playerOvr)) * 2.5))));
 
   const getDynamicMods = (pOvr: number, oOvr: number, oName: string) => {
     const diff = pOvr - oOvr;
@@ -759,7 +763,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return { safeGood, pressGood, pressBad, attackGood, busBad };
   };
 
-  const mods = opponent ? getDynamicMods(playerOvr, opponent.ovr, opponent.name) : { safeGood: 2, pressGood: 10, pressBad: -8, attackGood: 5, busBad: -3 };
+  const mods = opponent ? getDynamicMods(playerOvr + coachCupBonusOvr, opponent.ovr, opponent.name) : { safeGood: 2, pressGood: 10, pressBad: -8, attackGood: 5, busBad: -3 };
 
   const getNetProb = (probGood: number, goodMod: number, badMod: number) => {
     return Math.round((probGood * calcProb(goodMod)) + ((1 - probGood) * calcProb(badMod)));
@@ -773,10 +777,37 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return Math.round((win90 + (drawP * 0.5)) * 100);
   };
 
-  const netSafe = calcProb(mods.safeGood);
-  const netPress = getNetProb(0.50, mods.pressGood, mods.pressBad);
-  const netAttack = calcProb(mods.attackGood);
-  const netBus = getBusProb(mods.busBad);
+  const rawSafe = calcProb(mods.safeGood);
+  const rawPress = getNetProb(0.55, mods.pressGood, mods.pressBad);
+  const rawAttack = calcProb(mods.attackGood);
+  const rawBus = getBusProb(mods.busBad);
+
+  const usedCupProbs = new Set<number>();
+  const ensureDistinctCupProb = (val: number, fallbackDelta: number) => {
+    let candidate = Math.max(5, Math.min(95, val));
+    if (!usedCupProbs.has(candidate)) {
+      usedCupProbs.add(candidate);
+      return candidate;
+    }
+    const step = fallbackDelta >= 0 ? 1 : -1;
+    for (let i = 1; i <= 12; i++) {
+      const next = Math.max(5, Math.min(95, candidate + step * i));
+      if (!usedCupProbs.has(next)) {
+        usedCupProbs.add(next);
+        return next;
+      }
+      const alt = Math.max(5, Math.min(95, candidate - step * i));
+      if (!usedCupProbs.has(alt)) {
+        usedCupProbs.add(alt);
+        return alt;
+      }
+    }
+    return candidate;
+  };
+  const netSafe = ensureDistinctCupProb(rawSafe, 2);
+  const netPress = ensureDistinctCupProb(rawPress, -2);
+  const netAttack = ensureDistinctCupProb(rawAttack, 3);
+  const netBus = ensureDistinctCupProb(rawBus, -3);
 
   // --- TACTICAL DUEL LOGIC ---
   const [isTacticalDuel] = useState<boolean>(() => Math.random() > 0.5);
@@ -794,6 +825,17 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return 0;
   };
 
+  const getTacticalStyleOffset = (choice: string) => {
+    const normalizedChoice = choice === 'Catenaccio' ? 'Park the Bus' : choice;
+    const familiarityBonus = gameState.tactic === normalizedChoice || gameState.tactic === choice ? 1.5 : 0;
+    if (normalizedChoice === 'Total Football') return 2 + familiarityBonus;
+    if (normalizedChoice === 'Gegenpressing') return 1 + familiarityBonus;
+    if (normalizedChoice === 'Tiki-Taka') return -1 + familiarityBonus;
+    if (normalizedChoice === 'Direct Counter') return -2 + familiarityBonus;
+    if (normalizedChoice === 'Park the Bus') return -3 + familiarityBonus;
+    return familiarityBonus;
+  };
+
   const getRpsColor = (choice: string) => {
     if (!opponent) return 'text-zinc-400';
     const adv = getTacticalAdvantage(choice, opponent.tactic);
@@ -802,19 +844,53 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return 'text-sky-400';
   };
 
-  const getRpsWinProb = (choice: string) => {
+  const computeRawRpsWinProb = (choice: string) => {
     if (!opponent) return 50;
-    let eff = playerOvr;
+    let eff = playerOvr + coachCupBonusOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     if (adv === 1) eff += 8;
     if (adv === -1) eff -= 8;
     return Math.round(Math.max(5, Math.min(95, 50 + ((eff - opponent.ovr) * 2.5))));
   };
 
+  const rpsProbMap = (() => {
+    const usedRps = new Set<number>();
+    const choices = ['Total Football', 'Gegenpressing', 'Tiki-Taka', 'Direct Counter', 'Catenaccio'];
+    const map: Record<string, number> = {};
+    choices.forEach((ch, idx) => {
+      const raw = computeRawRpsWinProb(ch);
+      let candidate = Math.max(5, Math.min(95, raw));
+      if (!usedRps.has(candidate)) {
+        usedRps.add(candidate);
+        map[ch] = candidate;
+        return;
+      }
+      const step = idx % 2 === 0 ? -1 : 1;
+      for (let i = 1; i <= 12; i++) {
+        const next = Math.max(5, Math.min(95, candidate + step * i));
+        if (!usedRps.has(next)) {
+          usedRps.add(next);
+          map[ch] = next;
+          return;
+        }
+        const alt = Math.max(5, Math.min(95, candidate - step * i));
+        if (!usedRps.has(alt)) {
+          usedRps.add(alt);
+          map[ch] = alt;
+          return;
+        }
+      }
+      map[ch] = candidate;
+    });
+    return map;
+  })();
+
+  const getRpsWinProb = (choice: string) => rpsProbMap[choice] ?? computeRawRpsWinProb(choice);
+
   const handleTacticalDuelChoice = (choice: string) => {
     if (!opponent) return;
     setAppliedDirective(`Directive: ${choice}`);
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = playerOvr + coachCupBonusOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     let specialDesc = '';
 
@@ -827,16 +903,9 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     } else {
       specialDesc = `A gritty, evenly matched tactical battle.`;
     }
-
-    const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
-    const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
-    
-    if (isContinentalLegend || isCupSpecialist) {
-      myEffectiveOvr += 4;
-    }
     
     const diff = myEffectiveOvr - opponent.ovr;
-    const winProb = Math.max(5, Math.min(95, 50 + (diff * 2.5))) / 100;
+    const winProb = (getRpsWinProb(choice)) / 100;
     
     executeMatch(winProb, diff, specialDesc, false);
   };
@@ -849,7 +918,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
       setMpBoostCount(prev => prev + 1);
     }
 
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = playerOvr + coachCupBonusOvr;
     let flatWinProb: number | null = null;
     let specialDesc = '';
 
@@ -868,7 +937,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
       setAppliedDirective('Directive: All Out Attack');
     } else if (choice === 'high_press') {
       setAppliedDirective('Directive: Aggressive High Press');
-      if (Math.random() > 0.5) {
+      if (Math.random() < 0.55) {
         myEffectiveOvr += mods.pressGood;
         specialDesc = 'Opponent completely overwhelmed by intense pressing!';
       } else {
@@ -878,13 +947,6 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     } else if (choice === 'set_pieces') {
       setAppliedDirective('Directive: Set-Piece Chaos');
       flatWinProb = 0.33;
-    }
-
-    const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
-    const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
-    
-    if (isContinentalLegend || isCupSpecialist) {
-      myEffectiveOvr += 4;
     }
 
     const diff = myEffectiveOvr - opponent.ovr;
