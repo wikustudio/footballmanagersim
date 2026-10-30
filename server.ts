@@ -582,6 +582,30 @@ Walking out of the ${clubName} facilities for the final time, the dressing room 
     }
   });
 
+  // Feedback & Crash Report submission endpoint (recipient email kept strictly server-side)
+  const FEEDBACK_RECIPIENT_EMAIL = 'kuehnewilly@gmail.com';
+  app.post('/api/feedback', async (req, res) => {
+    try {
+      const { type, subject, title, description, contactEmail, diagnostics, crashReport, crashLogs } = req.body || {};
+      console.log(`[Feedback Report Routed to ${FEEDBACK_RECIPIENT_EMAIL}]:`, {
+        to: FEEDBACK_RECIPIENT_EMAIL,
+        type: type || 'crash',
+        subject: subject || title || 'Untitled Report',
+        title: title || 'Untitled Report',
+        contactEmail: contactEmail || 'anonymous',
+        description: description || '',
+        diagnostics: diagnostics || '',
+        crashReport: crashReport || null,
+        crashCount: Array.isArray(crashLogs) ? crashLogs.length : 0,
+        timestamp: new Date().toISOString()
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      console.error('Error recording feedback:', err);
+      res.status(500).json({ error: 'Failed to record feedback' });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
