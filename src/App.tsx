@@ -6112,6 +6112,14 @@ export default function App() {
                     cupProgress: state.cupProgress,
                     playedCupOpponents: state.playedCupOpponents,
                     cupRunResults: state.cupRunResults,
+                    budget: state.budget,
+                    skillPoints: state.skillPoints,
+                    currentRival: state.currentRival,
+                    currentCoach: state.currentCoach,
+                    coachTenure: state.coachTenure,
+                    hasNewManagerBounce: state.hasNewManagerBounce,
+                    midSeasonResignedCoach: state.midSeasonResignedCoach,
+                    club: state.club,
                   };
                   Object.assign(state, JSON.parse(JSON.stringify(latestGameStateRef.current)), inFlightLoopFields);
                 }
@@ -6138,7 +6146,7 @@ export default function App() {
           seasonLeague: (state as any).seasonLeague,
           midSeasonStandings: (state as any).midSeasonStandings,
           inProgressCupRun: (state as any).inProgressCupRun,
-          pendingSeasonState: state.pendingSeasonState || latestGameStateRef.current.pendingSeasonState,
+          pendingSeasonState: latestGameStateRef.current.pendingSeasonState || state.pendingSeasonState,
         };
         Object.assign(state, JSON.parse(JSON.stringify(latestGameStateRef.current)), preservedInFlightFields);
       }
@@ -7917,11 +7925,19 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // --- RIVAL MATCHES LOGIC ---
     let rivalIsPaused = false;
     if (state.currentRival) {
-      const rivalClub = clubsDb.find(c => c.id === state.currentRival.id);
+      const rivalNameLower = (state.currentRival.name || '').toLowerCase().trim();
+      const rivalClub = clubsDb.find(
+        c => c.id === state.currentRival.id || (rivalNameLower && c.name.toLowerCase().trim() === rivalNameLower)
+      );
       if (rivalClub) {
+        const rivalActiveTier =
+          (rivalClub.id != null ? state.livingTiers?.[rivalClub.id] : undefined) ??
+          state.livingTiers?.[`${rivalClub.country || state.club.country || 'GER'}_${rivalNameLower}`] ??
+          state.livingTiers?.[rivalNameLower] ??
+          rivalClub.tier;
         // Paused rivalry if they are not in the same league tier this season
         // (Use seasonLeague, not state.club.tier, because state.club.tier was already updated to nextTier for next season)
-        if (seasonLeague !== rivalClub.tier) {
+        if (seasonLeague !== rivalActiveTier) {
           rivalIsPaused = true;
           // Small 15% chance they meet in a cup tie during the season anyway
           if (Math.random() < 0.15) {
@@ -7969,6 +7985,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             decayReasons.push(`Swept by Arch-Rivals ${state.currentRival.name} (-4 Board Impact)`);
           }
         }
+      } else {
+        rivalIsPaused = true;
       }
     }
     // --- END RIVAL MATCHES LOGIC ---
@@ -9375,7 +9393,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       } else if (tierTable.length < targetSize && tierTable.length > 0) {
         const existingIds = new Set(tierTable.map(r => r.id));
         const existingNames = new Set(tierTable.map(r => (r.name || '').toLowerCase().trim()));
-        const pool = [...clubsDb, ...newClubsDb].filter(c =>
+        const pool = updatedClubsWithCompletedSeasonTier.filter(c =>
           (c.country || 'GER') === country &&
           c.tier === tierNum &&
           !existingIds.has(c.id) &&
@@ -9457,18 +9475,17 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     const rawTierTable: any[] = [...(state.seasonStandingsArchive[completedSeasonYear]?.[seasonLeague] || [])];
     let otherClubs = rawTierTable.filter(r => r.id !== state.club.id && !r.isUser);
 
-    // Domestic isolation: purge any foreign clubs or multi-tier leap anomalies
-    const allDbClubs = [...clubsDb, ...newClubsDb];
-    const dbClubMap = new Map<number | string, Club>(allDbClubs.map(c => [c.id, c]));
-    const dbClubNameMap = new Map<string, Club>(allDbClubs.map(c => [c.name.toLowerCase().trim(), c]));
+    // Domestic isolation: purge any foreign clubs or out-of-tier clubs using completed-season tier records
+    const completedSeasonClubMap = new Map<number | string, Club>(updatedClubsWithCompletedSeasonTier.map(c => [c.id, c]));
+    const completedSeasonNameMap = new Map<string, Club>(updatedClubsWithCompletedSeasonTier.map(c => [c.name.toLowerCase().trim(), c]));
     const baseSource = isModActive ? getBaseModClubs() : FALLBACK_CLUBS;
     const baseMap = new Map(baseSource.map(b => [b.id, b]));
     const baseNameMap = new Map(baseSource.map(b => [b.name.toLowerCase().trim(), b]));
 
     otherClubs = otherClubs.filter(r => {
       if (seasonLeague < getMinAllowedTierForReserve(clubCountry) && isReserveClub(r.name)) return false;
-      const dbRef = (r.id != null ? dbClubMap.get(r.id) : undefined) ||
-                    (r.name ? dbClubNameMap.get(r.name.toLowerCase().trim()) : undefined);
+      const dbRef = (r.id != null ? completedSeasonClubMap.get(r.id) : undefined) ||
+                    (r.name ? completedSeasonNameMap.get(r.name.toLowerCase().trim()) : undefined);
       const base = (r.id != null ? baseMap.get(r.id) : undefined) ||
                    (r.name ? baseNameMap.get(r.name.toLowerCase().trim()) : undefined);
       
@@ -9476,13 +9493,20 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const rCountry = dbRef?.country || base?.country || r.country || 'GER';
       if (rCountry !== clubCountry) return false;
 
+      // Reject clubs whose completed-season tier was not seasonLeague
+      if (dbRef && dbRef.tier !== seasonLeague) return false;
+
       // If we know the baseline club, reject unpromoted multi-tier leaps (e.g. tier >= 3 jumping straight into tier 1 without promotion history)
       const hasPromotedRecord = Boolean(
         (dbRef?.tier && dbRef.tier <= 2) ||
-        (r.id != null && state.livingTiers?.[r.id] != null && state.livingTiers[r.id] <= 2) ||
         (r.id != null && state.managedClubFacilities?.[String(r.id)])
       );
       if (seasonLeague === 1 && !hasPromotedRecord && (base?.tier ?? dbRef?.tier ?? 1) > 2) return false;
+      r.isRival = Boolean(
+        !rivalIsPaused &&
+        state.currentRival &&
+        (r.id === state.currentRival.id || (r.name && state.currentRival.name && r.name.toLowerCase().trim() === state.currentRival.name.toLowerCase().trim()))
+      );
       return true;
     });
 
@@ -9497,8 +9521,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const existingIds = new Set([state.club.id, ...otherClubs.map(c => c.id)]);
       const existingNames = new Set([state.club.name.toLowerCase().trim(), ...otherClubs.map(c => (c.name || '').toLowerCase().trim())]);
       
-      // Pad strictly with domestic clubs from the same country and tier
-      const sameTierCandidates = allDbClubs
+      // Pad strictly with domestic clubs from the same country and completed-season tier
+      const sameTierCandidates = updatedClubsWithCompletedSeasonTier
         .filter(c =>
           (c.country || 'GER') === clubCountry &&
           c.tier === seasonLeague &&
@@ -9522,7 +9546,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           ga: 38,
           isUser: false,
           isReserve: isReserveClub(c.name),
-          isRival: false,
+          isRival: Boolean(
+            !rivalIsPaused &&
+            state.currentRival &&
+            (c.id === state.currentRival.id || (c.name && state.currentRival.name && c.name.toLowerCase().trim() === state.currentRival.name.toLowerCase().trim()))
+          ),
         }));
 
       for (const cand of sameTierCandidates) {
