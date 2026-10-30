@@ -7,6 +7,7 @@ import {
   clearCrashReports,
   markAllCrashReportsRead,
   formatDiagnosticSummary,
+  submitFeedbackReport,
 } from '../utils/crashReporter';
 
 interface FeedbackModalProps {
@@ -84,20 +85,16 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
   const handleSubmitReport = async () => {
     setSubmitting(true);
     try {
-      await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: reportType,
-          subject: subjectLine,
-          title: title.trim(),
-          description: description.trim(),
-          contactEmail: userEmail.trim(),
-          diagnostics: diagnosticText,
-          crashReport: selectedCrash,
-          crashLogs: reports,
-          timestamp: new Date().toISOString(),
-        }),
+      await submitFeedbackReport({
+        type: reportType,
+        subject: subjectLine,
+        title: title.trim(),
+        description: description.trim(),
+        contactEmail: userEmail.trim(),
+        diagnostics: diagnosticText,
+        crashReport: selectedCrash,
+        crashLogs: reports,
+        timestamp: new Date().toISOString(),
       });
       setSubmitStatus('sent');
       if (onShowToast) {
