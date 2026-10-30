@@ -375,28 +375,6 @@ export function loadCareerSlotFromStorage(
 }
 
 /**
- * Orders saves of one career by how far along they are: each season has a 'start' and a 'mid' (winter) step.
- */
-function getSaveProgress(state: any): number {
-  const year = typeof state?.year === 'number' ? state.year : 0;
-  return year * 2 + (state?.seasonPhase === 'mid' ? 1 : 0);
-}
-
-/**
- * True when `candidate` (e.g. the IndexedDB backup) is a later save of the same career than `current`
- * (e.g. the localStorage save, which can fall behind when the browser quota is full or a reload interrupts it).
- */
-export function isNewerSaveOfSameCareer(candidate: any, current: any): boolean {
-  if (!candidate || typeof candidate !== 'object' || !candidate.club) return false;
-  if (!current || typeof current !== 'object' || !current.club) return false;
-  if (candidate.managerName !== current.managerName || candidate.startYear !== current.startYear) return false;
-  if (current.isCareerOver && !candidate.isCareerOver) return false;
-  const diff = getSaveProgress(candidate) - getSaveProgress(current);
-  if (diff !== 0) return diff > 0;
-  return (candidate.history?.length || 0) > (current.history?.length || 0);
-}
-
-/**
  * Safely persists GameState to localStorage with multi-tier compression and fallback.
  */
 export function safeSaveGameState(storageKey: string, state: GameState): boolean {
@@ -432,18 +410,10 @@ export function safeSaveGameState(storageKey: string, state: GameState): boolean
         // Level 4: Ultra-compact fallback (strip archive & redundant livingTiers keys so core career save never fails)
         try {
           const baseCompact = compactGameState(state, true);
-          const currentClubKey = baseCompact.club ? String(baseCompact.club.id || baseCompact.club.name) : '';
           const ultraCompact: GameState = {
             ...baseCompact,
             seasonStandingsArchive: {},
             universeMovements: (baseCompact.universeMovements || []).slice(0, 10),
-            clubLeagueHistories: baseCompact.clubLeagueHistories && currentClubKey && baseCompact.clubLeagueHistories[currentClubKey]
-              ? { [currentClubKey]: baseCompact.clubLeagueHistories[currentClubKey] }
-              : {},
-            worldCupCampaigns: Array.isArray(baseCompact.worldCupCampaigns) ? baseCompact.worldCupCampaigns.slice(-3) : baseCompact.worldCupCampaigns,
-            ovrHistory: Array.isArray(baseCompact.ovrHistory) ? baseCompact.ovrHistory.slice(-15) : baseCompact.ovrHistory,
-            stockHistory: Array.isArray(baseCompact.stockHistory) ? baseCompact.stockHistory.slice(-15) : baseCompact.stockHistory,
-            cupRunResults: Array.isArray(baseCompact.cupRunResults) ? baseCompact.cupRunResults.slice(-10) : baseCompact.cupRunResults,
             pendingSeasonState: null,
           };
           localStorage.setItem(storageKey, JSON.stringify(ultraCompact));
@@ -506,12 +476,8 @@ export function safeSaveClubsDb(storageKey: string, clubs: Club[]): boolean {
   }
 }
 
-// A single shared connection keeps back-to-back writes in call order, so the newest save always lands last.
-let cachedDbPromise: Promise<IDBDatabase> | null = null;
-
 export const initDB = (): Promise<IDBDatabase> => {
-  if (cachedDbPromise) return cachedDbPromise;
-  cachedDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       return reject(new Error('IndexedDB is not available'));
     }
@@ -522,16 +488,9 @@ export const initDB = (): Promise<IDBDatabase> => {
         db.createObjectStore('mods');
       }
     };
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onclose = () => { cachedDbPromise = null; };
-      db.onversionchange = () => { db.close(); cachedDbPromise = null; };
-      resolve(db);
-    };
+    request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
-  cachedDbPromise.catch(() => { cachedDbPromise = null; });
-  return cachedDbPromise;
 };
 
 export const saveToIndexedDB = async (key: string, data: any): Promise<void> => {

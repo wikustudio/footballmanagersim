@@ -311,6 +311,17 @@ export const sanitizeGameState = (state: any): GameState | null => {
         };
       }
 
+      if (!isFreibergClub && (h.pos === 1 || h.pos === 2) && typeof h.ga === 'number' && h.ga > 36 && typeof h.gf === 'number' && h.gf >= 65) {
+        const losses = typeof h.losses === 'number' ? h.losses : (typeof h.lost === 'number' ? h.lost : 3);
+        const draws = typeof h.draws === 'number' ? h.draws : 5;
+        const healedGa = Math.max(18, Math.min(31, 14 + losses * 2 + Math.floor(draws * 0.7) + (h.pos === 2 ? 2 : 0)));
+        h = {
+          ...h,
+          ga: healedGa,
+          gd: h.gf - healedGa,
+        };
+      }
+
       return h;
     }) : [],
     managerName: sanitizePlayerName(state.managerName) || state.managerName || 'Manager',
@@ -713,14 +724,30 @@ export const sanitizeGameState = (state: any): GameState | null => {
           }
         });
       }
-      // Ensure all archived tables across all years and tiers strictly enforce maximum 18 clubs
+      // Ensure all archived tables across all years and tiers strictly enforce maximum 18 clubs and heal legacy inflated top-2 GA
       Object.keys(archive).forEach((yr) => {
         if (archive[yr]) {
           Object.keys(archive[yr]).forEach((tierStr) => {
             const t = Number(tierStr);
             const tbl = archive[yr][t];
-            if (Array.isArray(tbl) && tbl.length > 18) {
-              archive[yr][t] = tbl.slice(0, 18).map((r: any, idx: number) => ({ ...r, pos: idx + 1 }));
+            if (Array.isArray(tbl)) {
+              const sliced = tbl.length > 18 ? tbl.slice(0, 18) : tbl;
+              archive[yr][t] = sliced.map((r: any, idx: number) => {
+                const pos = idx + 1;
+                if (!isFreibergClub && (pos === 1 || pos === 2) && typeof r.ga === 'number' && r.ga > 36 && typeof r.gf === 'number' && r.gf >= 65) {
+                  const losses = typeof r.l === 'number' ? r.l : 3;
+                  const draws = typeof r.d === 'number' ? r.d : 5;
+                  const healedGa = Math.max(18, Math.min(31, 14 + losses * 2 + Math.floor(draws * 0.7) + (pos === 2 ? 2 : 0)));
+                  const healedGd = r.gf - healedGa;
+                  return {
+                    ...r,
+                    pos,
+                    ga: healedGa,
+                    gd: healedGd > 0 ? `+${healedGd}` : `${healedGd}`,
+                  };
+                }
+                return { ...r, pos };
+              });
             }
           });
         }
@@ -6992,19 +7019,30 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             let leaderGd = 0, trailerGd = 0;
             
             if (ddType === 'title') {
+                const pendingGd = state.pendingSeasonState?.gd;
+                const estTitleGf = state.pendingSeasonState?.gf ?? Math.round(74 - (approxPos - 1) * 2.55 + Math.max(-5, Math.min(8, ovrDiff * 0.45)));
+                const estTitleGa = state.pendingSeasonState?.ga ?? Math.max(18, Math.min(30, Math.round(22 + (approxPos - 1) * 2 - Math.max(-4, Math.min(5, ovrDiff * 0.35)))));
+                const realisticTitleGd = Math.max(38, estTitleGf - estTitleGa);
+                const baseTitleGd = typeof pendingGd === 'number' && pendingGd >= 38
+                    ? Math.min(76, Math.max(38, pendingGd + rand(-2, 2)))
+                    : realisticTitleGd;
                 if (trailingHasBetterGd) {
-                    trailerGd = rand(40, 55);
+                    trailerGd = baseTitleGd;
                     leaderGd = trailerGd - rand(1, 3);
                 } else {
-                    leaderGd = rand(40, 55);
+                    leaderGd = baseTitleGd;
                     trailerGd = leaderGd - rand(1, 3);
                 }
             } else {
+                const pendingGd = state.pendingSeasonState?.gd;
+                const baseRelGd = typeof pendingGd === 'number' && pendingGd <= -10
+                    ? Math.max(-46, Math.min(-14, pendingGd + rand(-2, 2)))
+                    : rand(-25, -15);
                 if (trailingHasBetterGd) {
-                    trailerGd = rand(-25, -15);
+                    trailerGd = baseRelGd;
                     leaderGd = trailerGd - rand(1, 3);
                 } else {
-                    leaderGd = rand(-25, -15);
+                    leaderGd = baseRelGd;
                     trailerGd = leaderGd - rand(1, 3);
                 }
             }
@@ -7228,36 +7266,68 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     const pts = wins * 3 + draws;
 
     // 4. Realistic Goal Difference & Goals For / Goals Against (34 matches)
-    let calculatedGd = (!isLeagueDecisionDay && syncedPending) ? syncedPending.gd : Math.round((wins - losses) * 1.5 + rand(-2, 2));
+    const isDefTactic = state.tactic === 'Defensive' || state.tactic === 'Catenaccio' || state.tactic === 'Park the Bus';
+    const baseGf = Math.round(74 - (approxPos - 1) * 2.55 + Math.max(-5, Math.min(8, ovrDiff * 0.45)) + rand(-3, 3));
+    const gfStyleMultiplier = state.tactic === 'Total Football' ? 1.11 : state.tactic === 'Gegenpressing' ? 1.13 : isDefTactic ? 0.88 : state.tactic === 'Tiki-Taka' ? 1.02 : 1.02;
+
+    const rawGa =
+      11 +
+      (approxPos - 1) * 1.15 +
+      losses * 1.55 +
+      draws * 0.72 +
+      wins * 0.35 -
+      Math.max(-5, Math.min(6, ovrDiff * 0.4)) +
+      rand(-2, 2);
+    const gaStyleMultiplier = isDefTactic
+      ? 0.84
+      : state.tactic === 'Tiki-Taka'
+      ? 0.90
+      : state.tactic === 'Direct Counter'
+      ? 0.95
+      : state.tactic === 'Gegenpressing'
+      ? 1.06
+      : 1.01;
+    let realisticGa = Math.max(15, Math.min(88, Math.round(rawGa * gaStyleMultiplier)));
+    let realisticGf = Math.round(baseGf * gfStyleMultiplier);
+    if (coachStrength === 'Chaos Magnet') {
+      realisticGf += rand(3, 6);
+    }
+    realisticGf = Math.max(24, Math.min(108, realisticGf));
+
+    if (approxPos <= 4 && wins > losses) {
+      const minTopGd = Math.max(8, Math.round((wins - losses) * 1.45));
+      if (realisticGf - realisticGa < minTopGd) {
+        realisticGa = Math.max(15, realisticGf - minTopGd);
+      }
+    } else if (approxPos >= 14 && losses > wins) {
+      const minBottomDeficit = Math.max(6, Math.round((losses - wins) * 1.25));
+      if (realisticGa - realisticGf < minBottomDeficit) {
+        realisticGa = Math.min(88, realisticGf + minBottomDeficit);
+      }
+    }
+
+    let gf = (!isLeagueDecisionDay && syncedPending) ? syncedPending.gf : realisticGf;
+    let ga = (!isLeagueDecisionDay && syncedPending) ? syncedPending.ga : realisticGa;
+    let calculatedGd = (!isLeagueDecisionDay && syncedPending) ? syncedPending.gd : (gf - ga);
 
     if (isLeagueDecisionDay && userFinalGd !== undefined) {
       calculatedGd = userFinalGd;
-    }
-
-    const baseGf = Math.round(72 - (approxPos - 1) * 2.1 + rand(-3, 3));
-    const isDefTactic = state.tactic === 'Defensive' || state.tactic === 'Catenaccio' || state.tactic === 'Park the Bus';
-    if (!isLeagueDecisionDay && isDefTactic && calculatedGd < 0) {
-      calculatedGd = Math.round(calculatedGd * 0.6);
-    }
-    const gfStyleMultiplier = state.tactic === 'Total Football' ? 1.14 : state.tactic === 'Gegenpressing' ? 1.16 : isDefTactic ? 0.90 : state.tactic === 'Tiki-Taka' ? 0.96 : 1.02;
-
-    let gf = (!isLeagueDecisionDay && syncedPending) ? syncedPending.gf : Math.round(baseGf * gfStyleMultiplier);
-    if (isLeagueDecisionDay || !syncedPending) {
-      if (coachStrength === 'Chaos Magnet') {
-        gf += rand(3, 7);
-      }
-      if (isLeagueDecisionDay && hasParsedScore && ddWon && parsedUserGoals >= 4) {
+      if (hasParsedScore && ddWon && parsedUserGoals >= 4) {
         gf = Math.max(gf, baseGf + parsedUserGoals);
       }
-      if (calculatedGd > 0) {
-        gf = Math.max(gf, calculatedGd + 18);
+      if (ddType === 'title' || approxPos <= 2) {
+        // Keep GA strictly anchored to realistic defensive performance (16-32 GA for top-2 finishers)
+        // so high-scoring attacks (e.g. 88 GF) never get paired with 50-64 GA
+        const matchGaDelta = hasParsedScore ? Math.max(0, parsedOppGoals - 1) : (ddWon ? 0 : ddDraw ? 1 : 2);
+        ga = Math.max(16, Math.min(32, realisticGa + matchGaDelta));
+        calculatedGd = gf - ga;
+      } else {
+        ga = Math.max(15, Math.min(88, gf - calculatedGd));
+        gf = Math.max(24, ga + calculatedGd);
       }
-      gf = Math.max(28, Math.min(110, gf));
+    } else {
+      gf = ga + calculatedGd; // Keep exact mathematical parity
     }
-
-    // GA is strictly derived so that gf - ga === calculatedGd
-    let ga = (!isLeagueDecisionDay && syncedPending) ? syncedPending.ga : Math.max(12, gf - calculatedGd);
-    gf = ga + calculatedGd; // Keep exact mathematical parity
 
     // Attendance & Fanbase
     const isReserve = isReserveClub(state.club.name);
@@ -9795,8 +9865,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       let d = Math.max(0, assignedPts - w * 3);
       while (d < 4 && w > 2 && w + d < 34) { w -= 1; d += 3; }
       const l = Math.max(0, 34 - w - d);
-      let cGf = Math.max(18, Math.round(w * 1.9 + d * 1.1 + (idx === 0 ? 6 : 2)));
-      let cGa = Math.max(14, Math.round(l * 1.8 + d * 0.9 + 2));
+      let cGf = Math.max(22, Math.round(w * 2.15 + d * 1.05 + l * 0.45 + (idx < 3 ? (3 - idx) * 3 : 0) + 3));
+      let cGa = Math.max(18, Math.round(l * 1.75 + d * 0.95 + w * 0.42 + idx * 0.45 + 3));
       const isDirectRivalAbove = isLeagueDecisionDay && finalRivalName && idx === clubsAbove.length - 1 && c.name === finalRivalName;
       if (isDirectRivalAbove && assignedPts === netPts && (cGf - cGa) <= userActualGd) {
         const targetGd = Math.max(userActualGd + 1, rivalFinalGd > userActualGd ? rivalFinalGd : userActualGd + 1);
@@ -9821,8 +9891,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       let d = Math.max(0, currentBelowPts - w * 3);
       while (d < 4 && w > 2 && w + d < 34) { w -= 1; d += 3; }
       const l = Math.max(0, 34 - w - d);
-      let cGf = Math.max(18, Math.round(w * 1.8 + d * 1.0 + (idx % 3)));
-      let cGa = Math.max(14, Math.round(l * 1.9 + d * 1.0 + 3 + (idx % 2)));
+      let cGf = Math.max(20, Math.round(w * 2.05 + d * 1.05 + l * 0.45 + (idx % 3)));
+      let cGa = Math.max(18, Math.round(l * 1.75 + d * 0.95 + w * 0.42 + (posNum - 1) * 0.45 + 3 + (idx % 2)));
       if (isDirectRivalBelow && currentBelowPts === netPts && (cGf - cGa) >= userActualGd) {
         const targetGd = Math.min(userActualGd - 1, rivalFinalGd < userActualGd ? rivalFinalGd : userActualGd - 1);
         cGa = Math.max(14, cGf - targetGd);
