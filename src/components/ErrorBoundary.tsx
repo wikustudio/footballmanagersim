@@ -1,4 +1,5 @@
 import React, { ErrorInfo, ReactNode } from 'react';
+import { recordCrashReport, formatDiagnosticSummary, submitFeedbackReport } from '../utils/crashReporter';
 
 interface Props {
   children: ReactNode;
@@ -26,6 +27,24 @@ export class ErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error in UI:', error, errorInfo);
     (window as any).RENDER_ERROR_DUMP = error.message + ' ' + error.stack;
+
+    try {
+      const entry = recordCrashReport(error, null, 'React Render Crash');
+      const diagnostics = formatDiagnosticSummary(null, entry);
+      submitFeedbackReport({
+        type: 'bug',
+        subject: `[FMS v2.2 Auto Crash Report] ${error.message.slice(0, 60)}`,
+        title: error.message,
+        description: `Automatic crash captured by ErrorBoundary.\nComponent Stack:\n${errorInfo?.componentStack || 'N/A'}`,
+        diagnostics,
+        crashReport: entry,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {
+        // Silently ignore network errors on crash boundary
+      });
+    } catch {
+      // Ignore secondary crash reporter errors
+    }
   }
 
   handleReset = () => {
@@ -48,7 +67,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <h1 className="text-xl font-black mb-2 text-red-400">
               Session Recovered
             </h1>
-            <p className="text-xs text-gray-400 mb-6 leading-relaxed">An unexpected error occurred during rendering.</p><pre className="text-[10px] text-red-300 text-left overflow-auto max-h-32 mb-4">{(window as any).RENDER_ERROR_DUMP}</pre>
+            <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+              An unexpected error occurred during rendering.
+            </p>
+            <p className="text-[11px] text-emerald-400 mb-4 font-semibold">
+              Crash diagnostics automatically sent to the developer.
+            </p>
+            <pre className="text-[10px] text-red-300 text-left overflow-auto max-h-32 mb-4 bg-black/40 p-2.5 rounded-xl border border-red-500/20">
+              {(window as any).RENDER_ERROR_DUMP}
+            </pre>
             <button
               onClick={this.handleReset}
               className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
