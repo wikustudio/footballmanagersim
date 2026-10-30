@@ -5,6 +5,7 @@ import {
   getLeagueScaledVal,
   formatMoney,
   isTacticalSynergy,
+  isReserveClub,
   TACTICS,
   rand,
 } from '../data/gameConstants';
@@ -472,7 +473,7 @@ export function rollGrassrootsTvCupDraw(
   country: string = 'GER',
   clubsDb: Club[] = [],
   isModActive: boolean = false,
-  isReserve: boolean = false
+  clubName?: string
 ): {
   triggered: boolean;
   drawn: boolean;
@@ -481,8 +482,11 @@ export function rollGrassrootsTvCupDraw(
   opponentColor?: string;
   opponentOvr?: number;
 } {
-  // Reserve teams don't enter cup competitions, so they never get a cup draw
-  if (isReserve || tier < 3 || tier > 11) {
+  // Reserve teams (II / U23 / U21 / B-teams) are barred from domestic cup competitions and do not receive the Magic Cup Draw influx
+  if (clubName && isReserveClub(clubName)) {
+    return { triggered: false, drawn: false };
+  }
+  if (tier < 3 || tier > 11) {
     return { triggered: false, drawn: false };
   }
   // 25% random chance at start of season for Tiers 3-11
@@ -710,19 +714,33 @@ export function calculateProbabilisticSeason(
   const currentMorale = state.club?.morale ?? 100;
   const currentOvr = state.club?.baseOvr || 65;
   const currentTactic = state.tactic || 'Total Football';
+  const currentCoachId = state.currentCoach?.id || 'none';
+  const currentCoachStyle = state.currentCoach?.style || 'none';
+  const currentHasBounce = Boolean(state.hasNewManagerBounce);
+  const currentSkillsKey = (state.managerSkills || []).slice().sort().join(',');
+  const currentStadium = state.club?.stadium || 0;
+  const currentStadiumPolicy = state.stadiumPolicy || 'balanced';
 
-  // If we already have a valid pendingSeasonState for this exact year/tier and OVR/morale/tactic haven't changed, return it
+  // If we already have a valid pendingSeasonState for this exact year/tier and full state signature hasn't changed, return it
   const existing = options?.lockFirstHalfFrom || state.pendingSeasonState;
+  const dilemmaMatches =
+    !options?.lockFirstHalfFrom || existing?.dilemmaChoice === options?.dilemmaChoice;
   if (
-    !options?.lockFirstHalfFrom &&
     existing &&
+    dilemmaMatches &&
     existing.year === year &&
     existing.tier === seasonLeague &&
     existing.country === clubCountry &&
     existing.schedule?.length === 34 &&
     existing._meta?.ovrAtCalculation === currentOvr &&
     existing._meta?.moraleAtCalculation === currentMorale &&
-    existing._meta?.tacticAtCalculation === currentTactic
+    existing._meta?.tacticAtCalculation === currentTactic &&
+    (existing._meta?.coachIdAtCalculation ?? currentCoachId) === currentCoachId &&
+    (existing._meta?.coachStyleAtCalculation ?? currentCoachStyle) === currentCoachStyle &&
+    (existing._meta?.hasBounceAtCalculation ?? currentHasBounce) === currentHasBounce &&
+    (existing._meta?.skillsKeyAtCalculation ?? currentSkillsKey) === currentSkillsKey &&
+    (existing._meta?.stadiumAtCalculation ?? currentStadium) === currentStadium &&
+    (existing._meta?.stadiumPolicyAtCalculation ?? currentStadiumPolicy) === currentStadiumPolicy
   ) {
     return existing;
   }
@@ -1206,6 +1224,14 @@ export function calculateProbabilisticSeason(
       ovrAtCalculation: currentOvr,
       moraleAtCalculation: currentMorale,
       tacticAtCalculation: currentTactic,
+      coachIdAtCalculation: currentCoachId,
+      coachStyleAtCalculation: currentCoachStyle,
+      hasBounceAtCalculation: currentHasBounce,
+      skillsKeyAtCalculation: currentSkillsKey,
+      stadiumAtCalculation: currentStadium,
+      stadiumPolicyAtCalculation: currentStadiumPolicy,
+      midPos: existing?._meta?.midPos,
+      midPts: existing?._meta?.midPts,
     },
   };
 }
