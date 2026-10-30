@@ -5735,6 +5735,8 @@ export const resolveDynamicEvent = (
     return isDe ? txt.de : txt.en;
   };
 
+  updated.pendingForcedEvent = undefined;
+
   const toastMsg = isSuccess ? getLocalizedText(opt.goodTxt) : getLocalizedText(opt.badTxt);
   const toastType = isSuccess ? 'success' : 'error';
 
