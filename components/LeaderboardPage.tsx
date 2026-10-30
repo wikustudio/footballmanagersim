@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { Club, GameState, Language } from '../types';
 import { PressConferenceWall, SlotSelectionInfo } from './PressConferenceWall';
@@ -42,6 +42,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   const [selectedSlotInfo, setSelectedSlotInfo] = useState<SlotSelectionInfo | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const hasProcessedCheckoutReturn = useRef(false);
 
   // Sync external initialHighscores when provided or updated
   useEffect(() => {
@@ -65,11 +66,11 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
     }
   }, []);
 
-  // Load sponsors
+  // Load sponsors (also updates state when active array is empty so expired sponsors clear out)
   const loadSponsors = useCallback(async () => {
     try {
       const active = await fetchPressSponsors();
-      if (active && active.length > 0) {
+      if (Array.isArray(active)) {
         setSponsors(active);
       }
     } catch (e) {
@@ -79,6 +80,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
   // Check URL query parameters for return from Stripe checkout
   useEffect(() => {
+    if (hasProcessedCheckoutReturn.current) return;
     const searchParams = new URLSearchParams(window.location.search);
     const sponsorStatus = searchParams.get('sponsor_status');
     const sessionId = searchParams.get('session_id');
@@ -89,6 +91,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
     const slot = searchParams.get('slot') || '';
 
     if (sponsorStatus === 'success') {
+      hasProcessedCheckoutReturn.current = true;
       (async () => {
         let confirmed = false;
 
@@ -133,33 +136,46 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 const finalLink = (data.sponsor.link_url || link || '').startsWith('http')
                   ? (data.sponsor.link_url || link)
                   : `https://${data.sponsor.link_url || link}`;
+                const finalPkg = data.sponsor.package_type || pkg;
 
                 const sponsorRecord: PressSponsor = {
                   id: data.sponsor.id || `sponsor-${sessionId || Date.now()}`,
                   brand_name: data.sponsor.brand_name || brand || 'Official Partner',
                   logo_url: resolvedLogo,
                   link_url: finalLink,
-                  package_type: data.sponsor.package_type || pkg,
+                  package_type: finalPkg,
                   tagline: data.sponsor.tagline || brand || 'Official Partner',
                   starts_at: data.sponsor.starts_at || new Date().toISOString(),
                   expires_at: data.sponsor.expires_at || new Date(Date.now() + 30 * 86400000).toISOString(),
-                  is_active: true
+                  is_active: true,
+                  is_headline: finalPkg === '90_days' || finalPkg === '1_year' || finalPkg === '1_week' || finalPkg === '1_month'
                 };
 
                 saveLocalSponsor(sponsorRecord);
+                setSponsors((prev) => [sponsorRecord, ...prev.filter(s => s.brand_name.toLowerCase() !== sponsorRecord.brand_name.toLowerCase())]);
 
                 // If verified via Edge Function fallback, persist the verified row into Supabase press_sponsors
                 if (usedEdgeFallback && supabase) {
-                  await supabase.from('press_sponsors').insert({
-                    brand_name: sponsorRecord.brand_name,
-                    logo_url: sponsorRecord.logo_url,
-                    link_url: sponsorRecord.link_url,
-                    package_type: sponsorRecord.package_type,
-                    tagline: sponsorRecord.tagline,
-                    starts_at: sponsorRecord.starts_at,
-                    expires_at: sponsorRecord.expires_at,
-                    is_active: true
-                  });
+                  const { data: existing } = await supabase
+                    .from('press_sponsors')
+                    .select('id')
+                    .eq('brand_name', sponsorRecord.brand_name)
+                    .eq('is_active', true)
+                    .gt('expires_at', new Date().toISOString())
+                    .limit(1);
+
+                  if (!existing || existing.length === 0) {
+                    await supabase.from('press_sponsors').insert({
+                      brand_name: sponsorRecord.brand_name,
+                      logo_url: sponsorRecord.logo_url,
+                      link_url: sponsorRecord.link_url,
+                      package_type: sponsorRecord.package_type,
+                      tagline: sponsorRecord.tagline,
+                      starts_at: sponsorRecord.starts_at,
+                      expires_at: sponsorRecord.expires_at,
+                      is_active: true
+                    });
+                  }
                 }
 
                 confirmed = true;
@@ -197,6 +213,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
         window.history.replaceState({}, document.title, cleanUrl);
       })();
     } else if (sponsorStatus === 'cancelled') {
+      hasProcessedCheckoutReturn.current = true;
       setNotification({
         message: 'Contract checkout was cancelled. The press slot remains available whenever you are ready.',
         type: 'info'

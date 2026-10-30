@@ -64,7 +64,7 @@ export const DatabaseModal: React.FC<DatabaseModalProps> = ({
         return {
           ...c,
           name: editName.trim() || c.name,
-          baseOvr: Math.max(40, Math.min(99, Number(editOvr) || 70)),
+          baseOvr: Math.max(10, Math.min(99, Number(editOvr) || 70)),
           stadium: Math.max(1000, Number(editStadium) || 10000),
           currentBudget: Math.max(100000, Number(editBudget) || 1000000),
           color: editColor || c.color,
@@ -456,7 +456,7 @@ export const DatabaseModal: React.FC<DatabaseModalProps> = ({
                     </div>
                     <input 
                       type="range" 
-                      min="40" 
+                      min="10" 
                       max="99" 
                       value={editOvr} 
                       onChange={e => setEditOvr(Number(e.target.value))} 

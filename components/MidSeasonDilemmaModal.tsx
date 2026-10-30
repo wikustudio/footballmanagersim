@@ -84,7 +84,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-lg bg-[#12141c]/90 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-hidden flex flex-col"
+        className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] my-auto bg-[#12141c]/90 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-y-auto custom-scrollbar flex flex-col"
       >
         {/* Subtle Ambient Accent Glow */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />

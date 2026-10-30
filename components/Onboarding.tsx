@@ -629,16 +629,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             <button 
               onClick={() => onShowAbout && onShowAbout()} 
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.1] shadow-sm cursor-pointer hover:bg-white/[0.12] transition group backdrop-blur-md"
-              title="v2.1: 360° Engine Parity, Global Fanbases & Facility Mastery (v2.0 & v1.9 Archived)"
+              title="v2.2: Road-to-Glory 11-Tier Scaling, Delta Save Engine & Prestige Legacy (v2.1 & v2.0 Archived)"
             >
               <span 
                 className="bg-white font-extrabold text-[10px] px-2 py-0.5 rounded-full tracking-wider shadow-sm"
                 style={{ color: '#09090b', backgroundColor: '#ffffff' }}
               >
-                v 2.1
+                v 2.2
               </span>
               <span className="text-zinc-300 group-hover:text-white transition text-xs font-medium pr-1 tracking-wide flex items-center gap-1.5">
-                360° Engine Parity & Global Fanbases <span className="text-[10px] text-zinc-500 hidden sm:inline">(v2.0 Archived)</span> <i className="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover:opacity-100 transition"></i>
+                360° Engine Parity & Road-to-Glory v2.2 <span className="text-[10px] text-zinc-500 hidden sm:inline">(v2.1 Archived)</span> <i className="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover:opacity-100 transition"></i>
               </span>
             </button>
 

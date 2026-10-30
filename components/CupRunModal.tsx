@@ -383,8 +383,24 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   }, [clubsDb, gameState.club, isModActive]);
 
   const club = liveClub;
-  const hasTacticalGenius = gameState.managerSkills?.includes('tactical_mastermind') || gameState.currentCoach?.strength === 'Tactical Chessboard Maestro' || (gameState.currentCoach as any)?.archetype === 'chessboard_maestro';
-  const playerOvr = Math.min(100, club.baseOvr + (hasTacticalGenius ? 2 : 0));
+  const hasTacticalGeniusPerk = Boolean(
+    gameState.managerSkills?.includes('tactical_mastermind') ||
+    gameState.managerSkills?.includes('tactical_genius')
+  );
+  const isTacticalMasterCoach = gameState.currentCoach?.strength === 'Tactical Chessboard Maestro';
+  const coachUnderstandsOpponent = useMemo(() => {
+    if (!isTacticalMasterCoach || !opponent) return false;
+    const key = `${opponent.name || ''}_${round}_${gameState.year || 2026}_${gameState.currentCoach?.id || gameState.currentCoach?.name || ''}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+    }
+    // Tactical Master coaches only fully understand and reveal odds against some opponents (~30%)
+    return (Math.abs(hash) % 10) < 3;
+  }, [isTacticalMasterCoach, opponent, round, gameState.year, gameState.currentCoach?.id, gameState.currentCoach?.name]);
+
+  const canSeeOdds = hasTacticalGeniusPerk || coachUnderstandsOpponent;
+  const playerOvr = Math.min(100, club.baseOvr + (hasTacticalGeniusPerk ? 2 : 0));
 
   const generateOpponent = (r: Round) => {
     const isReserveTeam = (name: string) => {
@@ -739,27 +755,119 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     }
   }, [stage]);
 
-  const calcProb = (ovrMod: number) => Math.round(Math.max(5, Math.min(95, 50 + ((playerOvr + ovrMod - (opponent?.ovr || playerOvr)) * 2.5))));
+  const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
+  const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
+  const coachCupBonusOvr = isContinentalLegend || isCupSpecialist ? 4 : 0;
 
-  const getDynamicMods = (pOvr: number, oOvr: number, oName: string) => {
+  // --- TACTICAL DUEL & PHILOSOPHY/COACH SYNERGY LOGIC ---
+  const [isTacticalDuel] = useState<boolean>(() => Math.random() > 0.5);
+
+  const normalizeTacticKey = (style?: string): string => {
+    if (!style) return 'Total Football';
+    const s = style.trim().toLowerCase();
+    if (s === 'catenaccio' || s === 'park the bus' || s === 'defensive') return 'Park the Bus';
+    if (s === 'tiki-taka' || s === 'possession') return 'Tiki-Taka';
+    if (s === 'gegenpressing' || s === 'gegenpress' || s === 'pressing') return 'Gegenpressing';
+    if (s === 'direct counter' || s === 'counter' || s === 'counter-attack' || s === 'wing play') return 'Direct Counter';
+    if (s === 'total football' || s === 'attacking' || s === 'balanced') return 'Total Football';
+    return style;
+  };
+
+  const getTacticalAdvantage = (myTac: string, oppTac: string) => {
+    const p = normalizeTacticKey(myTac);
+    const o = normalizeTacticKey(oppTac);
+    if (p === 'Tiki-Taka' && o === 'Park the Bus') return 1;
+    if (p === 'Tiki-Taka' && o === 'Gegenpressing') return -1;
+    if (p === 'Park the Bus' && o === 'Direct Counter') return 1;
+    if (p === 'Park the Bus' && o === 'Tiki-Taka') return -1;
+    if (p === 'Direct Counter' && o === 'Gegenpressing') return 1;
+    if (p === 'Direct Counter' && o === 'Park the Bus') return -1;
+    if (p === 'Gegenpressing' && o === 'Tiki-Taka') return 1;
+    if (p === 'Gegenpressing' && o === 'Direct Counter') return -1;
+    return 0;
+  };
+
+  // Evaluates alignment between a chosen tactical direction and either the Club Philosophy or Head Coach Style
+  const getSingleAlignmentOvr = (chosenStyle: string, refStyle?: string): number => {
+    if (!refStyle) return 0;
+    const c = normalizeTacticKey(chosenStyle);
+    const r = normalizeTacticKey(refStyle);
+    if (c === r) return 5; // Perfect match (+5 OVR)
+
+    const isOppositePair =
+      (c === 'Gegenpressing' && r === 'Park the Bus') ||
+      (c === 'Park the Bus' && r === 'Gegenpressing') ||
+      (c === 'Tiki-Taka' && r === 'Direct Counter') ||
+      (c === 'Direct Counter' && r === 'Tiki-Taka');
+    if (isOppositePair) return -7; // Direct tactical opposite (-7 OVR)
+
+    const isSevereClash =
+      (c === 'Tiki-Taka' && r === 'Park the Bus') ||
+      (c === 'Park the Bus' && r === 'Tiki-Taka') ||
+      (c === 'Total Football' && r === 'Park the Bus') ||
+      (c === 'Park the Bus' && r === 'Total Football');
+    if (isSevereClash) return -6; // High-line/possession vs deep low block (-6 OVR)
+
+    if (c === 'Total Football' || r === 'Total Football') return -2;
+    return -3.5; // Non-aligned philosophy mismatch
+  };
+
+  const getTacticalStyleOffset = (choice: string) => {
+    const normalizedChoice = normalizeTacticKey(choice);
+    const clubAlign = getSingleAlignmentOvr(normalizedChoice, gameState.tactic);
+    const coachAlign = getSingleAlignmentOvr(normalizedChoice, gameState.currentCoach?.style);
+    const synergyBonus =
+      clubAlign > 0 && coachAlign > 0
+        ? 2
+        : clubAlign <= -6 && coachAlign <= -6
+        ? -2
+        : 0;
+    const tieBreaker =
+      normalizedChoice === 'Total Football'
+        ? 0.8
+        : normalizedChoice === 'Gegenpressing'
+        ? 0.4
+        : normalizedChoice === 'Tiki-Taka'
+        ? -0.4
+        : normalizedChoice === 'Direct Counter'
+        ? -0.8
+        : -1.2;
+    return clubAlign + coachAlign + synergyBonus + tieBreaker;
+  };
+
+  const calcProb = (ovrMod: number) =>
+    Math.round(Math.max(5, Math.min(95, 50 + ((playerOvr + coachCupBonusOvr + ovrMod - (opponent?.ovr || playerOvr)) * 2.5))));
+
+  const getDynamicMods = (pOvr: number, oOvr: number, oName: string, oppTac: string) => {
     const diff = pOvr - oOvr;
     const seed = (oName.charCodeAt(0) + pOvr) % 4;
-    
-    let safeGood = 1 + (seed % 2);
-    let pressGood = 7 + seed;
-    let pressBad = -6 - seed;
-    let attackGood = 4 + (seed % 3);
-    let busBad = -2 - (seed % 2);
-    
+
+    const strengthsFit = getTacticalStyleOffset(gameState.tactic) + getTacticalAdvantage(gameState.tactic, oppTac) * 6;
+    const pressFit = getTacticalStyleOffset('Gegenpressing') + getTacticalAdvantage('Gegenpressing', oppTac) * 6;
+    const attackBaseTac = normalizeTacticKey(gameState.tactic) === 'Tiki-Taka' ? 'Tiki-Taka' : 'Total Football';
+    const attackFit =
+      Math.max(getTacticalStyleOffset('Tiki-Taka'), getTacticalStyleOffset('Total Football')) +
+      getTacticalAdvantage(attackBaseTac, oppTac) * 6;
+    const busFit = getTacticalStyleOffset('Park the Bus') + getTacticalAdvantage('Park the Bus', oppTac) * 6;
+
+    let safeGood = Math.round(strengthsFit + (seed % 2));
+    let pressGood = Math.round(pressFit + 4 + seed);
+    let pressBad = Math.round(pressFit - 6 - seed);
+    let attackGood = Math.round(attackFit + 1 + (seed % 3));
+    let busBad = Math.round(busFit - 1 - (seed % 2));
+
     if (diff < -4) {
-      pressGood += 4; pressBad += 2;
+      pressGood += 3;
+      pressBad += 1;
       attackGood += 2;
     }
-    
+
     return { safeGood, pressGood, pressBad, attackGood, busBad };
   };
 
-  const mods = opponent ? getDynamicMods(playerOvr, opponent.ovr, opponent.name) : { safeGood: 2, pressGood: 10, pressBad: -8, attackGood: 5, busBad: -3 };
+  const mods = opponent
+    ? getDynamicMods(playerOvr + coachCupBonusOvr, opponent.ovr, opponent.name, opponent.tactic)
+    : { safeGood: 2, pressGood: 10, pressBad: -8, attackGood: 5, busBad: -3 };
 
   const getNetProb = (probGood: number, goodMod: number, badMod: number) => {
     return Math.round((probGood * calcProb(goodMod)) + ((1 - probGood) * calcProb(badMod)));
@@ -805,76 +913,90 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   const netAttack = ensureDistinctCupProb(rawAttack, 3);
   const netBus = ensureDistinctCupProb(rawBus, -3);
 
-  // --- TACTICAL DUEL LOGIC ---
-  const [isTacticalDuel] = useState<boolean>(() => Math.random() > 0.5);
-
-  const getTacticalAdvantage = (myTac: string, oppTac: string) => {
-    const p = myTac === 'Catenaccio' ? 'Park the Bus' : myTac;
-    if (p === 'Tiki-Taka' && oppTac === 'Park the Bus') return 1;
-    if (p === 'Tiki-Taka' && oppTac === 'Gegenpressing') return -1;
-    if (p === 'Park the Bus' && oppTac === 'Direct Counter') return 1;
-    if (p === 'Park the Bus' && oppTac === 'Tiki-Taka') return -1;
-    if (p === 'Direct Counter' && oppTac === 'Gegenpressing') return 1;
-    if (p === 'Direct Counter' && oppTac === 'Park the Bus') return -1;
-    if (p === 'Gegenpressing' && oppTac === 'Tiki-Taka') return 1;
-    if (p === 'Gegenpressing' && oppTac === 'Direct Counter') return -1;
-    return 0;
-  };
-
-  const getTacticalStyleOffset = (choice: string) => {
-    const normalizedChoice = choice === 'Catenaccio' ? 'Park the Bus' : choice;
-    const familiarityBonus = gameState.tactic === normalizedChoice || gameState.tactic === choice ? 1.5 : 0;
-    if (normalizedChoice === 'Total Football') return 2 + familiarityBonus;
-    if (normalizedChoice === 'Gegenpressing') return 1 + familiarityBonus;
-    if (normalizedChoice === 'Tiki-Taka') return -1 + familiarityBonus;
-    if (normalizedChoice === 'Direct Counter') return -2 + familiarityBonus;
-    if (normalizedChoice === 'Park the Bus') return -3 + familiarityBonus;
-    return familiarityBonus;
-  };
-
   const getRpsColor = (choice: string) => {
-    if (!opponent) return 'text-zinc-400';
-    const adv = getTacticalAdvantage(choice, opponent.tactic);
-    if (adv === 1) return 'text-emerald-400';
-    if (adv === -1) return 'text-red-400';
+    if (!opponent || !canSeeOdds) return 'text-zinc-500';
+    const prob = getRpsWinProb(choice);
+    if (prob >= 60) return 'text-emerald-400';
+    if (prob <= 40) return 'text-rose-400';
     return 'text-sky-400';
   };
 
-  const getRpsWinProb = (choice: string) => {
+  const computeRawRpsWinProb = (choice: string) => {
     if (!opponent) return 50;
-    let eff = playerOvr + getTacticalStyleOffset(choice);
+    let eff = playerOvr + coachCupBonusOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     if (adv === 1) eff += 8;
     if (adv === -1) eff -= 8;
     return Math.round(Math.max(5, Math.min(95, 50 + ((eff - opponent.ovr) * 2.5))));
   };
 
+  const rpsProbMap = (() => {
+    const usedRps = new Set<number>();
+    const choices = ['Total Football', 'Gegenpressing', 'Tiki-Taka', 'Direct Counter', 'Catenaccio'];
+    const map: Record<string, number> = {};
+    choices.forEach((ch, idx) => {
+      const raw = computeRawRpsWinProb(ch);
+      let candidate = Math.max(5, Math.min(95, raw));
+      if (!usedRps.has(candidate)) {
+        usedRps.add(candidate);
+        map[ch] = candidate;
+        return;
+      }
+      const step = idx % 2 === 0 ? -1 : 1;
+      for (let i = 1; i <= 12; i++) {
+        const next = Math.max(5, Math.min(95, candidate + step * i));
+        if (!usedRps.has(next)) {
+          usedRps.add(next);
+          map[ch] = next;
+          return;
+        }
+        const alt = Math.max(5, Math.min(95, candidate - step * i));
+        if (!usedRps.has(alt)) {
+          usedRps.add(alt);
+          map[ch] = alt;
+          return;
+        }
+      }
+      map[ch] = candidate;
+    });
+    return map;
+  })();
+
+  const getRpsWinProb = (choice: string) => rpsProbMap[choice] ?? computeRawRpsWinProb(choice);
+
   const handleTacticalDuelChoice = (choice: string) => {
     if (!opponent) return;
     setAppliedDirective(`Directive: ${choice}`);
-    let myEffectiveOvr = playerOvr + getTacticalStyleOffset(choice);
+    const styleOffset = getTacticalStyleOffset(choice);
+    let myEffectiveOvr = playerOvr + coachCupBonusOvr + styleOffset;
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     let specialDesc = '';
 
-    if (adv === 1) {
+    if (adv === 1 && styleOffset >= 4) {
+      myEffectiveOvr += 8;
+      specialDesc = `Tactical Masterclass! Your squad & coach executed ${choice} to perfection and dismantled their ${opponent.tactic}!`;
+    } else if (adv === 1 && styleOffset <= -5) {
+      myEffectiveOvr += 8;
+      specialDesc = `Your ${choice} countered their ${opponent.tactic}, but the squad & coach struggled with the unfamiliar tactical philosophy!`;
+    } else if (adv === 1) {
       myEffectiveOvr += 8;
       specialDesc = `Tactical Masterclass! Your ${choice} completely dismantled their ${opponent.tactic}!`;
+    } else if (adv === -1 && styleOffset <= -5) {
+      myEffectiveOvr -= 8;
+      specialDesc = `Total Tactical Collapse! Ordering ${choice} clashed with your club & coach philosophy and walked right into their ${opponent.tactic}!`;
     } else if (adv === -1) {
       myEffectiveOvr -= 8;
       specialDesc = `Tactical Disaster! Their ${opponent.tactic} countered your ${choice}!`;
+    } else if (styleOffset <= -6) {
+      specialDesc = `System Mismatch! Your squad & coach looked disjointed playing ${choice} against their ${opponent.tactic}.`;
+    } else if (styleOffset >= 6) {
+      specialDesc = `Fluid Identity! Your squad & coach were in complete harmony executing ${choice}.`;
     } else {
       specialDesc = `A gritty, evenly matched tactical battle.`;
     }
-
-    const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
-    const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
-    
-    if (isContinentalLegend || isCupSpecialist) {
-      myEffectiveOvr += 4;
-    }
     
     const diff = myEffectiveOvr - opponent.ovr;
-    const winProb = Math.max(5, Math.min(95, 50 + (diff * 2.5))) / 100;
+    const winProb = (getRpsWinProb(choice)) / 100;
     
     executeMatch(winProb, diff, specialDesc, false);
   };
@@ -887,7 +1009,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
       setMpBoostCount(prev => prev + 1);
     }
 
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = playerOvr + coachCupBonusOvr;
     let flatWinProb: number | null = null;
     let specialDesc = '';
 
@@ -898,31 +1020,28 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     } else if (choice === 'strengths') {
       myEffectiveOvr += mods.safeGood;
       setAppliedDirective('Directive: Play to Strengths');
+      flatWinProb = netSafe / 100;
     } else if (choice === 'bus') {
       myEffectiveOvr += mods.busBad;
       setAppliedDirective('Directive: Park the Bus');
+      flatWinProb = netBus / 100;
     } else if (choice === 'attack') {
       myEffectiveOvr += mods.attackGood;
       setAppliedDirective('Directive: All Out Attack');
+      flatWinProb = netAttack / 100;
     } else if (choice === 'high_press') {
       setAppliedDirective('Directive: Aggressive High Press');
-      if (Math.random() > 0.5) {
+      if (Math.random() < 0.55) {
         myEffectiveOvr += mods.pressGood;
         specialDesc = 'Opponent completely overwhelmed by intense pressing!';
       } else {
         myEffectiveOvr += mods.pressBad;
         specialDesc = 'Team gassed after relentless pressing and caught out.';
       }
+      flatWinProb = netPress / 100;
     } else if (choice === 'set_pieces') {
       setAppliedDirective('Directive: Set-Piece Chaos');
       flatWinProb = 0.33;
-    }
-
-    const isContinentalLegend = gameState.currentCoach?.strength === 'Continental Legend' && ['cl', 'el', 'ecl'].includes(cupRun.id);
-    const isCupSpecialist = gameState.currentCoach?.strength === 'Cup Specialist' && ['dfb', 'reg'].includes(cupRun.id);
-    
-    if (isContinentalLegend || isCupSpecialist) {
-      myEffectiveOvr += 4;
     }
 
     const diff = myEffectiveOvr - opponent.ovr;
@@ -1388,7 +1507,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                   fallbackClassName="w-11 h-11 sm:w-16 sm:h-16 text-xs sm:text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1"
                 />
                 <div className="text-lg sm:text-2xl font-bold text-emerald-400 tabular-nums">{playerOvr}</div>
-                {hasTacticalGenius && (
+                {hasTacticalGeniusPerk && (
                   <span className="text-[9px] font-semibold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/25 tracking-wider mt-0.5">
                     +2 GENIUS
                   </span>
@@ -1418,7 +1537,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                 <div className="text-lg sm:text-2xl font-bold text-rose-400 tabular-nums">{opponent.ovr}</div>
                 <div className="text-xs sm:text-sm font-bold text-white truncate max-w-[110px] sm:max-w-[130px] mt-0.5 py-0.5 leading-normal">{opponent.name}</div>
                 <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold mt-0.5">
-                  {hasTacticalGenius ? opponent.tactic : '???'}
+                  {canSeeOdds ? opponent.tactic : '???'}
                 </div>
               </div>
             </div>
@@ -1436,21 +1555,37 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                 </span>
               </div>
 
-              {/* Scout Insight */}
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                <span className="text-zinc-400 flex items-center gap-1.5 text-[11px] sm:text-xs">
-                  <i className="fa-solid fa-binoculars text-zinc-500 text-[11px]" />
-                  Scouting Intelligence:
-                </span>
-                {hasTacticalGenius ? (
-                  <span className="font-semibold text-white text-[11px] sm:text-xs">
-                    Opponent plays <strong className="text-amber-300 font-semibold">{opponent.tactic}</strong>
+              {/* Scout Insight & Identity Alignment Bar */}
+              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2 text-xs flex flex-col gap-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-zinc-400 flex items-center gap-1.5 text-[11px] sm:text-xs">
+                    <i className="fa-solid fa-compass text-sky-400 text-[11px]" />
+                    <span>Club Philosophy: <strong className="text-white font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
+                    <span className="text-zinc-600">·</span>
+                    <span>Coach: <strong className="text-sky-300 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
                   </span>
-                ) : (
-                  <span className="text-zinc-500 italic text-[10px] sm:text-[11px]">
-                    Unlock 'Tactical Mastermind' to reveal opposing system
-                  </span>
-                )}
+                  {hasTacticalGeniusPerk ? (
+                    <span className="font-semibold text-white text-[11px] sm:text-xs">
+                      <i className="fa-solid fa-chess-knight text-amber-400 text-[10px] mr-1" />
+                      Tactical Genius: Opponent plays <strong className="text-amber-300 font-semibold">{opponent.tactic}</strong>
+                    </span>
+                  ) : coachUnderstandsOpponent ? (
+                    <span className="font-semibold text-sky-200 text-[11px] sm:text-xs">
+                      <i className="fa-solid fa-chess text-sky-400 text-[10px] mr-1" />
+                      Tactical Master Coach decoded <strong className="text-amber-300 font-semibold">{opponent.tactic}</strong>
+                    </span>
+                  ) : isTacticalMasterCoach ? (
+                    <span className="text-zinc-500 italic text-[10px] sm:text-[11px]">
+                      <i className="fa-solid fa-lock text-[10px] mr-1" />
+                      Coach couldn't decode {opponent.name} · Activate 'Tactical Genius' perk for all odds
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500 italic text-[10px] sm:text-[11px]">
+                      <i className="fa-solid fa-lock text-[10px] mr-1" />
+                      Activate 'Tactical Genius' manager perk to reveal opponent system &amp; odds
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Interactive Tactical Recommendation Buttons */}
@@ -1467,8 +1602,8 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         </div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">Beats Tiki-Taka · Vulnerable to Direct Counter</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] ${getRpsColor('Gegenpressing')}`}>
-                        {getRpsWinProb('Gegenpressing')}% Win Prob
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Gegenpressing')}`}>
+                        {canSeeOdds ? `${getRpsWinProb('Gegenpressing')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
@@ -1482,8 +1617,8 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         </div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] ${getRpsColor('Direct Counter')}`}>
-                        {getRpsWinProb('Direct Counter')}% Win Prob
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Direct Counter')}`}>
+                        {canSeeOdds ? `${getRpsWinProb('Direct Counter')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
@@ -1497,8 +1632,8 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         </div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] ${getRpsColor('Catenaccio')}`}>
-                        {getRpsWinProb('Catenaccio')}% Win Prob
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Catenaccio')}`}>
+                        {canSeeOdds ? `${getRpsWinProb('Catenaccio')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
@@ -1512,8 +1647,8 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         </div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] ${getRpsColor('Tiki-Taka')}`}>
-                        {getRpsWinProb('Tiki-Taka')}% Win Prob
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
+                        {canSeeOdds ? `${getRpsWinProb('Tiki-Taka')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
@@ -1525,10 +1660,10 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         <div className="font-semibold text-white text-xs group-hover:text-sky-300 transition-colors">
                           ⚖️ Total Football
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Balanced neutral baseline · No tactical penalty</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] ${getRpsColor('Total Football')}`}>
-                        {getRpsWinProb('Total Football')}% Win Prob
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Total Football')}`}>
+                        {canSeeOdds ? `${getRpsWinProb('Total Football')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
                   </>
@@ -1539,10 +1674,12 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                       className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">Play to Squad Strengths</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Disciplined execution of standard club identity</div>
+                        <div className="font-semibold text-white text-xs">Play to Squad Strengths ({gameState.tactic || 'Club Identity'})</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">Execute your established club philosophy &amp; coach alignment</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-emerald-400 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{netSafe}% Win Prob</div>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                        {canSeeOdds ? `${netSafe}% Win Prob` : '???% Odds'}
+                      </div>
                     </button>
 
                     <button
@@ -1550,10 +1687,12 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                       className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">High Press Gamble (High Risk)</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">50% chance to overwhelm early, 50% risk of burnout</div>
+                        <div className="font-semibold text-white text-xs">High Press Gamble (Gegenpressing Direction)</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">Relentless high line · Thrives on Pressing identity, clashes with Low Block</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-amber-400 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{netPress}% Win Prob</div>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        {canSeeOdds ? `${netPress}% Win Prob` : '???% Odds'}
+                      </div>
                     </button>
 
                     <button
@@ -1561,10 +1700,12 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                       className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">All Out Attack</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Maximum offensive overload · High scoring affair</div>
+                        <div className="font-semibold text-white text-xs">All Out Attack (Possession / Total Football)</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">Maximum offensive overload · Favors attacking &amp; possession setups</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-emerald-400 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{netAttack}% Win Prob</div>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                        {canSeeOdds ? `${netAttack}% Win Prob` : '???% Odds'}
+                      </div>
                     </button>
 
                     <button
@@ -1572,10 +1713,12 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                       className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">Park the Bus (Low Block)</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Ultra-defensive posture aiming for penalties</div>
+                        <div className="font-semibold text-white text-xs">Park the Bus (Catenaccio Low Block)</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">Ultra-defensive posture · Severe penalty if club/coach play High Press</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-sky-400 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">{netBus}% Win Prob</div>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-sky-400' : 'text-zinc-500'}`}>
+                        {canSeeOdds ? `${netBus}% Win Prob` : '???% Odds'}
+                      </div>
                     </button>
 
                     <button
@@ -1586,7 +1729,9 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         <div className="font-semibold text-emerald-300 text-xs">Set-Piece Focus (Underdog Strategy)</div>
                         <div className="text-[11px] text-emerald-200/70 mt-0.5">Pin all hope on corners and free-kicks</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-emerald-300 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30">33% Fixed Prob</div>
+                      <div className="text-xs tabular-nums font-semibold text-emerald-300 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 shrink-0">
+                        {canSeeOdds ? '33% Fixed Prob' : '???% Odds'}
+                      </div>
                     </button>
 
                     <button
@@ -1601,7 +1746,9 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                         </div>
                         <div className="text-[11px] text-amber-200/70 mt-0.5">+12 OVR tactical blueprint boost</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-amber-300 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 whitespace-nowrap shrink-0">{calcProb(12)}% Win Prob</div>
+                      <div className="text-xs tabular-nums font-semibold text-amber-300 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 whitespace-nowrap shrink-0">
+                        {canSeeOdds ? `${calcProb(12)}% Win Prob` : '???% Odds'}
+                      </div>
                     </button>
                   </>
                 )}

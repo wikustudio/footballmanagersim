@@ -523,6 +523,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
     const existingClubIds = new Set([state.club.id, ...leagueClubs.map((c) => c.id)]);
     if (leagueClubs.length < targetAiCount) {
+      const rivalNameLower = (state.currentRival?.name || '').toLowerCase().trim();
       const sameCountryOtherClubs = db
         .filter(
           (c) =>
@@ -532,7 +533,8 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             (currentTier < minReserveTier ? !isReserveTeam(c.name) : true) &&
             (currentTier === 1 ? c.baseOvr >= 70 : true) &&
             !heavyweightSet.has(c.name) &&
-            c.id !== state.currentRival?.id
+            c.id !== state.currentRival?.id &&
+            (!rivalNameLower || c.name.toLowerCase().trim() !== rivalNameLower)
         )
         .sort((a, b) => b.baseOvr - a.baseOvr);
 
@@ -647,9 +649,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       (currentCountry === 'GER' ? gerFallbackNames : []);
 
     const neededFillers = Math.max(0, targetAiCount - leagueClubs.length);
+    const allKnownDbNames = new Set([
+      ...db.map((c) => c.name.toLowerCase().trim()),
+      state.club.name.toLowerCase().trim(),
+      ...(state.currentRival?.name ? [state.currentRival.name.toLowerCase().trim()] : []),
+    ]);
     for (let i = 0; i < neededFillers; i++) {
-      const existingNames = new Set([...leagueClubs.map((c) => c.name), state.club.name]);
-      const availableFallback = fallbackList.find((n) => !existingNames.has(n)) || `Club ${i + 1}`;
+      const existingNames = new Set([
+        ...allKnownDbNames,
+        ...leagueClubs.map((c) => c.name.toLowerCase().trim()),
+      ]);
+      const availableFallback = fallbackList.find((n) => !existingNames.has(n.toLowerCase().trim())) || `Club ${i + 1}`;
       leagueClubs.push({
         id: 9900 + i,
         name: availableFallback,

@@ -12,7 +12,7 @@ interface MidSeasonModalProps {
   lang: Language;
   onClose: (eventToQueue?: any) => void;
   onSelectCamp?: (type: 'local' | 'spain' | 'dubai', cost: number) => void;
-  onOpenCoachMarket?: () => void;
+  onOpenCoachMarket?: (eventToQueue?: any) => void;
   creditLimit?: number;
 }
 
@@ -353,7 +353,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 </div>
                 {onOpenCoachMarket && (
                   <button
-                    onClick={onOpenCoachMarket}
+                    onClick={() => onOpenCoachMarket(event)}
                     className="shrink-0 bg-rose-500/25 hover:bg-rose-500/35 text-rose-100 border border-rose-400/30 font-bold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
@@ -378,7 +378,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 </div>
                 {onOpenCoachMarket && (
                   <button
-                    onClick={onOpenCoachMarket}
+                    onClick={() => onOpenCoachMarket(event)}
                     className="shrink-0 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 font-bold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
@@ -397,8 +397,8 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
             <p className="text-[11px] sm:text-xs text-sky-200/90 leading-snug">
               {t(
                 lang,
-                'January Window Open: +1 Regular Transfer slot unlocked. Optional Training Camp & Squad Bonding available in the dashboard.',
-                'Januar-Transferfenster geöffnet: +1 regulärer Transfer-Slot freigeschaltet. Optionales Trainingslager & Fan-Aktionen im Dashboard verfügbar.'
+                'January Window Open: +2 Regular & +1 Key Transfer slots unlocked. Optional Training Camp & Squad Bonding available in the dashboard.',
+                'Januar-Transferfenster geöffnet: +2 reguläre & +1 Schlüssel-Transfer-Slots freigeschaltet. Optionales Trainingslager & Fan-Aktionen im Dashboard verfügbar.'
               )}
             </p>
           </div>

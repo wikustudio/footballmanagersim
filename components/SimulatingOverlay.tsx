@@ -45,6 +45,12 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
       ? Number(gameState.club.morale)
       : 100;
     const currentTactic = gameState.tactic || 'Total Football';
+    const currentCoachId = gameState.currentCoach?.id || 'none';
+    const currentCoachStyle = gameState.currentCoach?.style || 'none';
+    const currentHasBounce = Boolean(gameState.hasNewManagerBounce);
+    const currentSkillsKey = (gameState.managerSkills || []).slice().sort().join(',');
+    const currentStadium = gameState.club?.stadium || 0;
+    const currentStadiumPolicy = gameState.stadiumPolicy || 'balanced';
 
     if (!existing || !Array.isArray(existing.matchdaySchedule) || existing.matchdaySchedule.length === 0) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive);
@@ -55,7 +61,13 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
       existing._meta &&
       (existing._meta.ovrAtCalculation !== playerOvr ||
         existing._meta.moraleAtCalculation !== currentMorale ||
-        existing._meta.tacticAtCalculation !== currentTactic)
+        existing._meta.tacticAtCalculation !== currentTactic ||
+        (existing._meta.coachIdAtCalculation ?? currentCoachId) !== currentCoachId ||
+        (existing._meta.coachStyleAtCalculation ?? currentCoachStyle) !== currentCoachStyle ||
+        (existing._meta.hasBounceAtCalculation ?? currentHasBounce) !== currentHasBounce ||
+        (existing._meta.skillsKeyAtCalculation ?? currentSkillsKey) !== currentSkillsKey ||
+        (existing._meta.stadiumAtCalculation ?? currentStadium) !== currentStadium ||
+        (existing._meta.stadiumPolicyAtCalculation ?? currentStadiumPolicy) !== currentStadiumPolicy)
     ) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive, {
         lockFirstHalfFrom: existing,
@@ -70,6 +82,12 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     playerOvr,
     gameState.club?.morale,
     gameState.tactic,
+    gameState.currentCoach?.id,
+    gameState.currentCoach?.style,
+    gameState.hasNewManagerBounce,
+    gameState.managerSkills,
+    gameState.club?.stadium,
+    gameState.stadiumPolicy,
     clubsDb,
     isModActive,
   ]);
@@ -87,7 +105,37 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
   const targetEnd = isSecondHalf ? totalMatchdays : halfwayMatchday;
 
   const [currentIdx, setCurrentIdx] = useState<number>(startIdx);
+  const [isFastMode, setIsFastMode] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('fms_sim_fast') === '1';
+    } catch {
+      return false;
+    }
+  });
   const completedRef = useRef(false);
+
+  const toggleFastMode = () => {
+    setIsFastMode((prev) => {
+      const next = !prev;
+      try {
+        sessionStorage.setItem('fms_sim_fast', next ? '1' : '0');
+      } catch {
+        // ignore storage restrictions
+      }
+      return next;
+    });
+  };
+
+  const handleSkipSim = () => {
+    if (completedRef.current) return;
+    setCurrentIdx(targetEndIdx);
+    completedRef.current = true;
+    if (!isSecondHalf && onTriggerMidSeasonDilemma) {
+      onTriggerMidSeasonDilemma();
+    } else {
+      onComplete();
+    }
+  };
 
   const onSyncRef = useRef(onSyncPendingSeason);
   onSyncRef.current = onSyncPendingSeason;
@@ -169,16 +217,16 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
             onComplete();
           }
         }
-      }, 520);
+      }, isFastMode ? 220 : 520);
       return () => clearTimeout(finishTimer);
     }
 
     const tickTimer = setTimeout(() => {
       setCurrentIdx((prev) => Math.min(targetEndIdx, prev + 1));
-    }, 95);
+    }, isFastMode ? 38 : 95);
 
     return () => clearTimeout(tickTimer);
-  }, [isOpen, currentIdx, targetEndIdx, schedule.length, isSecondHalf, onTriggerMidSeasonDilemma, onComplete]);
+  }, [isOpen, currentIdx, targetEndIdx, schedule.length, isSecondHalf, isFastMode, onTriggerMidSeasonDilemma, onComplete]);
 
   if (!isOpen) return null;
 
@@ -319,6 +367,26 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={toggleFastMode}
+              title={isFastMode ? 'Switch to 1x Speed' : 'Switch to 2x Fast-Forward'}
+              className={`px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold transition-colors cursor-pointer ${
+                isFastMode
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                  : 'bg-white/[0.06] border-white/10 text-zinc-300 hover:bg-white/10'
+              }`}
+            >
+              {isFastMode ? '2X' : '1X'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipSim}
+              title="Skip to End of Half"
+              className="px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/12 border border-white/10 text-[10px] font-mono font-bold text-zinc-200 transition-colors cursor-pointer"
+            >
+              SKIP
+            </button>
             <span className="px-2 py-0.5 rounded-lg bg-white/[0.06] border border-white/10 text-[10px] font-mono font-bold text-zinc-200 tabular-nums">
               MD {matchday}/{targetEnd}
             </span>
