@@ -773,10 +773,37 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return Math.round((win90 + (drawP * 0.5)) * 100);
   };
 
-  const netSafe = calcProb(mods.safeGood);
-  const netPress = getNetProb(0.50, mods.pressGood, mods.pressBad);
-  const netAttack = calcProb(mods.attackGood);
-  const netBus = getBusProb(mods.busBad);
+  const rawSafe = calcProb(mods.safeGood);
+  const rawPress = getNetProb(0.55, mods.pressGood, mods.pressBad);
+  const rawAttack = calcProb(mods.attackGood);
+  const rawBus = getBusProb(mods.busBad);
+
+  const usedCupProbs = new Set<number>();
+  const ensureDistinctCupProb = (val: number, fallbackDelta: number) => {
+    let candidate = Math.max(5, Math.min(95, val));
+    if (!usedCupProbs.has(candidate)) {
+      usedCupProbs.add(candidate);
+      return candidate;
+    }
+    const step = fallbackDelta >= 0 ? 1 : -1;
+    for (let i = 1; i <= 12; i++) {
+      const next = Math.max(5, Math.min(95, candidate + step * i));
+      if (!usedCupProbs.has(next)) {
+        usedCupProbs.add(next);
+        return next;
+      }
+      const alt = Math.max(5, Math.min(95, candidate - step * i));
+      if (!usedCupProbs.has(alt)) {
+        usedCupProbs.add(alt);
+        return alt;
+      }
+    }
+    return candidate;
+  };
+  const netSafe = ensureDistinctCupProb(rawSafe, 2);
+  const netPress = ensureDistinctCupProb(rawPress, -2);
+  const netAttack = ensureDistinctCupProb(rawAttack, 3);
+  const netBus = ensureDistinctCupProb(rawBus, -3);
 
   // --- TACTICAL DUEL LOGIC ---
   const [isTacticalDuel] = useState<boolean>(() => Math.random() > 0.5);
@@ -794,6 +821,17 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     return 0;
   };
 
+  const getTacticalStyleOffset = (choice: string) => {
+    const normalizedChoice = choice === 'Catenaccio' ? 'Park the Bus' : choice;
+    const familiarityBonus = gameState.tactic === normalizedChoice || gameState.tactic === choice ? 1.5 : 0;
+    if (normalizedChoice === 'Total Football') return 2 + familiarityBonus;
+    if (normalizedChoice === 'Gegenpressing') return 1 + familiarityBonus;
+    if (normalizedChoice === 'Tiki-Taka') return -1 + familiarityBonus;
+    if (normalizedChoice === 'Direct Counter') return -2 + familiarityBonus;
+    if (normalizedChoice === 'Park the Bus') return -3 + familiarityBonus;
+    return familiarityBonus;
+  };
+
   const getRpsColor = (choice: string) => {
     if (!opponent) return 'text-zinc-400';
     const adv = getTacticalAdvantage(choice, opponent.tactic);
@@ -804,7 +842,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
 
   const getRpsWinProb = (choice: string) => {
     if (!opponent) return 50;
-    let eff = playerOvr;
+    let eff = playerOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     if (adv === 1) eff += 8;
     if (adv === -1) eff -= 8;
@@ -814,7 +852,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   const handleTacticalDuelChoice = (choice: string) => {
     if (!opponent) return;
     setAppliedDirective(`Directive: ${choice}`);
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = playerOvr + getTacticalStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, opponent.tactic);
     let specialDesc = '';
 

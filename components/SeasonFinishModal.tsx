@@ -438,7 +438,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
           ...r,
           pos: idx + 1,
           isUser: false,
-          isRival: Boolean(r.isRival || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name)),
+          isRival: Boolean(!seasonData.rivalData?.isPaused && (r.isRival || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name))),
           logo: isModActive ? (r.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
         };
       });
@@ -688,26 +688,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     };
     const getRealisticBasePoints = (p: number) => basePtsMap[p] || 40;
 
-    const rivalName = seasonData.rivalData?.name || state.currentRival?.name;
+    const isRivalActiveInTier = !seasonData.rivalData?.isPaused;
+    const rivalName = isRivalActiveInTier ? (seasonData.rivalData?.name || state.currentRival?.name) : undefined;
     const rivalClubIndex = rivalName ? clubsPool.findIndex(c => c.name === rivalName) : -1;
     let rivalClub: any = null;
     if (rivalClubIndex !== -1) {
       rivalClub = clubsPool.splice(rivalClubIndex, 1)[0];
-    } else if (rivalName) {
-      rivalClub = {
-        id: 'rival',
-        name: rivalName,
-        color: '#e11d48',
-        tier: currentTier,
-        baseOvr: 85,
-        stadium: 40000,
-        country: currentCountry
-      };
     }
 
     const safeUserPos = Math.max(1, Math.min(targetTotalClubs, userPos || 1));
     let rivalPos = -1;
-    if (rivalName) {
+    if (rivalClub) {
       if (safeUserPos === 1) rivalPos = 2;
       else if (safeUserPos === 2) rivalPos = 1;
       else if (safeUserPos === 15) rivalPos = 16;
