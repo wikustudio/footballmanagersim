@@ -529,6 +529,14 @@ export interface PendingSeasonState {
     ovrAtCalculation: number;
     moraleAtCalculation: number;
     tacticAtCalculation: string;
+    coachIdAtCalculation?: string;
+    coachStyleAtCalculation?: string;
+    hasBounceAtCalculation?: boolean;
+    skillsKeyAtCalculation?: string;
+    stadiumAtCalculation?: number;
+    stadiumPolicyAtCalculation?: string;
+    midPos?: number;
+    midPts?: number;
   };
 }
 
