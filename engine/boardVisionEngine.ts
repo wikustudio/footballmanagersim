@@ -662,19 +662,28 @@ export const updateBoardVisionSeasonEnd = (
   immunityReward?: number;
   skillPointsReward?: number;
 } => {
+  if (!vision || typeof vision !== 'object') {
+    return { updatedVision: vision };
+  }
   const updated = JSON.parse(JSON.stringify(vision)) as BoardVision;
+  if (!Array.isArray(updated.objectives)) {
+    updated.objectives = [];
+  }
 
   // Update objectives based on season performance
   for (const obj of updated.objectives) {
+    if (!obj || typeof obj !== 'object') continue;
+    obj.currentValue = Number(obj.currentValue) || 0;
+    obj.targetValue = Number(obj.targetValue) || 1;
     switch (obj.type) {
       case 'league_titles':
-        if (params.pos === 1 || params.trophiesWon.bl || params.trophiesWon.lower) {
+        if (params.pos === 1 || params.trophiesWon?.bl || params.trophiesWon?.lower) {
           obj.currentValue += 1;
         }
         break;
 
       case 'continental_final':
-        if (params.madeCupFinal || params.trophiesWon.cl || params.trophiesWon.el || params.trophiesWon.ecl || params.trophiesWon.cwc || params.trophiesWon.dfb || params.trophiesWon.reg) {
+        if (params.madeCupFinal || params.trophiesWon?.cl || params.trophiesWon?.el || params.trophiesWon?.ecl || params.trophiesWon?.cwc || params.trophiesWon?.dfb || params.trophiesWon?.reg) {
           obj.currentValue = Math.min(obj.targetValue, obj.currentValue + 1);
         }
         break;
@@ -684,7 +693,7 @@ export const updateBoardVisionSeasonEnd = (
         break;
 
       case 'graduate_youth':
-        obj.currentValue = Math.min(obj.targetValue, obj.currentValue + params.graduatedYouthCount);
+        obj.currentValue = Math.min(obj.targetValue, obj.currentValue + (params.graduatedYouthCount || 0));
         break;
 
       case 'transfer_profit':
@@ -698,9 +707,9 @@ export const updateBoardVisionSeasonEnd = (
           obj.currentValue = params.academyLevel;
         } else {
           if (params.facilitiesAlreadyTracked) {
-            obj.currentValue = Math.min(obj.targetValue, Math.max(obj.currentValue || 0, params.facilitiesUpgradedThisSeason));
+            obj.currentValue = Math.min(obj.targetValue, Math.max(obj.currentValue || 0, params.facilitiesUpgradedThisSeason || 0));
           } else {
-            obj.currentValue = Math.min(obj.targetValue, (obj.currentValue || 0) + params.facilitiesUpgradedThisSeason);
+            obj.currentValue = Math.min(obj.targetValue, (obj.currentValue || 0) + (params.facilitiesUpgradedThisSeason || 0));
           }
         }
         break;
@@ -724,7 +733,7 @@ export const updateBoardVisionSeasonEnd = (
         break;
 
       case 'fanbase_growth':
-        obj.currentValue = Math.round(obj.currentValue + Math.max(0, params.fanbaseGrowthPct));
+        obj.currentValue = Math.round(obj.currentValue + Math.max(0, params.fanbaseGrowthPct || 0));
         break;
 
       case 'continental_qualification':
@@ -744,25 +753,29 @@ export const updateBoardVisionSeasonEnd = (
     obj.isCompleted = obj.currentValue >= obj.targetValue;
   }
 
+  updated.currentYearOfVision = Number(updated.currentYearOfVision) || 1;
+  updated.durationYears = Number(updated.durationYears) || 3;
+
   // Check if final year of vision
   const isFinalYear = updated.currentYearOfVision >= updated.durationYears;
 
   if (isFinalYear) {
-    const allCompleted = updated.objectives.every(o => o.isCompleted);
+    const allCompleted = updated.objectives.length > 0 && updated.objectives.every(o => o && o.isCompleted);
     if (allCompleted) {
       updated.status = 'completed';
+      const rewardDesc = updated.reward?.desc || 'Board Vision Bonus';
       return {
         updatedVision: updated,
         outcome: 'completed',
-        message: `Board Vision Accomplished! You fulfilled the ${updated.durationYears}-Year '${updated.title}' roadmap. The Board has rewarded you with ${updated.reward.desc}!`,
-        budgetReward: updated.reward.budgetBonus,
-        trustReward: updated.reward.trustBonus,
-        immunityReward: updated.reward.immunityBonus,
-        skillPointsReward: updated.reward.skillPointsBonus || (updated.durationYears === 5 ? 25 : updated.durationYears === 2 ? 10 : 15)
+        message: `Board Vision Accomplished! You fulfilled the ${updated.durationYears}-Year '${updated.title || 'Club'}' roadmap. The Board has rewarded you with ${rewardDesc}!`,
+        budgetReward: updated.reward?.budgetBonus || 0,
+        trustReward: updated.reward?.trustBonus || 0,
+        immunityReward: updated.reward?.immunityBonus || 0,
+        skillPointsReward: updated.reward?.skillPointsBonus || (updated.durationYears === 5 ? 25 : updated.durationYears === 2 ? 10 : 15)
       };
     } else {
       updated.status = 'failed';
-      const rawPenalty = updated.penalty.trustPenalty || 25;
+      const rawPenalty = updated.penalty?.trustPenalty || 25;
       const clampedTrustPenalty = params.currentTrust !== undefined
         ? Math.max(0, Math.min(params.currentTrust, rawPenalty))
         : rawPenalty;
@@ -770,7 +783,7 @@ export const updateBoardVisionSeasonEnd = (
       return {
         updatedVision: updated,
         outcome: 'failed',
-        message: `Board Vision Failed: You did not complete all targets for the ${updated.durationYears}-Year '${updated.title}' roadmap. ${updated.penalty.desc}`,
+        message: `Board Vision Failed: You did not complete all targets for the ${updated.durationYears}-Year '${updated.title || 'Club'}' roadmap. ${updated.penalty?.desc || ''}`.trim(),
         trustReward: -clampedTrustPenalty
       };
     }

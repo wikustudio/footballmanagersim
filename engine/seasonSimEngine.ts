@@ -5,6 +5,7 @@ import {
   getLeagueScaledVal,
   formatMoney,
   isTacticalSynergy,
+  isReserveClub,
   TACTICS,
   rand,
 } from '../data/gameConstants';
@@ -472,7 +473,7 @@ export function rollGrassrootsTvCupDraw(
   country: string = 'GER',
   clubsDb: Club[] = [],
   isModActive: boolean = false,
-  isReserve: boolean = false
+  clubName?: string
 ): {
   triggered: boolean;
   drawn: boolean;
@@ -481,8 +482,11 @@ export function rollGrassrootsTvCupDraw(
   opponentColor?: string;
   opponentOvr?: number;
 } {
-  // Reserve teams don't enter cup competitions, so they never get a cup draw
-  if (isReserve || tier < 3 || tier > 11) {
+  // Reserve teams (II / U23 / U21 / B-teams) are barred from domestic cup competitions and do not receive the Magic Cup Draw influx
+  if (clubName && isReserveClub(clubName)) {
+    return { triggered: false, drawn: false };
+  }
+  if (tier < 3 || tier > 11) {
     return { triggered: false, drawn: false };
   }
   // 25% random chance at start of season for Tiers 3-11
