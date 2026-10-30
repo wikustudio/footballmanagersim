@@ -5664,6 +5664,8 @@ export const resolveDynamicEvent = (
       const liveTier = (state.livingTiers && ((nc.id != null ? state.livingTiers[nc.id] : undefined) ?? (nc.name ? state.livingTiers[nc.name.toLowerCase().trim()] : undefined)));
       const savedFac = state.managedClubFacilities?.[String(nc.id || nc.name)];
       const resolvedTier = (typeof liveTier === 'number' && liveTier >= 1) ? liveTier : (nc.tier || updated.club.tier);
+      const resolvedOvr = nc.baseOvr || updated.club.baseOvr || 70;
+      const facFloor = nc.isInsolventGiant ? 1 : resolvedOvr >= 90 ? 5 : resolvedOvr >= 85 ? 4 : resolvedOvr >= 80 ? 3 : (resolvedOvr >= 75 || resolvedTier === 1) ? 2 : 1;
       if (!updated.livingTiers) updated.livingTiers = {};
       if (state.club) {
         if (state.club.id != null) updated.livingTiers[state.club.id] = state.club.tier;
@@ -5675,13 +5677,21 @@ export const resolveDynamicEvent = (
         ...updated.club,
         ...nc,
         tier: resolvedTier,
-        baseOvr: nc.baseOvr || updated.club.baseOvr,
+        baseOvr: resolvedOvr,
         stadium: Math.max(nc.stadium || 0, savedFac?.stadium || 0),
-        academyLevel: Math.max(nc.academyLevel || 1, savedFac?.academyLevel || 1),
-        medicalLevel: Math.max(nc.medicalLevel || 1, savedFac?.medicalLevel || 1),
+        academyLevel: Math.max(facFloor, nc.academyLevel || 1, savedFac?.academyLevel || 1),
+        medicalLevel: Math.max(facFloor, nc.medicalLevel || 1, savedFac?.medicalLevel || 1),
       };
       updated.yearsAtCurrentClub = 0;
       updated.boardGracePeriod = 1;
+      updated.seasonPhase = 'start';
+      updated.pendingSeasonState = null;
+      updated.cupProgress = {};
+      updated.playedCupOpponents = {};
+      updated.madeCupFinal = false;
+      updated.cupRunResults = [];
+      updated.cupRunsPlayedThisSeason = [];
+      updated.cupEliminated = {};
       if (resolvedTier > 1) {
         updated.euroStatus = null;
       }
@@ -5734,6 +5744,8 @@ export const resolveDynamicEvent = (
     if (typeof txt === 'string') return txt;
     return isDe ? txt.de : txt.en;
   };
+
+  updated.pendingForcedEvent = undefined;
 
   const toastMsg = isSuccess ? getLocalizedText(opt.goodTxt) : getLocalizedText(opt.badTxt);
   const toastType = isSuccess ? 'success' : 'error';

@@ -1474,6 +1474,22 @@ export default function App() {
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [showSimulatingOverlay, setShowSimulatingOverlay] = useState<boolean>(false);
 
+  const getSameTierSagaRivalName = (club: Club, currentRival?: { id?: number | string; name: string }): string | undefined => {
+    if (currentRival) {
+      const rivalLower = (currentRival.name || '').toLowerCase().trim();
+      const rivalInDb = clubsDb.find(
+        (c) => (currentRival.id != null && (c.id === currentRival.id || String(c.id) === String(currentRival.id))) || (rivalLower && c.name.toLowerCase().trim() === rivalLower)
+      );
+      if (!rivalInDb || rivalInDb.tier === club.tier) {
+        return currentRival.name;
+      }
+    }
+    const sameTierChallengers = clubsDb
+      .filter((c) => c.id !== club.id && (c.country || 'GER') === (club.country || 'GER') && c.tier === club.tier && !isReserveClub(c.name))
+      .sort((a, b) => Math.abs((a.baseOvr || 65) - (club.baseOvr || 65)) - Math.abs((b.baseOvr || 65) - (club.baseOvr || 65)));
+    return sameTierChallengers[0]?.name || undefined;
+  };
+
   const handleResolveTransferSaga = (option: TransferSagaOption) => {
     if (!gameState || !activeTransferSaga) return;
 
@@ -1493,7 +1509,12 @@ export default function App() {
 
     if (option.successRate !== undefined && Math.random() > option.successRate) {
       showToast(`Negotiations collapsed! ${activeTransferSaga.playerName} was snapped up by rivals.`, 'warning');
-      setGameState(prev => prev ? { ...prev, activeTransferSaga: null } : prev);
+      setGameState(prev => {
+        if (!prev) return prev;
+        const next = { ...prev, activeTransferSaga: null };
+        latestGameStateRef.current = next;
+        return next;
+      });
       setActiveTransferSaga(null);
       return;
     }
@@ -1531,6 +1552,7 @@ export default function App() {
       }
 
       updated.activeTransferSaga = null;
+      latestGameStateRef.current = updated;
       return updated;
     });
 
@@ -1640,6 +1662,7 @@ export default function App() {
       }
 
       updated.pendingInternationalTournament = null;
+      latestGameStateRef.current = updated;
       return updated;
     });
 
@@ -1650,26 +1673,41 @@ export default function App() {
     }
     setInternationalTournament(null);
 
-    // Queue off-season transfer saga if rolled
-    if (gameState && !gameState.pendingForcedEvent && Math.random() < 0.40) {
-      const rivalName = gameState.currentRival?.name;
+    // Queue off-season transfer saga if rolled and no other event is pending
+    if (gameState && !gameState.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
+      const rivalName = getSameTierSagaRivalName(gameState.club, gameState.currentRival);
       const saga = generateTransferSaga(gameState.club, rivalName);
       setTimeout(() => {
-        setGameState(prev => prev ? { ...prev, activeTransferSaga: saga } : prev);
+        setGameState(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, activeTransferSaga: saga };
+          latestGameStateRef.current = next;
+          return next;
+        });
         setActiveTransferSaga(saga);
       }, 500);
     }
   };
 
   const handleDeclineInternationalTournament = () => {
-    setGameState(prev => prev ? { ...prev, hasBeenWorldCupInvited: true, pendingInternationalTournament: null } : prev);
+    setGameState(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, hasBeenWorldCupInvited: true, pendingInternationalTournament: null };
+      latestGameStateRef.current = next;
+      return next;
+    });
     setInternationalTournament(null);
     showToast('Declined international offer. Focused 100% on club duties.', 'info');
-    if (gameState && !gameState.pendingForcedEvent && Math.random() < 0.40) {
-      const rivalName = gameState.currentRival?.name;
+    if (gameState && !gameState.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
+      const rivalName = getSameTierSagaRivalName(gameState.club, gameState.currentRival);
       const saga = generateTransferSaga(gameState.club, rivalName);
       setTimeout(() => {
-        setGameState(prev => prev ? { ...prev, activeTransferSaga: saga } : prev);
+        setGameState(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, activeTransferSaga: saga };
+          latestGameStateRef.current = next;
+          return next;
+        });
         setActiveTransferSaga(saga);
       }, 500);
     }
@@ -2268,6 +2306,7 @@ export default function App() {
           newBaseOvr: updated.club.baseOvr,
         };
       }
+      latestGameStateRef.current = updated;
       return updated;
     });
 
@@ -2328,6 +2367,7 @@ export default function App() {
         const updated = { ...prev, club: { ...prev.club } };
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
         updated.currentCoach = undefined;
+        latestGameStateRef.current = updated;
         return updated;
       });
       showToast(lang === 'de' ? `Vertrag von Cheftrainer ${coachName} ist ausgelaufen.` : `Head Coach ${coachName}'s contract has expired.`, 'info');
@@ -2495,8 +2535,9 @@ export default function App() {
     }
 
     const roll = Math.random();
+    const hasQueuedSeasonEvent = Boolean(pendingEvent || (eventQueue && eventQueue.length > 0) || gameState.pendingForcedEvent);
     
-    if (isPromoted && prevTier >= 5 && roll < 0.10) {
+    if (!hasQueuedSeasonEvent && isPromoted && prevTier >= 5 && roll < 0.10) {
        setOffSeasonEvent({
          id: 'stadium',
          titleEn: 'Community Effort!',
@@ -2508,10 +2549,15 @@ export default function App() {
              labelEn: 'Amazing!',
              labelDe: 'Fantastisch!',
              action: () => {
-                setGameState(prev => prev ? {
-                   ...prev,
-                   club: { ...prev.club, stadium: prev.club.stadium + 2000 }
-                } : prev);
+                setGameState(prev => {
+                  if (!prev) return prev;
+                  const next = {
+                    ...prev,
+                    club: { ...prev.club, stadium: prev.club.stadium + 2000 }
+                  };
+                  latestGameStateRef.current = next;
+                  return next;
+                });
                 setOffSeasonEvent(null);
              },
              bgClass: 'bg-emerald-500 hover:bg-emerald-400 text-black'
@@ -2522,7 +2568,7 @@ export default function App() {
     }
     
     
-    if (true && !gameState.billionaireTakeoverYear && roll > 0.90 && roll < 0.905) {
+    if (!hasQueuedSeasonEvent && !gameState.billionaireTakeoverYear && roll > 0.90 && roll < 0.905) {
        setOffSeasonEvent({
          id: 'billionaire',
          titleEn: 'Billionaire Takeover!',
@@ -2542,7 +2588,7 @@ export default function App() {
                     annualWages * 3
                   );
                   const newBudget = Math.max(0, prev.budget || 0) + windfall;
-                  return {
+                  const next: GameState = {
                     ...prev,
                     budget: newBudget,
                     club: { ...prev.club, currentBudget: newBudget },
@@ -2552,6 +2598,8 @@ export default function App() {
                     skillPoints: (prev.skillPoints || 0) + 20,
                     billionaireTakeoverYear: prev.year
                   };
+                  latestGameStateRef.current = next;
+                  return next;
                 });
                 setOffSeasonEvent(null);
              },
@@ -2561,10 +2609,15 @@ export default function App() {
              labelEn: 'Publicly Back Current Board (Reject Buyout)',
              labelDe: 'Vorstand stützen & Übernahme ablehnen',
              action: () => {
-                setGameState(prev => prev ? {
-                   ...prev,
-                   reputation: Math.min(100, (prev.reputation || 50) + 3),
-                } : prev);
+                setGameState(prev => {
+                  if (!prev) return prev;
+                  const next = {
+                    ...prev,
+                    reputation: Math.min(100, (prev.reputation || 50) + 3),
+                  };
+                  latestGameStateRef.current = next;
+                  return next;
+                });
                 setOffSeasonEvent(null);
              },
              bgClass: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
@@ -2574,7 +2627,7 @@ export default function App() {
        return;
     }
     
-    if (roll > 0.95) {
+    if (!hasQueuedSeasonEvent && roll > 0.95) {
        setOffSeasonEvent({
          id: 'wonderkid',
          titleEn: 'Generational Talent!',
@@ -2589,7 +2642,7 @@ export default function App() {
                 setGameState(prev => {
                   if (!prev) return prev;
                   const newOvr = Math.min(100, prev.club.baseOvr + 3);
-                  return {
+                  const next = {
                     ...prev,
                     maxOvrCap: Math.max(prev.maxOvrCap, newOvr),
                     club: {
@@ -2597,6 +2650,8 @@ export default function App() {
                       baseOvr: newOvr
                     }
                   };
+                  latestGameStateRef.current = next;
+                  return next;
                 });
                 showToast(lang === 'de' ? ('Jahrhunderttalent integriert! GES +3.') : ('Generational talent integrated! OVR +3.'), 'success');
                 setOffSeasonEvent(null);
@@ -2611,12 +2666,14 @@ export default function App() {
                 setGameState(prev => {
                   if (!prev) return prev;
                   const exactCash = getLeagueScaledVal(prev.club.tier || 1, 80000, prev.club.country || 'GER');
-                  return {
+                  const next = {
                     ...prev,
                     budget: adjustBudget(prev.budget, exactCash),
                     transferIncome: (prev.transferIncome || 0) + exactCash,
                     skillPoints: (prev.skillPoints || 0) + 5
                   };
+                  latestGameStateRef.current = next;
+                  return next;
                 });
                 showToast(
                   lang === 'de'
@@ -2633,12 +2690,17 @@ export default function App() {
        return;
     }
 
-    if (!isSacked) {
+    if (!isSacked && !hasQueuedSeasonEvent) {
       // Transfer Saga Trigger (~40% chance during standard off-season when no World Cup or off-season event triggered)
       if (Math.random() < 0.40) {
-        const rivalName = gameState.currentRival?.name;
+        const rivalName = getSameTierSagaRivalName(gameState.club, gameState.currentRival);
         const saga = generateTransferSaga(gameState.club, rivalName);
-        setGameState(prev => prev ? { ...prev, activeTransferSaga: saga } : prev);
+        setGameState(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, activeTransferSaga: saga };
+          latestGameStateRef.current = next;
+          return next;
+        });
         setActiveTransferSaga(saga);
       }
     }
@@ -5652,6 +5714,9 @@ export default function App() {
       updated.cupProgress = {};
       updated.playedCupOpponents = {};
       updated.madeCupFinal = false;
+      updated.cupRunResults = [];
+      updated.cupRunsPlayedThisSeason = [];
+      updated.cupEliminated = {};
       updated.midSeasonResignedCoach = undefined;
 
       updated.facilitiesUpgradedThisSeason = 0;
@@ -10409,6 +10474,12 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     let chosenEvent;
     if (currentState.madeCupFinal) {
        currentState.madeCupFinal = false; // consume it
+       setGameState(prev => {
+         if (!prev) return prev;
+         const next = { ...prev, madeCupFinal: false };
+         latestGameStateRef.current = next;
+         return next;
+       });
        const lastSeasonTier = (currentState.history && currentState.history.length > 0)
          ? (currentState.history[currentState.history.length - 1].tier || currentState.club.tier)
          : currentState.club.tier;
@@ -13637,6 +13708,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.reputation = Math.max(0, (updated.reputation || 0) - (data?.rep || 1));
         showToast(lang === 'de' ? `Finale verloren. Bittere Tränen (-${data?.rep || 1} Rep)` : `Final lost. Heartbreaking defeat (-${data?.rep || 1} Rep)`, 'error');
       }
+      updated.madeCupFinal = false;
       updated.pendingForcedEvent = undefined;
       latestGameStateRef.current = updated;
       setGameState(updated);
@@ -13976,7 +14048,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 </div>
 
                 <AnimatePresence>
-                {pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && (
+                {pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && (
                   <motion.div key={`event-modal-${pendingEvent?.id || Date.now()}`} initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 26 }} className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black/75 backdrop-blur-2xl p-2.5 sm:p-4 overflow-y-auto overscroll-contain">
                     <div className={`w-full max-h-[92vh] sm:max-h-[88vh] my-auto overflow-y-auto custom-scrollbar overscroll-contain shrink-0 ${pendingEvent?.type === 'job_offer' ? 'max-w-xl sm:max-w-2xl' : 'max-w-md'}`}>
                       <EventUI
@@ -13990,7 +14062,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 )}
                 </AnimatePresence>
 
-                <div className={`${(pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
+                <div className={`${(pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
                   <ActionPanel
                   state={gameState}
                   mediaBaseBoost={getLeagueScaledVal(gameState.club.tier, 6500, gameState.club.country || 'GER')}
@@ -14890,7 +14962,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       )}
       </AnimatePresence>
 
-      {activeTransferSaga && (
+      {activeTransferSaga && !seasonFinishData && !activeModal && !internationalTournament && !offSeasonEvent && (
         <TransferSagaModal
           saga={activeTransferSaga}
           onSelectOption={handleResolveTransferSaga}
@@ -14899,7 +14971,12 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             if (stallOpt) {
               handleResolveTransferSaga(stallOpt);
             } else {
-              setGameState(prev => prev ? { ...prev, activeTransferSaga: null } : prev);
+              setGameState(prev => {
+                if (!prev) return prev;
+                const next = { ...prev, activeTransferSaga: null };
+                latestGameStateRef.current = next;
+                return next;
+              });
               setActiveTransferSaga(null);
             }
           }}

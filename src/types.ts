@@ -464,6 +464,8 @@ export interface GameState {
   midSeasonPts?: number;
   regionalCupWinner?: boolean;
   cupRunResults?: any[];
+  cupRunsPlayedThisSeason?: string[];
+  cupEliminated?: Record<string, boolean>;
   boardTarget?: number;
   managerAge?: number;
   ovrHistory?: { year: number; delta: number; reason: string }[];
@@ -529,6 +531,14 @@ export interface PendingSeasonState {
     ovrAtCalculation: number;
     moraleAtCalculation: number;
     tacticAtCalculation: string;
+    coachIdAtCalculation?: string;
+    coachStyleAtCalculation?: string;
+    hasBounceAtCalculation?: boolean;
+    skillsKeyAtCalculation?: string;
+    stadiumAtCalculation?: number;
+    stadiumPolicyAtCalculation?: string;
+    midPos?: number;
+    midPts?: number;
   };
 }
 

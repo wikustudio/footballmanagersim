@@ -648,10 +648,17 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         const matchesHistClub =
           (inspectedHist.clubId != null && r.id === inspectedHist.clubId) ||
           (inspectedHist.clubName && r.name?.toLowerCase().trim() === inspectedHist.clubName.toLowerCase().trim());
+        const isArchivedUser = Boolean(matchesHistClub || (inspectedHist.clubId == null && !inspectedHist.clubName && r.isUser));
+        const isArchivedRival = !isArchivedUser && Boolean(
+          state.currentRival &&
+          ((r.id != null && r.id === state.currentRival.id) ||
+            (r.name && state.currentRival.name && r.name.toLowerCase().trim() === state.currentRival.name.toLowerCase().trim()))
+        );
         tableData.push({
           ...r,
           pos: idx + 1,
-          isUser: Boolean(matchesHistClub || (inspectedHist.clubId == null && !inspectedHist.clubName && r.isUser))
+          isUser: isArchivedUser,
+          isRival: isArchivedRival,
         });
       });
     } else {
