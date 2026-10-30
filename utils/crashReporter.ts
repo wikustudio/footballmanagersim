@@ -1,4 +1,5 @@
 import { GameState } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 export interface CrashReportEntry {
   id: string;
@@ -149,3 +150,96 @@ export function formatDiagnosticSummary(
 
   return lines.join('\n');
 }
+
+export interface FeedbackReportPayload {
+  type: 'bug' | 'feature';
+  subject: string;
+  title?: string;
+  description?: string;
+  contactEmail?: string;
+  diagnostics?: string;
+  crashReport?: CrashReportEntry | null;
+  crashLogs?: CrashReportEntry[];
+  timestamp?: string;
+}
+
+export async function submitFeedbackReport(payload: FeedbackReportPayload): Promise<{
+  ok: boolean;
+  supabaseSaved: boolean;
+  netlifyFormSaved: boolean;
+  apiSaved: boolean;
+}> {
+  const submittedAt = payload.timestamp || new Date().toISOString();
+  const crash = payload.crashReport;
+  const crashSummary = crash
+    ? `${crash.context || 'Crash'}: ${crash.message || 'Unknown error'}${
+        crash.clubName
+          ? ` (${crash.clubName}, Tier ${crash.tier}, Year ${crash.year}, Phase: ${crash.seasonPhase})`
+          : ''
+      }${crash.stack ? `\n\nStack:\n${crash.stack}` : ''}`
+    : 'None';
+
+  const formParams = new URLSearchParams();
+  formParams.append('form-name', 'hms-feedback');
+  formParams.append('recipient', 'kuehnewilly@gmail.com');
+  formParams.append('type', payload.type === 'feature' ? 'Feature Request' : 'Bug / Crash Report');
+  formParams.append('subject', payload.subject);
+  formParams.append('title', payload.title || 'Untitled Report');
+  formParams.append('contactEmail', payload.contactEmail || 'anonymous');
+  formParams.append('description', payload.description || '(No additional details provided)');
+  formParams.append('diagnostics', payload.diagnostics || '(No diagnostics attached)');
+  formParams.append('crashSummary', crashSummary);
+  formParams.append('timestamp', submittedAt);
+
+  const supabaseRow = {
+    report_type: payload.type === 'feature' ? 'feature' : 'bug',
+    subject: payload.subject,
+    title: payload.title || 'Untitled Report',
+    description: payload.description || '(No additional details provided)',
+    contact_email: payload.contactEmail || 'anonymous',
+    diagnostics: payload.diagnostics || '(No diagnostics attached)',
+    crash_summary: crashSummary,
+    crash_report: crash || null,
+    recipient_email: 'kuehnewilly@gmail.com',
+    created_at: submittedAt,
+  };
+
+  const supabaseInsertPromise = supabase
+    ? Promise.resolve(supabase.from('feedback_reports').insert(supabaseRow)).then(
+        ({ error }) => !error,
+        () => false
+      )
+    : Promise.resolve(false);
+
+  const [supabaseResult, netlifyResult, apiResult] = await Promise.allSettled([
+    supabaseInsertPromise,
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formParams.toString(),
+    }),
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...payload,
+        timestamp: submittedAt,
+      }),
+    }),
+  ]);
+
+  const supabaseSaved =
+    supabaseResult.status === 'fulfilled' && Boolean(supabaseResult.value);
+  const netlifyFormSaved =
+    netlifyResult.status === 'fulfilled' && netlifyResult.value.ok;
+  const apiSaved =
+    apiResult.status === 'fulfilled' && apiResult.value.ok;
+
+  return {
+    ok: supabaseSaved || netlifyFormSaved || apiSaved,
+    supabaseSaved,
+    netlifyFormSaved,
+    apiSaved,
+  };
+}
+
