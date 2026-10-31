@@ -17,13 +17,23 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
   dilemmaId,
   onResolveDilemma,
 }) => {
-  if (!isOpen) return null;
-
   const lang = gameState.language || 'en';
   const dilemmas = getManagerialDilemmas(gameState);
   const dilemma = dilemmas.find((d) => d.id === dilemmaId) || dilemmas[0];
 
-  if (!dilemma) return null;
+  React.useEffect(() => {
+    if (isOpen && !dilemma) {
+      onResolveDilemma('B', {
+        id: 'fallback',
+        title: { en: 'Standard Preparation', de: 'Standard-Vorbereitung' },
+        desc: { en: '', de: '' },
+        optionA: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'emerald' },
+        optionB: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'sky' },
+      });
+    }
+  }, [isOpen, dilemma, onResolveDilemma]);
+
+  if (!isOpen || !dilemma) return null;
 
   const pending = gameState.pendingSeasonState;
   const currentMd = pending?.dilemmaMatchday || 17;
@@ -84,7 +94,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-lg bg-[#12141c]/90 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-hidden flex flex-col"
+        className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] my-auto bg-[#12141c]/90 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-y-auto custom-scrollbar flex flex-col"
       >
         {/* Subtle Ambient Accent Glow */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />

@@ -15,10 +15,17 @@ interface EventUIProps {
 export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onResolve }) => {
   const [isResolving, setIsResolving] = React.useState(false);
 
+  React.useEffect(() => {
+    setIsResolving(false);
+  }, [event?.id, event?.type]);
+
   const handleChoice = (choiceIndex: number) => {
     if (isResolving) return;
     setIsResolving(true);
     onResolve(choiceIndex);
+    setTimeout(() => {
+      setIsResolving(false);
+    }, 320);
   };
 
   const t = (en: string, de?: string, _ignoredEs?: string) =>
@@ -558,11 +565,13 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
           <h2 className={`text-xl sm:text-2xl font-bold tracking-tight mb-2 ${
             isEmergency ? 'text-rose-300' : 'text-white'
           } leading-tight`}>
-            {getLoc(lang, event.title)}
+            {getLoc(lang, event.title) || t('Executive Update', 'Vorstands-Update')}
           </h2>
-          <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 text-xs sm:text-[13px] text-zinc-300 font-normal leading-relaxed text-left sm:text-center">
-            {getLoc(lang, event.desc)}
-          </div>
+          {getLoc(lang, event.desc) && (
+            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 text-xs sm:text-[13px] text-zinc-300 font-normal leading-relaxed text-left sm:text-center">
+              {getLoc(lang, event.desc)}
+            </div>
+          )}
         </div>
       )}
 
@@ -623,6 +632,18 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
               </div>
             </div>
             {buildOutcomeChips(event.opt3)}
+          </button>
+        )}
+
+        {!event.opt1 && !event.opt2 && !event.opt3 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleChoice(0); }}
+            disabled={isResolving}
+            className="w-full bg-sky-500 hover:bg-sky-400 text-white font-semibold py-3.5 px-5 justify-center items-center shadow-[0_4px_20px_rgba(14,165,233,0.3)] rounded-2xl transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex relative overflow-hidden group cursor-pointer border border-sky-400/30"
+          >
+            <span className="font-semibold text-xs sm:text-sm text-white text-center">
+              {t('Continue', 'Weiter')}
+            </span>
           </button>
         )}
       </div>

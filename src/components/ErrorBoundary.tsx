@@ -29,8 +29,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
     (window as any).RENDER_ERROR_DUMP = error.message + ' ' + error.stack;
 
     try {
-      const entry = recordCrashReport(error, null, 'React Render Crash');
-      const diagnostics = formatDiagnosticSummary(null, entry);
+      let savedGameState: any = null;
+      try {
+        const rawSave = localStorage.getItem('footy_manager_sim_state_v2');
+        if (rawSave) {
+          savedGameState = JSON.parse(rawSave);
+        }
+      } catch {
+        // Ignore parse error
+      }
+      const entry = recordCrashReport(error, savedGameState, 'React Render Crash');
+      const diagnostics = formatDiagnosticSummary(savedGameState, entry);
       submitFeedbackReport({
         type: 'bug',
         subject: `[FMS v2.2 Auto Crash Report] ${error.message.slice(0, 60)}`,
@@ -46,6 +55,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
       // Ignore secondary crash reporter errors
     }
   }
+
+  handleReloadKeepSave = () => {
+    window.location.reload();
+  };
 
   handleReset = () => {
     try {
@@ -76,13 +89,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <pre className="text-[10px] text-red-300 text-left overflow-auto max-h-32 mb-4 bg-black/40 p-2.5 rounded-xl border border-red-500/20">
               {(window as any).RENDER_ERROR_DUMP}
             </pre>
-            <button
-              onClick={this.handleReset}
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-rotate-right"></i>
-              Reset & Start Fresh
-            </button>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={this.handleReloadKeepSave}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <i className="fas fa-rotate"></i>
+                Reload & Keep Save
+              </button>
+              <button
+                onClick={this.handleReset}
+                className="w-full bg-white/[0.06] hover:bg-red-600/80 text-zinc-300 hover:text-white font-bold py-2.5 px-6 rounded-xl border border-white/10 transition cursor-pointer flex items-center justify-center gap-2 text-xs"
+              >
+                <i className="fas fa-trash-can"></i>
+                Reset & Start Fresh
+              </button>
+            </div>
           </div>
         </div>
       );

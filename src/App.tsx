@@ -206,14 +206,23 @@ export const sanitizeGameState = (state: any): GameState | null => {
     hasHealedFreiberg = true;
   }
 
-  const isForcedJobOfferAlreadySigned = state.pendingForcedEvent?.type === 'job_offer' &&
-    state.pendingForcedEvent.clubs?.some(
-      (c: any) => c.id === cleanClub?.id || c.name?.toLowerCase().trim() === cleanClub?.name?.toLowerCase().trim()
-    );
+  const isForcedJobOfferInvalid =
+    state.pendingForcedEvent &&
+    (state.pendingForcedEvent.type !== 'job_offer' ||
+      state.pendingForcedEvent.clubs?.some(
+        (c: any) => c.id === cleanClub?.id || c.name?.toLowerCase().trim() === cleanClub?.name?.toLowerCase().trim()
+      ));
+
+  const isStuckMidPhase =
+    state.seasonPhase === 'mid' &&
+    (Boolean(state.pendingSeasonFinishData) ||
+      (Array.isArray(state.history) && state.history.some((h: any) => h && h.year === state.year)));
 
   return {
     ...state,
-    pendingForcedEvent: isForcedJobOfferAlreadySigned ? undefined : state.pendingForcedEvent,
+    seasonPhase: isStuckMidPhase ? 'start' : state.seasonPhase,
+    pendingSeasonState: isStuckMidPhase ? null : state.pendingSeasonState,
+    pendingForcedEvent: isForcedJobOfferInvalid ? undefined : state.pendingForcedEvent,
     currentRival: cleanRival,
     tactic: state.tactic || 'Total Football',
     skillPoints: typeof state.skillPoints === 'number' ? state.skillPoints : 0,
@@ -1055,7 +1064,9 @@ export default function App() {
   });
 
   const latestGameStateRef = useRef<GameState | null>(gameState);
-  latestGameStateRef.current = gameState;
+  useEffect(() => {
+    latestGameStateRef.current = gameState;
+  }, [gameState]);
 
   const [isModActive, setIsModActive] = useState<boolean>(() => {
     return localStorage.getItem('fms_real_mod_active') === 'true';
@@ -1385,12 +1396,28 @@ export default function App() {
   } | null>(null);
   const isProcessingAction = useRef(false);
 
+  const isValidGameEvent = (evt: any): evt is GameEvent => {
+    if (!evt || typeof evt !== 'object') return false;
+    if ('nativeEvent' in evt || 'preventDefault' in evt || 'stopPropagation' in evt || evt.type === 'click') return false;
+    if (typeof evt.type !== 'string' || !evt.type.trim() || evt.type === 'midseason_calm') return false;
+    const hasTitle = typeof evt.title === 'string'
+      ? evt.title.trim().length > 0
+      : Boolean(evt.title && (evt.title.en || evt.title.de));
+    const hasAction = Boolean(
+      evt.opt1 ||
+      evt.opt2 ||
+      evt.opt3 ||
+      (evt.type === 'job_offer' && Array.isArray(evt.clubs) && evt.clubs.length > 0)
+    );
+    return Boolean(hasTitle && hasAction);
+  };
+
   const [eventQueue, setEventQueue] = useState<GameEvent[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.pendingForcedEvent) {
+        if (parsed.pendingForcedEvent && isValidGameEvent(parsed.pendingForcedEvent)) {
           return [parsed.pendingForcedEvent];
         }
       }
@@ -1398,12 +1425,25 @@ export default function App() {
     return [];
   });
   const pendingEvent = eventQueue[0] || null;
-  const enqueueEvent = (evt: GameEvent) => setEventQueue(prev => [...prev, evt]);
+  const enqueueEvent = (evt: GameEvent) => {
+    if (!isValidGameEvent(evt)) return;
+    setEventQueue(prev => [...prev, evt]);
+  };
   const popEvent = () => setEventQueue(prev => prev.slice(1));
   const clearEvents = () => setEventQueue([]);
 
   useEffect(() => {
+    if (pendingEvent && !isValidGameEvent(pendingEvent)) {
+      setEventQueue(prev => (prev || []).filter(isValidGameEvent));
+    }
+  }, [pendingEvent]);
+
+  useEffect(() => {
     if (gameState?.pendingForcedEvent) {
+      if (!isValidGameEvent(gameState.pendingForcedEvent)) {
+        setGameState(prev => prev ? { ...prev, pendingForcedEvent: undefined } : prev);
+        return;
+      }
       if (gameState.pendingForcedEvent.type === 'job_offer') {
         const isAlreadySigned = gameState.pendingForcedEvent.clubs?.some(
           c => c.id === gameState.club.id || c.name.toLowerCase().trim() === gameState.club.name.toLowerCase().trim()
@@ -5989,6 +6029,10 @@ export default function App() {
             if (!forcedEvt.clubs || forcedEvt.clubs.length === 0) {
               forcedEvt.clubs = generateJobOffers(gameState, clubsDb, 2);
             }
+            setShowMidSeasonModal(false);
+            setShowWinterCampModal(false);
+            setShowCoachMarketModal(false);
+            setShowTransferModal(false);
             setEventQueue(prev => {
               if (!prev || prev.length === 0 || !prev.some(e => e.id === forcedEvt.id)) {
                 return [forcedEvt, ...(prev || [])];
@@ -6004,55 +6048,47 @@ export default function App() {
             return;
           }
         } else {
-          setEventQueue(prev => {
-            if (!prev || prev.length === 0 || !prev.some(e => e.id === forcedEvt.id)) {
-              return [forcedEvt, ...(prev || [])];
-            }
-            return prev;
-          });
-          showToast(
-            lang === 'de'
-              ? 'Du musst zuerst deine offene Direktoren-Entscheidung treffen!'
-              : 'You must resolve your mandatory contract vacancy before simulating!',
-            'warning'
-          );
-          return;
+          // Non-job_offer events (e.g. mid-season flavor events) should never block simulation as a mandatory contract vacancy
+          delete gameState.pendingForcedEvent;
+          setGameState(prev => prev ? { ...prev, pendingForcedEvent: undefined } : prev);
+          setEventQueue(prev => (prev || []).map(e => e.type !== 'job_offer' ? { ...e, isForced: false } : e));
         }
       }
     }
     setIsSimulating(true);
 
     const liveEntryState: GameState = latestGameStateRef.current || gameState;
-    // Pre-calculate the season outcome using the core engine BEFORE opening SimulatingOverlay
     const isStartPhase = !liveEntryState.seasonPhase || liveEntryState.seasonPhase === 'start';
-    const precalcPending = calculateProbabilisticSeason(
-      liveEntryState,
-      clubsDb,
-      isModActive,
-      !isStartPhase && liveEntryState.pendingSeasonState
-        ? {
-            lockFirstHalfFrom: liveEntryState.pendingSeasonState,
-            dilemmaChoice: liveEntryState.pendingSeasonState.dilemmaChoice || 'B',
-          }
-        : undefined
-    );
-
-    const stateWithPrecalc: GameState = { ...liveEntryState, pendingSeasonState: precalcPending };
-    latestGameStateRef.current = stateWithPrecalc;
-    setGameState(stateWithPrecalc);
-    setShowSimulatingOverlay(true);
-
-    // Wait for SimulatingOverlay to complete (either halfway dilemma pause during 'start' phase, or full season end during 'mid' phase)
-    await new Promise<void>((resolve) => {
-      simOverlayCompleteResolveRef.current = resolve;
-    });
-    setShowSimulatingOverlay(false);
 
     let completedHistorySnap: SeasonHistory[] | null = null;
     let completedClubHistorySnap: Record<string, any[]> | null = null;
     let completedSeasonYearSnap: number | null = null;
 
     try {
+      // Pre-calculate the season outcome using the core engine BEFORE opening SimulatingOverlay
+      const precalcPending = calculateProbabilisticSeason(
+        liveEntryState,
+        clubsDb,
+        isModActive,
+        !isStartPhase && liveEntryState.pendingSeasonState
+          ? {
+              lockFirstHalfFrom: liveEntryState.pendingSeasonState,
+              dilemmaChoice: liveEntryState.pendingSeasonState.dilemmaChoice || 'B',
+            }
+          : undefined
+      );
+
+      const stateWithPrecalc: GameState = { ...liveEntryState, pendingSeasonState: precalcPending };
+      latestGameStateRef.current = stateWithPrecalc;
+      setGameState(stateWithPrecalc);
+      setShowSimulatingOverlay(true);
+
+      // Wait for SimulatingOverlay to complete (either halfway dilemma pause during 'start' phase, or full season end during 'mid' phase)
+      await new Promise<void>((resolve) => {
+        simOverlayCompleteResolveRef.current = resolve;
+      });
+      setShowSimulatingOverlay(false);
+
       // Read latest state including any mid-season dilemma adjustments synchronously via latestGameStateRef
       const latestStateSnap: GameState = latestGameStateRef.current || stateWithPrecalc;
       const state: GameState = JSON.parse(JSON.stringify(latestStateSnap));
@@ -6221,7 +6257,6 @@ export default function App() {
         }
         latestGameStateRef.current = { ...state };
         setGameState({ ...state });
-        setIsSimulating(false);
         
         const processQFs = async () => {
             for (const cupId of activeQFCups) {
@@ -6308,6 +6343,7 @@ export default function App() {
                   };
                   Object.assign(state, JSON.parse(JSON.stringify(latestGameStateRef.current)), inFlightLoopFields);
                 }
+                setCupRun(null);
                 latestGameStateRef.current = { ...state };
                 setGameState({...state});
                 // Small delay between cups
@@ -6335,6 +6371,9 @@ export default function App() {
         };
         Object.assign(state, JSON.parse(JSON.stringify(latestGameStateRef.current)), preservedInFlightFields);
       }
+
+      // Immediately mark the 2nd-half league simulation as completed so we never stay in 'mid' phase during post-season modals
+      state.seasonPhase = 'start';
 
 if (state.history === undefined) state.history = [];
 if (state.trophyHistory === undefined) state.trophyHistory = [];
@@ -7224,6 +7263,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // Synchronize with pre-calculated pendingSeasonState for 100% Engine Parity (Zero "Ghost Matches"),
     // unless overridden by a live interactive Decision Day fixture!
     const syncedPending = state.pendingSeasonState;
+    state.pendingSeasonState = null;
+    if (latestGameStateRef.current) {
+      latestGameStateRef.current = {
+        ...latestGameStateRef.current,
+        seasonPhase: 'start',
+        pendingSeasonState: null,
+      };
+    }
+    setGameState(prev => prev ? { ...prev, seasonPhase: 'start', pendingSeasonState: null } : prev);
     if (!isDecisionDayFired && syncedPending) {
       approxPos = syncedPending.pos;
     }
@@ -14019,7 +14067,36 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           />
         ) : (
           <div className="flex flex-col w-full">
-            
+            {/* Subtle Community Feedback & Weekly Update Banner */}
+            <div className="w-full mb-3 px-3.5 py-2 rounded-2xl bg-white/[0.025] border border-white/[0.07] flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-[11px] sm:text-xs text-zinc-400">
+              <div className="flex items-center gap-2 min-w-0">
+                <i className="fa-regular fa-comment-dots text-sky-400/80 text-xs shrink-0"></i>
+                <span className="leading-snug">
+                  Help shape this game — report{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedbackModal(true)}
+                    className="text-sky-300 hover:text-sky-200 font-semibold underline decoration-sky-400/30 hover:decoration-sky-300 transition cursor-pointer"
+                  >
+                    feedback, wishes &amp; crashes
+                  </button>
+                  . Feedback is implemented weekly.
+                </span>
+              </div>
+              <a
+                href="https://www.reddit.com/r/footballmanagersim/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-zinc-300 hover:text-white font-medium transition shrink-0 group"
+              >
+                <i className="fa-brands fa-reddit-alien text-orange-400/90 text-xs"></i>
+                <span className="underline decoration-white/20 group-hover:decoration-white/50">
+                  Check r/footballmanagersim for status updates
+                </span>
+                <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-zinc-500 group-hover:text-zinc-300"></i>
+              </a>
+            </div>
+
             {/* Header Dashboard */}
             <div className={isSimulating ? 'pointer-events-none' : ''}>
             <DashboardHeader
@@ -14118,7 +14195,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 </div>
 
                 <AnimatePresence>
-                {pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && (
+                {pendingEvent && isValidGameEvent(pendingEvent) && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach && (
                   <motion.div key={`event-modal-${pendingEvent?.id || Date.now()}`} initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 26 }} className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black/75 backdrop-blur-2xl p-2.5 sm:p-4 overflow-y-auto overscroll-contain">
                     <div className={`w-full max-h-[92vh] sm:max-h-[88vh] my-auto overflow-y-auto custom-scrollbar overscroll-contain shrink-0 ${pendingEvent?.type === 'job_offer' ? 'max-w-xl sm:max-w-2xl' : 'max-w-md'}`}>
                       <EventUI
@@ -14132,7 +14209,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 )}
                 </AnimatePresence>
 
-                <div className={`${(pendingEvent && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
+                <div className={`${(pendingEvent && isValidGameEvent(pendingEvent) && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
                   <ActionPanel
                   state={gameState}
                   mediaBaseBoost={getLeagueScaledVal(gameState.club.tier, 6500, gameState.club.country || 'GER')}
@@ -14853,7 +14930,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               latestGameStateRef.current = next;
               return next;
             });
-            if (midEvent && midEvent.type !== "midseason_calm") {
+            if (isValidGameEvent(midEvent)) {
               enqueueEvent(midEvent);
             }
             setCoachMarketTab('market');
@@ -14868,7 +14945,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               return next;
             });
 
-            if (midEvent && midEvent.type !== "midseason_calm") {
+            if (isValidGameEvent(midEvent)) {
               enqueueEvent(midEvent);
             }
           }}

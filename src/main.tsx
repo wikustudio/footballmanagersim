@@ -13,18 +13,31 @@ if ('serviceWorker' in navigator) {
       registration.update();
     }
   });
-  // Apply a new version only if it is detected right at launch; otherwise it waits for the next visit,
-  // so a deploy can never reload the page in the middle of a season.
-  const bootedAt = Date.now();
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      if (Date.now() - bootedAt < 4000) updateSW(true);
-    },
-  });
+  registerSW({ immediate: true });
 }
 
 
+
+// Guard React DOM reconciliation against browser auto-translate (Safari/Chrome Translate)
+// and third-party extensions that wrap or reparent text nodes, preventing
+// NotFoundError: "The object can not be found here." / "Failed to execute 'removeChild' on 'Node'"
+if (typeof Node === 'function' && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child && child.parentNode !== this) {
+      return child;
+    }
+    return originalRemoveChild.apply(this, arguments as any) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      return this.appendChild(newNode);
+    }
+    return originalInsertBefore.apply(this, arguments as any) as T;
+  };
+}
 
 const rootElem = document.getElementById('root')!;
 const preboot = document.getElementById('fms-preboot-shell');

@@ -97,6 +97,8 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
         timestamp: new Date().toISOString(),
       });
       setSubmitStatus('sent');
+      setTitle('');
+      setDescription('');
       if (onShowToast) {
         onShowToast(
           reportType === 'bug'
