@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { GameState, Language, Club } from '../types';
-import { formatMoney, sanitizePlayerName, getAcademyCallUpCap, getAcademyScoutCap, getLeagueScaledVal } from '../data/gameConstants';
+import { formatMoney, sanitizePlayerName, getAcademyCallUpCap, getAcademyScoutCap, getLeagueScaledVal, calculateClubFinancials } from '../data/gameConstants';
 import { t as tr } from '../data/translations';
 import { YouthChampionshipModal } from './YouthChampionshipModal';
 import { getIncubatorCapacity, calculateTrainingCompensationK, getSeniorIntegrationOdds } from '../engine/incubatorEngine';
@@ -16,6 +16,7 @@ interface YouthModalProps {
   onRecruitYouth: () => void;
   onProtectYouth?: (id: string) => void;
   onGraduateYouth?: (id: string, action: 'promote' | 'loan' | 'compensation') => void;
+  onUpdateScoutingDial?: (dialPct: number) => void;
   canAfford: boolean;
   onClose: () => void;
   onOpenChampionship?: () => void;
@@ -31,6 +32,7 @@ export const YouthModal: React.FC<YouthModalProps> = ({
   onRecruitYouth,
   onProtectYouth,
   onGraduateYouth,
+  onUpdateScoutingDial,
   onClose,
   onOpenChampionship,
   canAfford,
@@ -71,6 +73,12 @@ export const YouthModal: React.FC<YouthModalProps> = ({
   const tierPoachVulnerability = Math.max(0, (tier - 1) * 8);
   const baseKeep = 45 + ((academyLvl || 1) * 11);
   const protectionKeepChance = Math.max(25, Math.min(95, baseKeep - tierPoachVulnerability));
+
+  const clubFin = calculateClubFinancials({ ...state, isManaged: true });
+  const baseAcademyOpK = (clubFin as any).baseAcademyOp ?? ((clubFin as any).academyOp || 0);
+  const currentScoutingDial = Math.max(0, Math.min(50, state.academyScoutingDial ?? 0));
+  const extraScoutingCostK = (clubFin as any).scoutingDialExtraK ?? 0;
+  const totalAcademyOpK = (clubFin as any).academyOp ?? (baseAcademyOpK + extraScoutingCostK);
 
   return (
     <motion.div 
@@ -162,6 +170,52 @@ export const YouthModal: React.FC<YouthModalProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Youth Scouting Boost Control (Reflected in Financial Ledger) */}
+          {onUpdateScoutingDial && (
+            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                  <i className="fa-solid fa-binoculars text-sky-400 text-xs"></i>
+                  <span>{t('Youth Scouting Intensity', 'Jugend-Scouting-Intensität')}</span>
+                </div>
+                <span className="text-[11px] font-mono font-bold text-zinc-300 tabular-nums">
+                  {t('Ledger Upkeep:', 'Bilanz-Kosten:')} <span className="text-rose-400">-{formatMoney(totalAcademyOpK)}/yr</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-snug">
+                {t(
+                  'Spend extra each season on regional scouts to boost your chances of finding Top Prospects and Wonderkids.',
+                  'Investiere jährlich mehr ins Scouting, um deine Chancen auf Top-Talente und Wunderkinder zu erhöhen.'
+                )}
+              </p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[0, 10, 20, 35, 50].map((pct) => {
+                  const optExtraK = pct > 0 ? Math.max(1, Math.round(baseAcademyOpK * (pct / 100))) : 0;
+                  const isSelected = currentScoutingDial === pct;
+                  return (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => onUpdateScoutingDial(pct)}
+                      className={`py-1.5 px-1 rounded-xl text-center transition cursor-pointer flex flex-col items-center justify-center border ${
+                        isSelected
+                          ? 'bg-sky-500/20 border-sky-400/50 text-white shadow-sm'
+                          : 'bg-white/[0.03] hover:bg-white/[0.07] text-zinc-400 hover:text-white border-white/[0.06]'
+                      }`}
+                    >
+                      <span className={`text-[11px] font-bold font-mono ${isSelected ? 'text-sky-300' : 'text-zinc-200'}`}>
+                        {pct === 0 ? t('Normal', 'Basis') : `+${pct}%`}
+                      </span>
+                      <span className="text-[9px] font-mono text-zinc-400 tabular-nums mt-0.5">
+                        {pct === 0 ? '+0/yr' : `-${formatMoney(optExtraK)}/yr`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {tier >= 3 && academyLvl >= 2 && academyLvl < 5 && (
             <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-xl px-3 py-2 flex items-center gap-2 text-[11px] text-amber-200/90 leading-tight">

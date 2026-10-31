@@ -14501,6 +14501,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           onRecruitYouth={handleYouthAcademy}
           onProtectYouth={handleProtectYouth}
           onGraduateYouth={handleGraduateYouth}
+          onUpdateScoutingDial={handleUpdateScoutingDial}
           clubsDb={clubsDb}
           isModActive={isModActive}
           onTournamentVictory={handleYouthTournamentVictory}

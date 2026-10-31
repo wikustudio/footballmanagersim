@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { GameState } from '../types';
 import { getLeagueInfo, formatMoney, calculateClubFinancials, getCreditLimit, isReserveClub } from '../data/gameConstants';
 import { t as translate } from '../data/translations';
-import { calculateAcademySubLedger } from '../engine/subLedgerEngine';
 
 interface LedgerModalProps {
   state: GameState;
@@ -251,9 +250,17 @@ export const LedgerModal: React.FC<LedgerModalProps> = ({ state, lang, onUpdateS
               <span className="text-white tabular-nums font-medium">-{formatMoney(medicalTotal)}</span>
             </div>
             
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-zinc-400">{tr('Academy Coaches', 'Jugend-Trainer')}</span>
+            <div className="flex justify-between text-xs mb-1.5 flex-wrap">
+              <span className="text-zinc-400">{tr('Academy & Youth Scouting', 'Jugendakademie & Scouting')}</span>
               <span className="text-white tabular-nums font-medium">-{formatMoney(youthTotal)}</span>
+              {(fin as any).scoutingDialExtraK > 0 && (
+                <div className="w-full text-[10px] text-emerald-400/80 mt-0.5">
+                  {tr(
+                    `Includes +${(fin as any).scoutingDialPct}% Extra Youth Scouting (-${formatMoney((fin as any).scoutingDialExtraK)}/yr)`,
+                    `Enthält +${(fin as any).scoutingDialPct}% Extra-Jugendscouting (-${formatMoney((fin as any).scoutingDialExtraK)}/Jahr)`
+                  )}
+                </div>
+              )}
             </div>
 
             {severanceOp > 0 && (
@@ -307,88 +314,7 @@ export const LedgerModal: React.FC<LedgerModalProps> = ({ state, lang, onUpdateS
             </p>
           </div>
 
-          {/* Segmented Dual Sub-Ledger: Developmental Academy ROI & Cost per Asset */}
-          {(() => {
-            const subLedger = calculateAcademySubLedger(state);
-            const currentDial = subLedger.scoutingDialPct;
 
-            return (
-              <div className="bg-emerald-500/[0.03] rounded-2xl p-4 border border-emerald-500/20 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-400 font-semibold uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <i className="fa-solid fa-seedling text-xs"></i>
-                    <span>{tr('DEVELOPMENTAL SUB-LEDGER & ROI', 'NACHWUCHS-TEILBILANZ & ROI')}</span>
-                  </span>
-                  <span className="text-emerald-300 font-mono text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    {subLedger.roiMultiplier}x {tr('Talent ROI', 'Rendite')}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                  {/* Column 1: Cost Per Asset Produced */}
-                  <div className="bg-black/30 rounded-xl p-3 border border-white/5 space-y-1.5">
-                    <div className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">
-                      {tr('Acquisition Cost / Asset', 'Kosten pro Nachwuchsprofi')}
-                    </div>
-                    <div className="text-base font-bold font-mono text-emerald-400 tabular-nums">
-                      {formatMoney(subLedger.effectiveCostPerGraduateK)}
-                    </div>
-                    <div className="text-[10px] text-zinc-400 border-t border-white/5 pt-1 flex justify-between">
-                      <span>{tr('Market Avg:', 'Marktwert:')}</span>
-                      <span className="text-zinc-300 font-mono line-through">{formatMoney(subLedger.marketBenchmarkCostK)}</span>
-                    </div>
-                    <div className="text-[9px] text-zinc-500">
-                      {subLedger.totalGraduates3Yr} {tr('graduates over 3 seasons', 'Talente in 3 Saisons')}
-                    </div>
-                  </div>
-
-                  {/* Column 2: Fixed Upkeep vs Variable Dial */}
-                  <div className="bg-black/30 rounded-xl p-3 border border-white/5 space-y-1.5">
-                    <div className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">
-                      {tr('Campus & Scouting Upkeep', 'Infrastruktur & Scouting')}
-                    </div>
-                    <div className="text-xs text-zinc-300 flex justify-between">
-                      <span className="text-zinc-400">{tr('Fixed Base:', 'Fixkosten:')}</span>
-                      <span className="font-mono text-white">-{formatMoney(subLedger.fixedBaseUpkeepK)}</span>
-                    </div>
-                    <div className="text-xs text-zinc-300 flex justify-between border-t border-white/5 pt-1">
-                      <span className="text-zinc-400">{tr('Variable Scouting:', 'Scouting-Dial:')}</span>
-                      <span className="font-mono text-sky-400">+{currentDial}%</span>
-                    </div>
-                    <div className="text-[9px] text-zinc-500">
-                      {currentDial > 0 ? `+${formatMoney(subLedger.variableScoutingK)}/yr` : tr('Base intake quality', 'Basis-Talentqualität')}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Variable Investment Dial (0% to +50%) */}
-                {onUpdateScoutingDial && (
-                  <div className="bg-black/20 rounded-xl p-2.5 border border-white/5 space-y-1.5">
-                    <div className="flex justify-between items-center text-[10px]">
-                      <span className="text-zinc-300 font-semibold">{tr('Aggressive Scouting & Nutrition Dial:', 'Scouting- & Ernährungs-Dial:')}</span>
-                      <span className="text-sky-300 font-bold font-mono">+{currentDial}%</span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1 pt-0.5">
-                      {[0, 10, 20, 35, 50].map((pct) => (
-                        <button
-                          key={pct}
-                          type="button"
-                          onClick={() => onUpdateScoutingDial(pct)}
-                          className={`py-1 px-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                            currentDial === pct
-                              ? 'bg-sky-500 text-white shadow-sm'
-                              : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5'
-                          }`}
-                        >
-                          +{pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
 
           {/* Credit & Debt Rules */}
           <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.08] shadow-sm space-y-2.5">
