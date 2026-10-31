@@ -813,7 +813,7 @@ export const generateCoachMarket = (tier: number, country: string, directorRep: 
     const keepSpecialTrait = Math.random() < 0.20;
     if (!keepSpecialTrait) {
       if (coachArchetype === 'chessboard_maestro') {
-        randomStrength = 'Tactical Chessboard Maestro';
+        randomStrength = coachQuality >= 78 ? 'Tactical Chessboard Maestro' : (Math.random() < 0.5 ? 'Fortress Builder' : 'Master Negotiator');
       } else if (coachArchetype === 'psychological_mastermind') {
         randomStrength = 'Psychological Mastermind';
       } else if (coachArchetype === 'award_winner') {

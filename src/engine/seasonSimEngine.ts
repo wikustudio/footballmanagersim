@@ -599,9 +599,10 @@ function buildExactFootballScorelines(
   const winMargins = winIndices.map(() => (Math.random() < 0.65 ? 1 : 2));
   const lossMargins = lossIndices.map(() => (Math.random() < 0.65 ? 1 : 2));
 
+  const maxWinMargin = targetGf - targetGa > winIndices.length * 2.4 ? 5 : 4;
   // Ensure targetGf and targetGa are feasible with at least +1 margin per Win and -1 margin per Loss
   const minGd = winIndices.length * 1 - lossIndices.length * 4;
-  const maxGd = winIndices.length * 4 - lossIndices.length * 1;
+  const maxGd = winIndices.length * maxWinMargin - lossIndices.length * 1;
   const clampedGd = Math.max(minGd, Math.min(maxGd, targetGf - targetGa));
   const effectiveGa = Math.max(lossIndices.length, targetGa);
   const effectiveGf = Math.max(winIndices.length, effectiveGa + clampedGd);
@@ -611,21 +612,30 @@ function buildExactFootballScorelines(
   const desiredGd = effectiveGf - effectiveGa;
 
   let guard = 0;
-  while (currentGd !== desiredGd && guard < 400) {
+  while (currentGd !== desiredGd && guard < 600) {
     guard++;
     if (currentGd < desiredGd) {
-      // Need higher GD: increase a win margin (up to 4) or decrease a loss margin (down to 1)
-      const canIncWin = winMargins.some((m) => m < 4);
+      // Need higher GD: increase a win margin (up to maxWinMargin) or decrease a loss margin (down to 1)
+      const canIncWin = winMargins.some((m) => m < maxWinMargin);
       const canDecLoss = lossMargins.some((m) => m > 1);
-      if (canIncWin && (!canDecLoss || Math.random() < 0.6)) {
-        const idx = winMargins.findIndex((m) => m < 4);
-        if (idx !== -1) {
+      if (canIncWin && (!canDecLoss || Math.random() < 0.65)) {
+        const cap = winMargins.some((m) => m < 4) ? 4 : maxWinMargin;
+        const candidates: number[] = [];
+        winMargins.forEach((m, i) => {
+          if (m < cap) candidates.push(i);
+        });
+        if (candidates.length > 0) {
+          const idx = candidates[Math.floor(Math.random() * candidates.length)];
           winMargins[idx]++;
           currentGd++;
         }
       } else if (canDecLoss) {
-        const idx = lossMargins.findIndex((m) => m > 1);
-        if (idx !== -1) {
+        const candidates: number[] = [];
+        lossMargins.forEach((m, i) => {
+          if (m > 1) candidates.push(i);
+        });
+        if (candidates.length > 0) {
+          const idx = candidates[Math.floor(Math.random() * candidates.length)];
           lossMargins[idx]--;
           currentGd++;
         }
@@ -637,14 +647,22 @@ function buildExactFootballScorelines(
       const canDecWin = winMargins.some((m) => m > 1);
       const canIncLoss = lossMargins.some((m) => m < 4);
       if (canDecWin && (!canIncLoss || Math.random() < 0.6)) {
-        const idx = winMargins.findIndex((m) => m > 1);
-        if (idx !== -1) {
+        const candidates: number[] = [];
+        winMargins.forEach((m, i) => {
+          if (m > 1) candidates.push(i);
+        });
+        if (candidates.length > 0) {
+          const idx = candidates[Math.floor(Math.random() * candidates.length)];
           winMargins[idx]--;
           currentGd--;
         }
       } else if (canIncLoss) {
-        const idx = lossMargins.findIndex((m) => m < 4);
-        if (idx !== -1) {
+        const candidates: number[] = [];
+        lossMargins.forEach((m, i) => {
+          if (m < 4) candidates.push(i);
+        });
+        if (candidates.length > 0) {
+          const idx = candidates[Math.floor(Math.random() * candidates.length)];
           lossMargins[idx]++;
           currentGd--;
         }
@@ -934,24 +952,69 @@ export function calculateProbabilisticSeason(
   }
   let totalLosses = Math.max(0, 34 - totalWins - totalDraws);
 
-  const calculatedGd = Math.round((totalWins - totalLosses) * 1.5 + rand(-2, 2));
-  const baseGf = Math.round(72 - (approxPos - 1) * 2.1 + rand(-3, 3));
+  const isDefTactic =
+    currentTactic === 'Defensive' ||
+    currentTactic === 'Catenaccio' ||
+    currentTactic === 'Park the Bus';
+  const baseGf = Math.round(
+    74 - (approxPos - 1) * 2.55 + Math.max(-5, Math.min(8, ovrDiff * 0.45)) + rand(-3, 3)
+  );
   const gfStyleMultiplier =
     currentTactic === 'Total Football'
-      ? 1.14
+      ? 1.11
       : currentTactic === 'Gegenpressing'
-      ? 1.16
-      : currentTactic === 'Defensive'
-      ? 0.9
+      ? 1.13
+      : isDefTactic
+      ? 0.88
       : currentTactic === 'Tiki-Taka'
-      ? 0.96
+      ? 1.02
       : 1.02;
 
   let gf = Math.round(baseGf * gfStyleMultiplier);
-  if (calculatedGd > 0) gf = Math.max(gf, calculatedGd + 18);
-  gf = Math.max(28, Math.min(110, gf));
-  let ga = Math.max(12, gf - calculatedGd);
-  gf = ga + calculatedGd;
+  if (coachStrength === 'Chaos Magnet') {
+    gf += rand(3, 6);
+  }
+  gf = Math.max(24, Math.min(108, gf));
+
+  // Realistic Goals Against (34 matches): anchored to losses, draws, league position, squad dominance & tactic
+  const rawGa =
+    11 +
+    (approxPos - 1) * 1.15 +
+    totalLosses * 1.55 +
+    totalDraws * 0.72 +
+    totalWins * 0.35 -
+    Math.max(-5, Math.min(6, ovrDiff * 0.4)) +
+    rand(-2, 2);
+  const gaStyleMultiplier = isDefTactic
+    ? 0.84
+    : currentTactic === 'Tiki-Taka'
+    ? 0.90
+    : currentTactic === 'Direct Counter'
+    ? 0.95
+    : currentTactic === 'Gegenpressing'
+    ? 1.06
+    : 1.01;
+  let ga = Math.max(15, Math.min(88, Math.round(rawGa * gaStyleMultiplier)));
+
+  // Enforce coherent goal difference relative to win/loss record and table position
+  if (approxPos <= 4 && totalWins > totalLosses) {
+    const minTopGd = Math.max(8, Math.round((totalWins - totalLosses) * 1.45));
+    if (gf - ga < minTopGd) {
+      ga = Math.max(15, gf - minTopGd);
+    }
+  } else if (approxPos >= 14 && totalLosses > totalWins) {
+    const minBottomDeficit = Math.max(6, Math.round((totalLosses - totalWins) * 1.25));
+    if (ga - gf < minBottomDeficit) {
+      ga = Math.min(88, gf + minBottomDeficit);
+    }
+  }
+  const minFeasibleGd = totalWins * 1 - totalLosses * 4;
+  const maxFeasibleGd = totalWins * 5 - totalLosses * 1;
+  if (gf - ga > maxFeasibleGd) {
+    ga = Math.max(15, gf - maxFeasibleGd);
+  } else if (gf - ga < minFeasibleGd) {
+    gf = Math.min(108, ga + minFeasibleGd);
+  }
 
   // Build division opponent list with safe fallbacks
   const safeDb = Array.isArray(clubsDb) && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
@@ -1008,11 +1071,15 @@ export function calculateProbabilisticSeason(
     if (shWins + shDraws > 17) shDraws = Math.max(0, 17 - shWins);
     const shLosses = Math.max(0, 17 - shWins - shDraws);
 
-    const shGd = Math.round((shWins - shLosses) * 1.4);
-    let shGf = Math.max(12, Math.round(gf / 2));
-    if (shGd > 0) shGf = Math.max(shGf, shGd + 9);
-    const shGa = Math.max(6, shGf - shGd);
-    shGf = shGa + shGd;
+    let shGf = Math.max(shWins + shDraws, Math.round(gf / 2 + rand(-2, 2)));
+    let shGa = Math.max(shLosses + Math.floor(shDraws * 0.5), Math.round(ga / 2 + rand(-2, 2)));
+    const shMinGd = shWins * 1 - shLosses * 4;
+    const shMaxGd = shWins * 5 - shLosses * 1;
+    if (shGf - shGa > shMaxGd) {
+      shGa = Math.max(shLosses, shGf - shMaxGd);
+    } else if (shGf - shGa < shMinGd) {
+      shGf = Math.max(shWins, shGa + shMinGd);
+    }
 
     const shOutcomesPool: ('W' | 'D' | 'L')[] = [
       ...Array(shWins).fill('W'),

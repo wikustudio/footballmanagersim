@@ -36,7 +36,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
           opt1Bad: { morale: -5, ovr: -1 },
           opt2Good: { fans: -500 }
         },
-        isForced: true
+        isForced: false
       };
     } else {
       const prCost = getLeagueScaledVal(tier, 5000, clubCountry);
@@ -72,7 +72,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
           opt2Cost: 0,
           opt2Good: { budget: -budgetPenalty }
         },
-        isForced: true
+        isForced: false
       };
     }
   }
@@ -112,7 +112,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
         opt2Cost: 0,
         opt2Good: { ovr: -1 }
       },
-      isForced: true
+      isForced: false
     };
   } else if (r < 0.5) {
     return {
@@ -140,7 +140,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
         opt1Bad: { ovr: -1 },
         opt2Good: {}
       },
-      isForced: true
+      isForced: false
     };
   } else if (r < 0.8) {
     const tourPrize = getLeagueScaledVal(tier, 5000, clubCountry);
@@ -172,7 +172,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
         opt1Good: { budget: tourPrize, ovr: -1 },
         opt2Good: { morale: 5 }
       },
-      isForced: true
+      isForced: false
     };
   } else {
     return {
@@ -188,7 +188,7 @@ export const generateMidSeasonEvent = (state: GameState): GameEvent | null => {
         goodPct: 100,
         goodTxt: { en: 'Prepare for Second Half', de: 'Auf Second Half vorbereiten' },
       },
-      isForced: true
+      isForced: false
     };
   }
 };

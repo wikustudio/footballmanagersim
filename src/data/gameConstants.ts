@@ -2250,7 +2250,13 @@ export const calculateClubFinancials = (state: {
     youthMaintenance = Math.floor(youthMaintenance * facilityRatio);
   }
 
-  let facilityExpenses = academyUpkeep + medicalUpkeep + extraPureWages + youthMaintenance + luxuryTax;
+  const baseAcademyOp = youthMaintenance + academyUpkeep;
+  const scoutingDialPct = isReserve ? 0 : Math.max(0, Math.min(50, (state as any).academyScoutingDial ?? 0));
+  const scoutingDialExtraK = scoutingDialPct > 0
+    ? Math.max(1, Math.round(baseAcademyOp * (scoutingDialPct / 100)))
+    : 0;
+
+  let facilityExpenses = academyUpkeep + medicalUpkeep + extraPureWages + youthMaintenance + scoutingDialExtraK + luxuryTax;
 
   // 3. Enforce Uncapped Consequences (Recombine)
   pureWages = baselinePureWages + extraPureWages;
@@ -2288,7 +2294,10 @@ export const calculateClubFinancials = (state: {
     pureWages,
     stadiumOp: stadiumMaintenance + venueRentFee,
     medicalOp: medicalUpkeep,
-    academyOp: youthMaintenance + academyUpkeep,
+    academyOp: baseAcademyOp + scoutingDialExtraK,
+    baseAcademyOp,
+    scoutingDialExtraK,
+    scoutingDialPct,
     severanceOp: severanceTotal,
     luxuryTax,
     estRevenue,
