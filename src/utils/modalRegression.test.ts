@@ -684,5 +684,21 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(trophySrc).toContain("typeof title === 'object' ? getLoc(lang, title as any) : String(title || '')");
       expect(trophySrc).toContain("typeof message === 'object' ? getLoc(lang, message as any)");
     });
+
+    it('verifies Header More menu includes Basketball Manager Sim link and ClubProfileModal Prestige & Vision view is cleaned up', async () => {
+      const fs = await import('fs');
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf-8');
+      const profileModalSrc = fs.readFileSync('src/components/ClubProfileModal.tsx', 'utf-8');
+
+      expect(headerSrc).toContain('href="https://basketballmanagersim.com"');
+      expect(headerSrc).toContain('Basketball Manager Sim');
+
+      expect(profileModalSrc).toContain('divide-x divide-white/[0.06]');
+      expect(profileModalSrc).toContain("title: 'Balanced Model'");
+      expect(profileModalSrc).toContain("title: 'Wonderkid Factory'");
+      expect(profileModalSrc).not.toContain('lg:grid-cols-3');
+      expect(profileModalSrc).not.toContain('🟩');
+    });
   });
 });
+

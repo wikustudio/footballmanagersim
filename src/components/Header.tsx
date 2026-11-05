@@ -296,6 +296,21 @@ export const Header: React.FC<HeaderProps> = ({
                     Other Games
                   </div>
                   <a
+                    href="https://basketballmanagersim.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMoreMenuOpen(false)}
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-white/[0.06] text-zinc-300 hover:text-white text-xs font-medium transition cursor-pointer gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
+                        <i className="fa-solid fa-basketball text-xs"></i>
+                      </div>
+                      <span className="truncate">Basketball Manager Sim</span>
+                    </div>
+                    <i className="fa-solid fa-arrow-up-right-from-square text-[10px] opacity-50 shrink-0"></i>
+                  </a>
+                  <a
                     href="https://handballmanagersim.com"
                     target="_blank"
                     rel="noopener noreferrer"

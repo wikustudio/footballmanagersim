@@ -907,14 +907,14 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
           ) : (
             /* ================= DOSSIER & PRESTIGE VIEW ================= */
             <div className="space-y-4">
-              {/* Main Reputation Score Card */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 relative overflow-hidden shadow-sm">
+              {/* Unified Standing, Infrastructure & Heritage Card */}
+              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 relative overflow-hidden">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
                       {isDe ? 'Globale Strahlkraft & Ansehen' : 'Global Standing & Prestige'}
                     </div>
-                    <div className="text-xl font-bold text-white tracking-tight">
+                    <div className="text-lg sm:text-xl font-bold text-white tracking-tight">
                       {tierInfo.title}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed mt-1">
@@ -922,15 +922,15 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                     </p>
                   </div>
 
-                  {/* Radial Meter */}
-                  <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                  {/* Sleek Radial Prestige Meter */}
+                  <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
                     <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
                       <circle
                         cx="48"
                         cy="48"
                         r={radius}
-                        className="stroke-white/5 fill-none"
-                        strokeWidth="8"
+                        className="stroke-white/[0.06] fill-none"
+                        strokeWidth="6"
                       />
                       <circle
                         cx="48"
@@ -938,138 +938,186 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                         r={radius}
                         className="fill-none transition-all duration-1000 ease-out"
                         stroke={hexColor}
-                        strokeWidth="8"
+                        strokeWidth="6"
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
                         strokeLinecap="round"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-white tracking-tight leading-none">
+                      <span className="text-xl font-black text-white tabular-nums tracking-tight leading-none">
                         {clubRep}
                       </span>
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
+                      <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mt-0.5">
                         / 100
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Quick Standing & Infrastructure Bar */}
-                <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-                  <div className="bg-white/[0.02] p-2 rounded-xl border border-white/5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                      {isDe ? 'Kader (GES)' : 'Squad (OVR)'}
+                {/* Clean Divided 5-Metric Strip (No nested boxes or wrapping labels) */}
+                <div className="mt-4 pt-3.5 border-t border-white/[0.06] grid grid-cols-5 divide-x divide-white/[0.06] text-center">
+                  <div className="px-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                      {isDe ? 'Kader' : 'OVR'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono">
+                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
                       {safeBaseOvr}
                     </div>
                   </div>
-                  <div className="bg-white/[0.02] p-2 rounded-xl border border-white/5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  <div className="px-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
                       {isDe ? 'Stadion' : 'Capacity'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono">
+                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
                       {(resolvedClub.stadium || state.club.stadium || 0).toLocaleString()}
                     </div>
                   </div>
-                  <div className="bg-white/[0.02] p-2 rounded-xl border border-white/5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                      {isDe ? 'Jugendakademie' : 'Academy'}
+                  <div className="px-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                      {isDe ? 'Akademie' : 'Academy'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-emerald-400 mt-0.5 font-mono">
+                    <div className="text-sm sm:text-base font-black text-emerald-400 mt-0.5 font-mono tabular-nums">
                       Lvl {resolvedClub.academyLevel || state.club.academyLevel || 1}<span className="text-zinc-500 text-xs font-normal">/5</span>
                     </div>
                   </div>
-                  <div className="bg-white/[0.02] p-2 rounded-xl border border-white/5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                      {isDe ? 'Med. Zentrum' : 'Medical'}
+                  <div className="px-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                      {isDe ? 'Medizin' : 'Medical'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-sky-400 mt-0.5 font-mono">
+                    <div className="text-sm sm:text-base font-black text-sky-400 mt-0.5 font-mono tabular-nums">
                       Lvl {resolvedClub.medicalLevel || state.club.medicalLevel || 1}<span className="text-zinc-500 text-xs font-normal">/5</span>
                     </div>
                   </div>
-                  <div className="col-span-2 sm:col-span-1 bg-white/[0.02] p-2 rounded-xl border border-white/5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                      {isDe ? 'Fanbasis' : 'Fanbase'}
+                  <div className="px-1.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                      {isDe ? 'Fans' : 'Fanbase'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono">
+                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
                       {formatFanbase(resolvedClub.fanBase || state.club.fanBase)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Historical Lore & Club Ethos */}
+                {narrative && (
+                  <div className="mt-3.5 pt-3.5 border-t border-white/[0.06] flex items-start gap-2.5">
+                    <i className="fa-solid fa-quote-left text-zinc-500 text-xs mt-0.5 shrink-0"></i>
+                    <p className="text-xs text-zinc-300 italic leading-relaxed">
+                      {narrative}
+                    </p>
+                  </div>
+                )}
+
+                {/* Compact Strategic Governance Drivers */}
+                <div className="mt-3.5 pt-3.5 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-400/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <i className="fa-solid fa-user-plus text-[11px]"></i>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-zinc-200 font-semibold text-xs">
+                        {isDe ? 'Transfer-Anziehung' : 'Transfer Pull'}
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">
+                        {clubRep >= 75
+                          ? (isDe ? 'Internationale Stars und 5-Sterne-Talente unterschreiben sofort.' : 'Elite international stars and 5-star prodigies readily sign.')
+                          : (isDe ? 'Erfordert kluges Scouting und attraktive Verträge.' : 'Signings require savvy scouting and competitive incentives.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-400/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <i className="fa-solid fa-handshake text-[11px]"></i>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-zinc-200 font-semibold text-xs">
+                        {isDe ? 'Sponsoren-Erlöse' : 'Commercial Yields'}
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">
+                        {isDe
+                          ? 'Maximiert Trikotsponsoring und weltweite Merchandising-Erlöse.'
+                          : 'Maximizes kit sponsorship deals and global merchandise reach.'}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Corporate Restructuring & Club Identities */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
-            <div>
-              <div className="text-[10px] uppercase font-bold text-sky-400 tracking-wider mb-1 flex items-center gap-1.5">
-                <i className="fa-solid fa-sitemap"></i>
-                <span>Corporate Restructuring</span>
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                Macro Club Identity & Business Model
-              </h3>
-            </div>
-            
-            <div className="flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] px-3.5 py-2 rounded-xl shrink-0 self-start sm:self-auto">
-              <span className="text-xs text-zinc-400 font-medium">Available DP:</span>
-              <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 font-mono font-bold text-xs border border-sky-400/30">
-                {currentDp} DP
-              </span>
-              <span className="text-[10px] text-zinc-500 font-medium">(20 DP to change)</span>
-            </div>
-          </div>
+              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-3.5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="text-[10px] uppercase font-semibold text-sky-400 tracking-wider flex items-center gap-1.5">
+                      <i className="fa-solid fa-sitemap text-[10px]"></i>
+                      <span>{isDe ? 'Vereinsstruktur' : 'Corporate Restructuring'}</span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">
+                      {isDe ? 'Vereins-Identität & Geschäftsmodell' : 'Club Identity & Business Model'}
+                    </h3>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] px-3 py-1.5 rounded-xl shrink-0 text-xs">
+                    <span className="text-zinc-400 font-medium">Available:</span>
+                    <span className="font-mono font-bold text-sky-300 tabular-nums">
+                      {currentDp} DP
+                    </span>
+                    <span className="text-zinc-600" aria-hidden="true">·</span>
+                    <span className="text-[11px] text-zinc-500 font-mono tabular-nums">20 DP cost</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
                   {[
                     {
                       id: 'balanced' as const,
-                      title: 'BALANCED MODEL',
+                      title: 'Balanced Model',
                       subtitle: isDe ? 'Ausgewogenes Standardmodell' : 'Standard Balanced Framework',
                       icon: 'fa-scale-balanced',
-                      color: 'border-zinc-500/30 text-zinc-300',
-                      badgeColor: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
-                      desc: isDe 
-                        ? '🟩 Ausgewogenes Risiko-Ertrags-Verhältnis in allen Abteilungen. 🟥 Keine strukturellen Department-Boni.' 
-                        : '🟩 Balanced risk-reward across all departments. 🟥 Zero structural trade-offs or specialized department modifiers.',
+                      iconStyle: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/25',
+                      pros: isDe
+                        ? 'Ausgewogenes Risiko-Ertrags-Verhältnis in allen Abteilungen'
+                        : 'Balanced risk-reward across all club departments',
+                      cons: isDe
+                        ? 'Keine spezialisierten Abteilungs-Boni oder strukturellen Nachteile'
+                        : 'No specialized department modifiers or structural trade-offs',
                     },
                     {
                       id: 'wonderkid' as const,
-                      title: 'WONDERKID FACTORY',
+                      title: 'Wonderkid Factory',
                       subtitle: isDe ? 'Talentschmiede & Jugend-Export' : 'Youth Academy & Talent Export',
                       icon: 'fa-seedling',
-                      color: 'border-emerald-500/30 text-emerald-300',
-                      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-                      desc: '🟩 +15% Academy Odds, +35% Sale Profit. 🟥 Auto-sells highest OVR player end-of-season.',
+                      iconStyle: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+                      pros: '+15% Academy Odds · +35% Player Sale Profit',
+                      cons: 'Auto-sells highest OVR player at season end',
                     },
                     {
                       id: 'galactico' as const,
-                      title: 'GALACTICO ENTERPRISE',
+                      title: 'Galactico Enterprise',
                       subtitle: isDe ? 'Weltstars & Kommerzielle Strahlkraft' : 'Superstars & Commercial Stature',
                       icon: 'fa-crown',
-                      color: 'border-amber-500/30 text-amber-300',
-                      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-                      desc: '🟩 1.5x Fan/Commercial Growth, +1 OVR on Stars. 🟥 Must sign 1 player > Squad Avg yearly or face severe board penalties.',
+                      iconStyle: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+                      pros: '1.5× Fan & Commercial Growth · +1 OVR on Stars',
+                      cons: 'Must sign 1 player > Squad Avg yearly or face board penalty',
                     },
                     {
                       id: 'moneyball' as const,
-                      title: 'MONEYBALL SYNDICATE',
+                      title: 'Moneyball Syndicate',
                       subtitle: isDe ? 'Datengetriebene Effizienz & Synergie' : 'Data-Driven Efficiency & Synergy',
                       icon: 'fa-chart-line',
-                      color: 'border-cyan-500/30 text-cyan-300',
-                      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-                      desc: '🟩 5% Flop Rate on Regular Transfers, +4 OVR Coach Synergy. 🟥 Locked out of Key/Galactico signings.',
+                      iconStyle: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
+                      pros: 'Only 5% Flop Rate on Regular Transfers · +4 OVR Synergy',
+                      cons: 'Locked out of Key & Galactico star signings',
                     },
                     {
                       id: 'heritage' as const,
-                      title: 'HERITAGE FORTRESS',
+                      title: 'Heritage Fortress',
                       subtitle: isDe ? 'Tradition, Vereinstreue & Stabilität' : 'Tradition, Loyalty & Stability',
                       icon: 'fa-shield-halved',
-                      color: 'border-purple-500/30 text-purple-300',
-                      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-                      desc: '🟩 Morale decay halved, +20% Wage Relief (Loyalty). 🟥 Regular transfers cost 2x budget.',
+                      iconStyle: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
+                      pros: 'Morale decay halved · +20% Wage Relief (Loyalty)',
+                      cons: 'Regular market transfers cost 2× budget',
                     },
                   ].map((card) => {
                     const isActive = activeIdentity === card.id;
@@ -1078,121 +1126,79 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                     return (
                       <div
                         key={card.id}
-                        className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between gap-3 text-left relative overflow-hidden ${
+                        className={`p-3.5 rounded-xl border transition-all text-left relative ${
                           isActive
-                            ? 'bg-sky-500/[0.08] border-sky-400/50 shadow-md ring-1 ring-sky-400/30'
-                            : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]'
+                            ? 'bg-sky-500/[0.07] border-sky-400/40'
+                            : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.035]'
                         }`}
                       >
-                        <div className="space-y-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <i className={`fa-solid ${card.icon} text-xs shrink-0 ${card.color}`}></i>
-                              <span className="font-black text-xs text-white tracking-wide leading-tight">
-                                {card.title}
-                              </span>
+                        <div className="space-y-2.5">
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${card.iconStyle}`}>
+                                <i className={`fa-solid ${card.icon} text-xs`}></i>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-xs sm:text-sm text-white tracking-tight leading-snug">
+                                  {card.title}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 leading-tight">
+                                  {card.subtitle}
+                                </div>
+                              </div>
                             </div>
-                            {isActive && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
-                                {isDe ? 'Aktiv' : 'Active'}
+
+                            {isActive ? (
+                              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 shrink-0 flex items-center gap-1.5">
+                                <i className="fa-solid fa-check text-[9px]"></i>
+                                <span>{isDe ? 'Aktiv' : 'Active'}</span>
                               </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (canAfford) {
+                                    const newId = card.id;
+                                    setActiveIdentity(newId);
+                                    setCurrentDp(prev => Math.max(0, prev - 20));
+                                    if (onSelectIdentity) {
+                                      onSelectIdentity(newId);
+                                    } else {
+                                      state.clubIdentity = newId;
+                                      state.skillPoints = Math.max(0, (state.skillPoints || 0) - 20);
+                                    }
+                                  }
+                                }}
+                                disabled={!canAfford}
+                                className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                                  canAfford
+                                    ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/30 cursor-pointer active:scale-95'
+                                    : 'bg-white/[0.04] text-zinc-500 border border-white/[0.06] cursor-not-allowed'
+                                }`}
+                              >
+                                <span>{isDe ? 'Aktivieren' : 'Enact'}</span>
+                                <span className="text-zinc-500" aria-hidden="true">·</span>
+                                <span className="font-mono text-[10px] opacity-80">20 DP</span>
+                              </button>
                             )}
                           </div>
-                          <div className="text-[10px] text-zinc-400 font-medium">
-                            {card.subtitle}
-                          </div>
-                          <p className="text-[11px] text-zinc-300 leading-relaxed font-sans pt-1">
-                            {card.desc}
-                          </p>
-                        </div>
 
-                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                          {isActive ? (
-                            <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
-                              <i className="fa-solid fa-check text-[9px]"></i>
-                              <span>{isDe ? 'Aktives Geschäftsmodell' : 'Current Model Enacted'}</span>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (canAfford) {
-                                  const newId = card.id;
-                                  setActiveIdentity(newId);
-                                  setCurrentDp(prev => Math.max(0, prev - 20));
-                                  if (onSelectIdentity) {
-                                    onSelectIdentity(newId);
-                                  } else {
-                                    state.clubIdentity = newId;
-                                    state.skillPoints = Math.max(0, (state.skillPoints || 0) - 20);
-                                  }
-                                }
-                              }}
-                              disabled={!canAfford}
-                              className={`w-full py-1.5 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                canAfford
-                                  ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/30'
-                                  : 'bg-white/[0.04] text-zinc-500 border border-white/[0.06] cursor-not-allowed opacity-60'
-                              }`}
-                            >
-                              <i className="fa-solid fa-arrows-rotate text-[10px]"></i>
-                              <span>{isDe ? 'Aktivieren (20 DP)' : 'Enact Model (20 DP)'}</span>
-                            </button>
-                          )}
+                          {/* Structured 2-Column Pros & Trade-offs */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-4 pt-2 border-t border-white/[0.05] text-[11px] leading-snug">
+                            <div className="flex items-start gap-2 text-zinc-200">
+                              <span className="text-emerald-400 font-mono font-bold shrink-0 leading-snug">+</span>
+                              <span>{card.pros}</span>
+                            </div>
+                            <div className="flex items-start gap-2 text-zinc-400">
+                              <span className="text-rose-400 font-mono font-bold shrink-0 leading-snug">−</span>
+                              <span>{card.cons}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* Historical Lore & Boardroom Context */}
-              {narrative && (
-                <div className="bg-[#18181b] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
-                  <div
-                    className="absolute top-0 left-0 w-1.5 h-full"
-                    style={{ backgroundColor: hexColor }}
-                  />
-                  <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                    <i className="fas fa-book-bookmark text-zinc-400 text-xs"></i>
-                    <span>{isDe ? 'Vereinshistorie & Leitbild' : 'Heritage & Vision'}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-zinc-300 italic leading-relaxed pl-1">
-                    "{narrative}"
-                  </p>
-                </div>
-              )}
-
-              {/* Prestige Strategic Drivers */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 space-y-3 shadow-sm">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                  {isDe ? 'Einflussfaktoren im Spielbetrieb' : 'Strategic Governance Drivers'}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className="flex items-center gap-2 text-zinc-200 font-semibold mb-1">
-                      <i className="fa-solid fa-user-plus text-sky-400 text-xs"></i>
-                      <span>{isDe ? 'Transfer-Anziehung' : 'Transfer Pull'}</span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed">
-                      {clubRep >= 75
-                        ? (isDe ? 'Internationale Hochkaräter und 5-Sterne Talente lassen sich mühelos anlocken.' : 'Elite international stars and 5-star prodigies readily sign.')
-                        : (isDe ? 'Verhandlungen erfordern kluges Scouting und wettbewerbsfähige Verträge.' : 'Signings require savvy scouting and competitive incentive structures.')}
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className="flex items-center gap-2 text-zinc-200 font-semibold mb-1">
-                      <i className="fa-solid fa-handshake text-emerald-400 text-xs"></i>
-                      <span>{isDe ? 'Sponsoren-Erlöse' : 'Commercial Yields'}</span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed">
-                      {isDe
-                        ? 'Höheres Ansehen maximiert Trikotsponsoring und erhöht die weltweiten Merchandising-Umsätze.'
-                        : 'Elevated reputation maximizes kit sponsorship deals and scales worldwide merchandise reach.'}
-                    </p>
-                  </div>
                 </div>
               </div>
 
