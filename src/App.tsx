@@ -74,7 +74,7 @@ import { FeedbackModal } from './components/FeedbackModal';
 import { getCrashReports, subscribeCrashReports, recordCrashReport } from './utils/crashReporter';
 import { initGA, trackEvent } from './analytics';
 import { ConsentBanner } from './components/ConsentBanner';
-import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta } from './utils/storageManager';
+import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta, isNewerSaveOfSameCareer } from './utils/storageManager';
 import { mergeClubsDbSafeguards, autoRepairClubsDb, autoRepairSingleClub } from './utils/modSafeguards';
 import { EventUI } from './components/EventUI';
 import { SeasonHistoryTable } from './components/SeasonHistoryTable';
@@ -213,14 +213,48 @@ export const sanitizeGameState = (state: any): GameState | null => {
         (c: any) => c.id === cleanClub?.id || c.name?.toLowerCase().trim() === cleanClub?.name?.toLowerCase().trim()
       ));
 
+  const historyArr = Array.isArray(state.history) ? state.history : [];
+  const firstHistoryYear = historyArr.length > 0 && typeof historyArr[0]?.year === 'number' && Number.isFinite(historyArr[0].year)
+    ? historyArr[0].year
+    : undefined;
+  const maxHistoryYear = historyArr.reduce((maxYr: number, h: any) => (
+    typeof h?.year === 'number' && Number.isFinite(h.year) ? Math.max(maxYr, h.year) : maxYr
+  ), 0);
+  const finishDataYear = typeof state.pendingSeasonFinishData?.year === 'number' && Number.isFinite(state.pendingSeasonFinishData.year)
+    ? state.pendingSeasonFinishData.year
+    : 0;
+
   const isStuckMidPhase =
     state.seasonPhase === 'mid' &&
-    (Boolean(state.pendingSeasonFinishData) ||
-      (Array.isArray(state.history) && state.history.some((h: any) => h && h.year === state.year)));
+    (!state.pendingSeasonState ||
+      Boolean(state.pendingSeasonFinishData) ||
+      (maxHistoryYear > 0 && typeof state.year === 'number' && maxHistoryYear >= state.year));
+
+  const resolvedSeasonPhase = isStuckMidPhase ? 'start' : (state.seasonPhase || 'start');
+  const resolvedStartYear = typeof state.startYear === 'number' && Number.isFinite(state.startYear)
+    ? Math.max(1950, Math.min(new Date().getFullYear(), state.startYear))
+    : (firstHistoryYear ? Math.max(1950, Math.min(new Date().getFullYear(), firstHistoryYear)) : 2026);
+  const rawYear = typeof state.year === 'number' && Number.isFinite(state.year)
+    ? Math.max(1950, state.year)
+    : resolvedStartYear;
+  const minExpectedNextYear = Math.max(
+    historyArr.length > 0 ? resolvedStartYear + historyArr.length : resolvedStartYear,
+    maxHistoryYear > 0 ? maxHistoryYear + 1 : 0,
+    finishDataYear > 0 ? finishDataYear + 1 : 0
+  );
+  const resolvedYear = resolvedSeasonPhase !== 'mid'
+    ? Math.max(rawYear, minExpectedNextYear)
+    : Math.max(rawYear, maxHistoryYear > 0 ? maxHistoryYear + 1 : resolvedStartYear);
+  const rawSeasonCount = typeof state.seasonCount === 'number' && Number.isFinite(state.seasonCount)
+    ? Math.max(1, state.seasonCount)
+    : Math.max(1, resolvedYear - resolvedStartYear + 1);
+  const resolvedSeasonCount = resolvedSeasonPhase !== 'mid'
+    ? Math.max(rawSeasonCount, historyArr.length + 1, resolvedYear - resolvedStartYear + 1)
+    : Math.max(rawSeasonCount, historyArr.length + 1);
 
   return {
     ...state,
-    seasonPhase: isStuckMidPhase ? 'start' : state.seasonPhase,
+    seasonPhase: resolvedSeasonPhase,
     pendingSeasonState: isStuckMidPhase ? null : state.pendingSeasonState,
     pendingForcedEvent: isForcedJobOfferInvalid ? undefined : state.pendingForcedEvent,
     currentRival: cleanRival,
@@ -376,15 +410,9 @@ export const sanitizeGameState = (state: any): GameState | null => {
     top4FinishStreak: typeof state.top4FinishStreak === 'number' ? state.top4FinishStreak : 0,
     currentCoach: (state.currentCoach && (state.currentCoach.contractYearsLeft ?? 0) > 0) ? state.currentCoach : undefined,
     managerAge: typeof state.managerAge === 'number' ? state.managerAge : 35,
-    startYear: typeof state.startYear === 'number'
-      ? Math.max(1950, Math.min(new Date().getFullYear(), state.startYear))
-      : 2026,
-    year: typeof state.year === 'number'
-      ? Math.max(1950, state.year)
-      : (typeof state.startYear === 'number' ? Math.max(1950, Math.min(new Date().getFullYear(), state.startYear)) : 2026),
-    seasonCount: typeof state.seasonCount === 'number'
-      ? Math.max(1, state.seasonCount)
-      : Math.max(1, (typeof state.year === 'number' ? state.year : 2026) - (typeof state.startYear === 'number' ? state.startYear : 2026) + 1),
+    startYear: resolvedStartYear,
+    year: resolvedYear,
+    seasonCount: resolvedSeasonCount,
     budget: (() => {
       const tier = state.club?.tier || 1;
       const country = state.club?.country || 'GER';
@@ -1131,6 +1159,20 @@ export default function App() {
         }
       } else {
         if (loadedClubs.length === 0) loadedClubs = getSafeDefaultClubs();
+      }
+
+      // Safeguard: If IndexedDB holds a newer save of the same career (e.g. if localStorage hit quota or reload interrupted write), recover it
+      try {
+        const idbSave = await loadFromIndexedDB(LOCAL_STORAGE_KEY);
+        if (idbSave && isMounted && isNewerSaveOfSameCareer(idbSave, latestGameStateRef.current)) {
+          const sanitizedIdb = sanitizeGameState(idbSave);
+          if (sanitizedIdb) {
+            latestGameStateRef.current = sanitizedIdb;
+            setGameState(sanitizedIdb);
+          }
+        }
+      } catch (e) {
+        console.warn('Error checking IndexedDB save state:', e);
       }
 
       // Safeguard: Retrieve existing simulated dynamic universe clubs from storage
@@ -2404,8 +2446,24 @@ export default function App() {
     }
     setGameState(prev => {
       if (!prev) return prev;
+      const maxHistYr = (prev.history || []).reduce((m, h) => (typeof h?.year === 'number' && Number.isFinite(h.year) ? Math.max(m, h.year) : m), 0);
+      const completedYr = typeof seasonFinishData?.year === 'number' && Number.isFinite(seasonFinishData.year) ? seasonFinishData.year : 0;
+      const safeStartYr = prev.startYear || completedYr || prev.year || 2026;
+      const nextYr = Math.max(
+        prev.year,
+        completedYr > 0 ? completedYr + 1 : 0,
+        maxHistYr > 0 ? maxHistYr + 1 : 0,
+        safeStartYr + (prev.history?.length || 0)
+      );
+      const nextSeasonCount = Math.max(
+        prev.seasonCount || 1,
+        (prev.history?.length || 0) + 1,
+        nextYr - safeStartYr + 1
+      );
       const next = {
         ...prev,
+        year: nextYr,
+        seasonCount: nextSeasonCount,
         pendingSeasonFinishData: null,
         seasonPhase: 'start' as const,
         pendingSeasonState: null,
@@ -7264,14 +7322,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // unless overridden by a live interactive Decision Day fixture!
     const syncedPending = state.pendingSeasonState;
     state.pendingSeasonState = null;
-    if (latestGameStateRef.current) {
-      latestGameStateRef.current = {
-        ...latestGameStateRef.current,
-        seasonPhase: 'start',
-        pendingSeasonState: null,
-      };
-    }
-    setGameState(prev => prev ? { ...prev, seasonPhase: 'start', pendingSeasonState: null } : prev);
     if (!isDecisionDayFired && syncedPending) {
       approxPos = syncedPending.pos;
     }
@@ -8928,8 +8978,18 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       state.youthChampOvrBoost = 0;
     }
     
-    state.year += 1;
-    state.seasonCount = (state.seasonCount || 1) + 1;
+    const maxHistYr = (state.history || []).reduce((maxYr, h) => (typeof h?.year === 'number' && Number.isFinite(h.year) ? Math.max(maxYr, h.year) : maxYr), 0);
+    state.year = Math.max(
+      (state.year || completedSeasonYear) + 1,
+      completedSeasonYear + 1,
+      maxHistYr > 0 ? maxHistYr + 1 : 0,
+      (state.startYear || completedSeasonYear) + (state.history?.length || 1)
+    );
+    state.seasonCount = Math.max(
+      (state.seasonCount || 1) + 1,
+      (state.history?.length || 1) + 1,
+      state.year - (state.startYear || completedSeasonYear) + 1
+    );
     state.managerAge = (state.managerAge || 35) + 1;
     state.playedCupOpponents = {};
 
@@ -10467,6 +10527,16 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     state.isNewSeasonRender = true;
     state.seasonPhase = 'start';
     state.pendingSeasonState = null;
+    state.year = Math.max(
+      state.year || (completedSeasonYear + 1),
+      completedSeasonYear + 1,
+      (state.startYear || completedSeasonYear) + (state.history?.length || 1)
+    );
+    state.seasonCount = Math.max(
+      state.seasonCount || 2,
+      (state.history?.length || 1) + 1,
+      state.year - (state.startYear || completedSeasonYear) + 1
+    );
 
     latestGameStateRef.current = state;
     setClubsDb(cleanNewClubsDb);
@@ -10544,13 +10614,21 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       if (!isStartPhase) {
         setGameState(prev => {
           if (!prev) return prev;
+          const fallbackHist = completedHistorySnap || prev.history || [];
+          const maxFallbackHistYr = fallbackHist.reduce((m, h) => (typeof h?.year === 'number' && Number.isFinite(h.year) ? Math.max(m, h.year) : m), 0);
+          const safeRecoveredYear = Math.max(
+            prev.year,
+            completedSeasonYearSnap != null ? completedSeasonYearSnap + 1 : 0,
+            maxFallbackHistYr > 0 ? maxFallbackHistYr + 1 : 0,
+            (prev.startYear || prev.year) + fallbackHist.length
+          );
           const recovered: GameState = {
             ...prev,
             seasonPhase: 'start',
             pendingSeasonState: null,
-            year: completedSeasonYearSnap != null ? Math.max(prev.year, completedSeasonYearSnap + 1) : prev.year,
-            seasonCount: completedHistorySnap ? Math.max(prev.seasonCount || 1, completedHistorySnap.length + 1) : prev.seasonCount,
-            history: completedHistorySnap || prev.history,
+            year: safeRecoveredYear,
+            seasonCount: Math.max(prev.seasonCount || 1, fallbackHist.length + 1, safeRecoveredYear - (prev.startYear || prev.year) + 1),
+            history: fallbackHist,
             clubLeagueHistories: completedClubHistorySnap || prev.clubLeagueHistories,
             regTransfersThisSeason: 0,
             keyTransfersThisSeason: 0,
@@ -10646,13 +10724,14 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     isProcessingAction.current = true;
     setTimeout(() => isProcessingAction.current = false, 300);
 
-    if (!gameState || !pendingEvent) return;
+    const liveState = latestGameStateRef.current || gameState;
+    if (!liveState || !pendingEvent) return;
 
     const updated = { 
-      ...gameState, 
-      club: { ...gameState.club },
-      totals: { ...gameState.totals },
-      history: [...(gameState.history || [])]
+      ...liveState, 
+      club: { ...liveState.club },
+      totals: { ...liveState.totals },
+      history: [...(liveState.history || [])]
     };
     const tier = updated.club.tier;
 
@@ -13834,7 +13913,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       return;
     } else {
       // Fallback to Data-Driven Event Engine for all unhandled events
-      const dynamicResult = resolveDynamicEvent(gameState, pendingEvent, choiceIndex, tier);
+      const dynamicResult = resolveDynamicEvent(liveState, pendingEvent, choiceIndex, tier);
       if (dynamicResult) {
         if (dynamicResult.costAttempt > 0 && !canAffordWithCreditLimit(dynamicResult.costAttempt)) return;
         dynamicResult.updated.pendingForcedEvent = undefined;
@@ -14195,7 +14274,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 </div>
 
                 <AnimatePresence>
-                {pendingEvent && isValidGameEvent(pendingEvent) && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach && (
+                {pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach && (
                   <motion.div key={`event-modal-${pendingEvent?.id || Date.now()}`} initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 26 }} className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black/75 backdrop-blur-2xl p-2.5 sm:p-4 overflow-y-auto overscroll-contain">
                     <div className={`w-full max-h-[92vh] sm:max-h-[88vh] my-auto overflow-y-auto custom-scrollbar overscroll-contain shrink-0 ${pendingEvent?.type === 'job_offer' ? 'max-w-xl sm:max-w-2xl' : 'max-w-md'}`}>
                       <EventUI
@@ -14209,7 +14288,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 )}
                 </AnimatePresence>
 
-                <div className={`${(pendingEvent && isValidGameEvent(pendingEvent) && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
+                <div className={`${(pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
                   <ActionPanel
                   state={gameState}
                   mediaBaseBoost={getLeagueScaledVal(gameState.club.tier, 6500, gameState.club.country || 'GER')}

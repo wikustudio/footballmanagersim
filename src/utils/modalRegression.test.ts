@@ -699,6 +699,84 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(profileModalSrc).not.toContain('lg:grid-cols-3');
       expect(profileModalSrc).not.toContain('🟩');
     });
+
+    it('verifies sanitizeGameState and season completion advance 2010 season to 2011 and never return to start of 2010', async () => {
+      const { sanitizeGameState } = await import('../App');
+      const fs = await import('fs');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const mainSrc = fs.readFileSync('src/main.tsx', 'utf-8');
+
+      // Exact state from live bug report: Milton Keynes Dons after completing 2010 season (#2, 1 history entry, phase start)
+      const regressed2010State = {
+        managerName: 'ALEX',
+        startYear: 2010,
+        year: 2010,
+        seasonCount: 2,
+        seasonPhase: 'start',
+        careerScore: 4410,
+        budget: 1120,
+        club: {
+          id: 905,
+          name: 'Milton Keynes Dons',
+          country: 'ENG',
+          tier: 5,
+          baseOvr: 63,
+          stadium: 30500,
+          color: 'ffffff',
+        },
+        currentRival: {
+          id: 906,
+          name: 'Grimsby Town',
+          tier: 5,
+          baseOvr: 62,
+          wins: 1,
+          draws: 0,
+          losses: 1,
+        },
+        history: [
+          {
+            year: 2010,
+            clubName: 'Milton Keynes Dons',
+            clubId: 905,
+            tier: 5,
+            pos: 4,
+            pts: 62,
+            wins: 18,
+            draws: 8,
+            losses: 8,
+            gf: 55,
+            ga: 38,
+            ovr: 63,
+          },
+        ],
+      };
+
+      const healed = sanitizeGameState(regressed2010State);
+      expect(healed).not.toBeNull();
+      expect(healed!.year).toBe(2011);
+      expect(healed!.seasonCount).toBe(2);
+      expect(healed!.seasonPhase).toBe('start');
+      expect(healed!.history).toHaveLength(1);
+      expect(healed!.history[0].year).toBe(2010);
+
+      // Stuck mid-season state where 2010 history entry was already recorded
+      const stuckMid2010State = {
+        ...regressed2010State,
+        seasonCount: 1,
+        seasonPhase: 'mid',
+      };
+      const healedMid = sanitizeGameState(stuckMid2010State);
+      expect(healedMid).not.toBeNull();
+      expect(healedMid!.seasonPhase).toBe('start');
+      expect(healedMid!.year).toBe(2011);
+      expect(healedMid!.seasonCount).toBe(2);
+
+      // Verify App.tsx and main.tsx guards against premature phase reset and mid-season SW reload
+      expect(appSrc).not.toContain("setGameState(prev => prev ? { ...prev, seasonPhase: 'start', pendingSeasonState: null } : prev);");
+      expect(appSrc).toContain('minExpectedNextYear');
+      expect(mainSrc).toContain('if (Date.now() - bootedAt < 4000) updateSW(true);');
+    }, 25000);
   });
 });
+
 
