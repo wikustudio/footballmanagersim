@@ -1240,7 +1240,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                           ? (isChamp ? 'DOMESTIC DOUBLE WINNERS' : 'CUP DOUBLE WINNERS')
                           : isChamp
                           ? (country === 'ECU' ? 'LigaPro Serie A Champion' : `${league.name} Champion`)
-                          : 'CUP CHAMPIONS'}
+                          : (trophyList[0]?.badge || 'Cup Champions').toUpperCase()}
                       </span>
                       <span>★</span>
                     </div>
@@ -1257,14 +1257,16 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         ? (isChamp ? 'DOMESTIC DOUBLE GLORY!' : 'CUP DOUBLE GLORY!')
                         : isChamp
                         ? (country === 'ECU' ? 'CAMPEÓN NACIONAL DEL ECUADOR!' : 'LEAGUE TITLE GLORY!')
-                        : 'SILVERWARE & CUP GLORY!'}
+                        : `${(trophyList[0]?.name || 'Cup').toUpperCase()} GLORY!`}
                     </h2>
                     <p className="text-xs sm:text-sm text-yellow-100/90 mt-1 max-w-lg font-medium leading-relaxed">
                       {trophyList.length > 1
                         ? `Historic multi-trophy triumph! ${seasonData.clubName} lifts ${trophyList.map(t => t.name).join(' & ')} in an extraordinary campaign!`
                         : isChamp
                         ? `Historic triumph! ${seasonData.clubName} lifts the championship trophy after dominating the season with ${seasonData.pts} points!`
-                        : `Historic cup triumph! ${seasonData.clubName} lifts the ${trophyList[0]?.name || 'cup'} silverware!`
+                        : ['cl', 'el', 'ecl', 'cwc'].includes(trophyList[0]?.type || '')
+                        ? `Historic continental triumph! ${seasonData.clubName} conquers the ${trophyList[0]?.name || 'continental cup'} to claim the crown!`
+                        : `Historic cup triumph! ${seasonData.clubName} lifts the ${trophyList[0]?.name || 'cup'} trophy!`
                       }
                     </p>
                   </div>
@@ -1313,12 +1315,12 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                               ? 'Historic Treble / Multiple Honours'
                               : trophyList.length === 2
                               ? 'Domestic / Continental Double'
-                              : 'Silverware & Championship Honours'}
+                              : trophyList[0]?.badge || (isChamp ? 'Championship Honour' : 'Season Trophy Honour')}
                           </span>
                         </div>
                         <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
                           {trophyList.length === 1
-                            ? '1 Trophy Lifted This Season'
+                            ? `1 Trophy Lifted This Season · ${trophyList[0]?.name || 'Champion'}`
                             : `${trophyList.length} Trophies Lifted This Season!`}
                         </h3>
                       </div>

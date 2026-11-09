@@ -34,8 +34,8 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
 
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current) {
-      // 3 Domestic + 2 Intl (including Fallen Giant Restoration opportunities) = 5
-      const generated = generateOffers(state, clubsDb, 5);
+      // 2 Domestic + 2 Intl Premium/Continental + 2 Fallen Giant Restoration opportunities = 6
+      const generated = generateOffers(state, clubsDb, 6);
       setOffers(generated);
       if (scrollRef.current) {
         scrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
@@ -276,12 +276,17 @@ const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept,
               <span className="shrink-0">{isDomestic ? t('Domestic', 'Inland') : t('International', 'Ausland')}</span>
               <span className="text-zinc-600">·</span>
               <span className="text-sky-400/90 break-words">{league?.name}</span>
-              {club.isInsolventGiant && (
+              {club.isInsolventGiant ? (
                 <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
                   <i className="fa-solid fa-fire-flame-curved text-[9px] text-amber-400"></i>
                   <span>{t('Fallen Giant · Recovery Mandate', 'Gefallener Gigant · Sanierungsmandat')}</span>
                 </span>
-              )}
+              ) : (club.tier === 1 && club.baseOvr >= 83) ? (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
+                  <i className="fa-solid fa-crown text-[9px] text-emerald-400"></i>
+                  <span>{t('Premium Club · Executive Offer', 'Top-Klub · Direktoren-Angebot')}</span>
+                </span>
+              ) : null}
             </div>
             <h3 className="text-base sm:text-lg font-bold text-white break-words tracking-tight group-hover:text-sky-300 transition-colors">
               {club.name}

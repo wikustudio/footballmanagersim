@@ -206,12 +206,13 @@ export const sanitizeGameState = (state: any): GameState | null => {
     hasHealedFreiberg = true;
   }
 
+  const isForcedJobOfferAlreadySigned = state.pendingForcedEvent?.type === 'job_offer' &&
+    state.pendingForcedEvent.clubs?.some(
+      (c: any) => c.id === cleanClub?.id || c.name?.toLowerCase().trim() === cleanClub?.name?.toLowerCase().trim()
+    );
   const isForcedJobOfferInvalid =
     state.pendingForcedEvent &&
-    (state.pendingForcedEvent.type !== 'job_offer' ||
-      state.pendingForcedEvent.clubs?.some(
-        (c: any) => c.id === cleanClub?.id || c.name?.toLowerCase().trim() === cleanClub?.name?.toLowerCase().trim()
-      ));
+    (state.pendingForcedEvent.type !== 'job_offer' || isForcedJobOfferAlreadySigned);
 
   const historyArr = Array.isArray(state.history) ? state.history : [];
   const firstHistoryYear = historyArr.length > 0 && typeof historyArr[0]?.year === 'number' && Number.isFinite(historyArr[0].year)
@@ -5326,36 +5327,58 @@ export default function App() {
 
   // Realistic & Incremental Job Offers Generator aligned with Director Reputation, Country Preference & Performance
   const generateJobOffers = (state: GameState, currentClubsDb: Club[], count = 2): Club[] => {
-    
     const userCountry = state.club.country || 'GER';
-    const rep = state.reputation;
+    const rep = state.reputation || 50;
     const curTier = state.club.tier;
-    const hasWonCL = state.clWins > 0 || (state.history && state.history.some((h) => h.trophiesThisYear?.cl));
+    const hasWonCL = state.clWins > 0 || Boolean(state.history && state.history.some((h) => h.trophiesThisYear?.cl));
+
+    // Count career trophies across all tracking structures
+    const historyTrophySum = (state.history || []).reduce((acc, h) => {
+      const tr = h?.trophiesThisYear;
+      if (!tr) return acc;
+      return acc + (tr.cl || 0) + (tr.el || 0) + (tr.ecl || 0) + (tr.cwc || 0) + (tr.bl || 0) + (tr.dfb || 0) + (tr.efl || 0) + (tr.lower || 0) + (tr.reg || 0);
+    }, 0);
+    const totalCareerTrophies = Math.max(
+      state.totals?.trophies || 0,
+      state.trophyHistory?.length || 0,
+      state.trophies?.length || 0,
+      historyTrophySum
+    );
 
     // Check last completed season finish position
     const lastHist = state.history && state.history.length > 0 ? state.history[state.history.length - 1] : null;
     const lastPos = lastHist ? lastHist.pos : 1; // Default to 1 if no history yet
     const wonLeagueTitle = lastHist ? lastHist.pos === 1 : false;
+    const everWonLeagueTitle =
+      wonLeagueTitle ||
+      Boolean(state.history && state.history.some((h) => h.pos === 1 || h.trophiesThisYear?.bl));
 
-    // Bad performance check (10th place or worse finish)
-    const isBadSeason = lastPos >= 10;
+    // Bad performance check (10th place or worse finish, unless director has elite 88+ reputation and silverware)
+    const isBadSeason = lastPos >= 10 && !(rep >= 88 && totalCareerTrophies >= 2);
+
+    // Heavyweights check (Real Madrid, Barca, Man City, Bayern Munich, etc.)
+    // Available if won Elite Cup, OR high reputation (>= 85), OR Rep >= 78 with multiple trophies / league title
+    const isHeavyweightEligible =
+      !isBadSeason &&
+      (hasWonCL ||
+        rep >= 85 ||
+        (rep >= 78 && (totalCareerTrophies >= 2 || everWonLeagueTitle)) ||
+        (curTier === 1 && wonLeagueTitle && rep >= 75));
 
     // Determine target tiers
-    // RULE: If you won Elite Cup or have top manager reputation (>= 80), you ONLY get top class League 1 offers!
+    // RULE: If you won Elite Cup, are heavyweight eligible, or have top manager reputation (>= 80), regular offers are strictly Tier 1!
+    // (Fallen Giant restoration mandates in lower tiers are handled separately in Step 2 below)
     let targetTiers: number[] = [];
 
-    if (hasWonCL || (curTier === 1 && rep >= 80)) {
-      // Allow elite managers to drop down to Tier 2 or 3 to rescue historic clubs
-      targetTiers = [1, 2, 3];
+    if (!isBadSeason && (isHeavyweightEligible || hasWonCL || rep >= 80)) {
+      targetTiers = [1];
     } else if (isBadSeason) {
       // Bad performance -> NO promotion offers! Only same tier or lower tiers.
       targetTiers = [curTier, Math.min(getMaxTier(userCountry, clubsDb), curTier + 1), Math.min(getMaxTier(userCountry, clubsDb), curTier + 2)];
     } else {
       // Normal/good performance
-      // Can you step up 1 tier?
       let canStepUp = false;
 
-      // Increased rep requirements to make it harder to jump leagues
       if (curTier >= 5 && (rep >= 30 || lastPos <= 3)) canStepUp = true;
       else if (curTier === 4 && (rep >= 45 || lastPos <= 2)) canStepUp = true;
       else if (curTier === 3 && (rep >= 65 || lastPos === 1)) canStepUp = true;
@@ -5373,12 +5396,7 @@ export default function App() {
       }
     }
 
-    // Heavyweights check (Real Madrid, Barca, Man City, Bayern Munich, etc.)
-    // ONLY available if won Elite Cup OR League 1 Champion with Rep >= 85
-    const isHeavyweightEligible = hasWonCL || (curTier === 1 && wonLeagueTitle && rep >= 85);
-
     // Filter out powerhouses if the manager is not a heavyweight or just got sacked
-    // Made maxAllowedOvr tighter. Can't jump massive OVRs without high reputation
     const maxAllowedOvr = isHeavyweightEligible
       ? 100
       : isBadSeason
@@ -5386,21 +5404,22 @@ export default function App() {
       : Math.max(state.club.baseOvr + 2, 70 + Math.floor(rep / 4));
 
     // Fallback if the strict filter is too aggressive
-    let validClubs = currentClubsDb.filter(c => c.baseOvr <= maxAllowedOvr);
+    let validClubs = currentClubsDb.filter(c => c.baseOvr <= maxAllowedOvr && !isReserveClub(c.name) && !c.isReserve);
     if (validClubs.filter(c => targetTiers.includes(c.tier)).length === 0) {
       validClubs = currentClubsDb.filter(c => c.baseOvr <= Math.max(86, maxAllowedOvr + 5));
     }
 
     // Candidates matching targetTiers
     let sameCountryCandidates = validClubs.filter(
-      (c) => c.id !== state.club.id && (c.country || 'GER') === userCountry && targetTiers.includes(c.tier)
+      (c) => c.id !== state.club.id && (c.country || 'GER') === userCountry && targetTiers.includes(c.tier) && !c.isInsolventGiant
     );
 
     let intlCandidates = validClubs.filter(
-      (c) => c.id !== state.club.id && (c.country || 'GER') !== userCountry && targetTiers.includes(c.tier)
+      (c) => c.id !== state.club.id && (c.country || 'GER') !== userCountry && targetTiers.includes(c.tier) && !c.isInsolventGiant
     );
 
-    // Realistic World Setting: Prioritize clubs with similar squad OVR during sackings/bad seasons
+    // Realistic World Setting: Prioritize clubs with similar squad OVR during sackings/bad seasons,
+    // and prioritize top-OVR premium clubs for high-reputation directors
     if (isBadSeason) {
       sameCountryCandidates.sort((a, b) => {
         const diffA = Math.abs(a.baseOvr - state.club.baseOvr);
@@ -5412,39 +5431,111 @@ export default function App() {
         const diffB = Math.abs(b.baseOvr - state.club.baseOvr);
         return diffA - diffB;
       });
+    } else if (isHeavyweightEligible || rep >= 75) {
+      sameCountryCandidates.sort((a, b) => b.baseOvr - a.baseOvr);
+      intlCandidates.sort((a, b) => b.baseOvr - a.baseOvr);
+      const topDomFloor = sameCountryCandidates.length > 0 ? Math.max(76, sameCountryCandidates[0].baseOvr - 6) : 76;
+      const filteredDom = sameCountryCandidates.filter(c => c.baseOvr >= topDomFloor);
+      if (filteredDom.length > 0) sameCountryCandidates = filteredDom;
+      const filteredIntl = intlCandidates.filter(c => c.baseOvr >= 82);
+      if (filteredIntl.length > 0) intlCandidates = filteredIntl;
     }
 
     const result: Club[] = [];
 
-    // 1. Heavyweight Giant offer if eligible (if won CL, attempt to populate giants for both offer slots)
+    // 1. Heavyweight Giant offer if eligible (both unmodded and Real-World Modded club names + 83+ OVR Tier 1 powerhouses)
     if (isHeavyweightEligible) {
       const topGiantNames = [
         'Madrid FC',
+        'Real Madrid',
         'Catalonia FC',
+        'FC Barcelona',
         'Manchester Blue',
+        'Manchester City',
         'North London Red',
+        'Arsenal',
         'FC Bavaria',
+        'FC Bayern München',
+        'Bayern Munich',
         'PSG',
+        'Paris Saint-Germain',
         'Sporting CP',
+        'SL Benfica',
         'FC Porto',
         'Borussia West',
+        'Borussia Dortmund',
         'Milan Blue',
+        'Inter',
+        'Inter Milan',
+        'AC Milan',
         'Piemonte Calcio',
+        'Juventus',
         'Merseyside Red',
+        'Liverpool',
         'Atltico M.',
+        'Atlético Madrid',
         'London Blue',
+        'Chelsea',
         'Manchester United',
         'Bayer Leverkusen',
+        'Bayer 04 Leverkusen',
       ];
-      const giantCandidates = currentClubsDb.filter(
-        (c) => c.id !== state.club.id && (topGiantNames.includes(c.name) || (hasWonCL && c.tier === 1))
+      const minGiantOvr = rep >= 90 || (rep >= 85 && totalCareerTrophies >= 2) || hasWonCL ? 84 : 82;
+      let giantCandidates = currentClubsDb.filter(
+        (c) =>
+          c.id !== state.club.id &&
+          c.tier === 1 &&
+          !c.isInsolventGiant &&
+          !isReserveClub(c.name) &&
+          !c.isReserve &&
+          (c.baseOvr >= minGiantOvr || (topGiantNames.includes(c.name) && c.baseOvr >= 82))
       );
+      if (giantCandidates.length < 3) {
+        giantCandidates = currentClubsDb.filter(
+          (c) =>
+            c.id !== state.club.id &&
+            c.tier === 1 &&
+            !c.isInsolventGiant &&
+            !isReserveClub(c.name) &&
+            !c.isReserve &&
+            (topGiantNames.includes(c.name) || c.baseOvr >= 80)
+        );
+      }
       if (giantCandidates.length > 0) {
-        // Keep adding random giants, leaving room for Fallen Giant Restoration offers in the Director Job Market (count >= 5)
-        const maxGiantSlots = count >= 5 ? Math.max(1, count - 2) : count;
-        let availableGiants = [...giantCandidates];
+        // Leave 2 slots for Fallen Giant Restoration offers in the Director Job Market (count >= 5)
+        const maxGiantSlots = count >= 5 ? Math.max(2, count - 2) : count;
+        const domGiants = giantCandidates
+          .filter((c) => (c.country || 'GER') === userCountry)
+          .sort((a, b) => b.baseOvr - a.baseOvr);
+        const intlGiants = giantCandidates
+          .filter((c) => (c.country || 'GER') !== userCountry)
+          .sort((a, b) => b.baseOvr - a.baseOvr);
+
+        // For the Director Job Market (count >= 5), guarantee both Domestic and Continental premium Tier 1 offers
+        if (count >= 5) {
+          const domPool = domGiants.length > 0 ? [...domGiants] : [...sameCountryCandidates];
+          const targetDomSlots = Math.min(2, domPool.length, Math.floor(maxGiantSlots / 2));
+          for (let i = 0; i < targetDomSlots && result.length < maxGiantSlots; i++) {
+            const topWindow = Math.min(domPool.length, 4);
+            const idx = Math.floor(Math.random() * topWindow);
+            result.push(domPool[idx]);
+            domPool.splice(idx, 1);
+          }
+          const intlPool = [...intlGiants];
+          while (result.length < maxGiantSlots && intlPool.length > 0) {
+            const topWindow = Math.min(intlPool.length, 8);
+            const idx = Math.floor(Math.random() * topWindow);
+            result.push(intlPool[idx]);
+            intlPool.splice(idx, 1);
+          }
+        }
+
+        let availableGiants = giantCandidates
+          .filter((c) => !result.some((r) => r.id === c.id))
+          .sort((a, b) => b.baseOvr - a.baseOvr);
         while (result.length < maxGiantSlots && availableGiants.length > 0) {
-          const idx = Math.floor(Math.random() * availableGiants.length);
+          const topWindow = Math.min(availableGiants.length, 10);
+          const idx = Math.floor(Math.random() * topWindow);
           result.push(availableGiants[idx]);
           availableGiants.splice(idx, 1);
         }
@@ -5457,7 +5548,7 @@ export default function App() {
       const fallenGiantCandidates = currentClubsDb.filter(
         (c) => c.id !== state.club.id && c.isInsolventGiant && Math.abs(c.tier - curTier) <= 2 && !result.some((r) => r.id === c.id)
       );
-      if (fallenGiantCandidates.length > 0 && (count >= 5 || Math.random() < 0.70)) {
+      if (fallenGiantCandidates.length > 0 && (count >= 5 || (!isHeavyweightEligible && Math.random() < 0.70))) {
         const pickedFallenGiant = fallenGiantCandidates[Math.floor(Math.random() * fallenGiantCandidates.length)];
         result.push({ ...pickedFallenGiant, isInsolventGiant: true });
       }
@@ -5493,7 +5584,7 @@ export default function App() {
     // 3. Fill remaining slots with domestic / similar-league international offers matching targetTiers
     while (result.length < count) {
       const roll = Math.random();
-      const intlChance = hasWonCL || rep >= 80 ? 0.40 : 0.20;
+      const intlChance = hasWonCL || rep >= 80 ? 0.50 : 0.20;
 
       if (roll < intlChance && intlCandidates.length > 0) {
         const unusedIntl = intlCandidates.filter((c) => !result.some((r) => r.id === c.id));
@@ -10595,6 +10686,81 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
       }
 
+      // Proactive Poaching (Executive Headhunting) Check for Successful Directors
+      const isPromotedThisSeason = nextTier < seasonLeague;
+      const totalCareerTrophiesNow = Math.max(
+        state.totals?.trophies || 0,
+        state.trophyHistory?.length || 0,
+        state.trophies?.length || 0
+      );
+      const isElitePoachTarget =
+        !isSackedRelegation &&
+        !sackedJobOffer &&
+        (wonTrophy ||
+          (state.reputation >= 85 && approxPos <= 5) ||
+          (state.reputation >= 78 && totalCareerTrophiesNow >= 2 && approxPos <= 6));
+      const isRisingPoachTarget =
+        !isSackedRelegation &&
+        !sackedJobOffer &&
+        !isElitePoachTarget &&
+        (isPromotedThisSeason || approxPos === 1 || (approxPos <= 3 && state.reputation >= 65));
+
+      const poachRoll = Math.random();
+      const poachChance =
+        trophiesThisYear.cl || trophiesThisYear.cwc || (wonTrophy && state.reputation >= 85) || (state.reputation >= 95 && approxPos <= 4)
+          ? 1.0
+          : isElitePoachTarget
+          ? 0.80
+          : isRisingPoachTarget
+          ? 0.60
+          : 0;
+
+      if (poachChance > 0 && poachRoll < poachChance) {
+        const rawPoachCandidates = (generateJobOffers(state, cleanNewClubsDb, 5) || []).filter(Boolean);
+        const poachedClubs = rawPoachCandidates
+          .filter(c => !c.isInsolventGiant && (c.tier === 1 || c.tier < state.club.tier || c.baseOvr >= state.club.baseOvr + 2))
+          .slice(0, 3)
+          .map(c => {
+            const baseStartBudget = getStartingBudget(c.tier || 1, c.country || 'GER');
+            const warChestBudget = Math.round(Math.max(baseStartBudget, c.currentBudget || 0) * 1.15);
+            return {
+              ...c,
+              offerBudget: warChestBudget,
+              narrative: isElitePoachTarget
+                ? `Proactive Poaching Mandate: Impressed by your ${totalCareerTrophiesNow} career ${totalCareerTrophiesNow === 1 ? 'trophy' : 'trophies'} and ${state.reputation} Reputation at ${state.club.name}, ${c.name}'s board is offering an enhanced +15% transfer war chest to lure you away immediately.`
+                : `Headhunter Poaching Approach: Following your standout campaign with ${state.club.name}, ${c.name} has targeted you as their #1 Sporting Director candidate with an enhanced transfer budget.`,
+            };
+          });
+
+        if (poachedClubs.length > 0) {
+          setTimeout(() => {
+            enqueueEvent({
+              id: 'proactive_poach_' + Date.now(),
+              type: 'job_offer',
+              isForced: false,
+              title: {
+                en: isElitePoachTarget
+                  ? 'PROACTIVE POACHING · ELITE CLUB INQUIRIES'
+                  : 'PROACTIVE POACHING · HEADHUNTER APPROACH',
+                de: isElitePoachTarget
+                  ? 'AKTIVE ABWERBUNG · TOP-KLUB ANFRAGEN'
+                  : 'AKTIVE ABWERBUNG · HEADHUNTER-ANGEBOT',
+              },
+              desc: {
+                en: isElitePoachTarget
+                  ? `Your silverware pedigree and ${state.reputation} Director Reputation have made you the most coveted executive in world football. Premium clubs are proactively attempting to poach you from ${state.club.name} with enhanced +15% transfer war chests:`
+                  : `Your success at ${state.club.name} has caught the attention of ambitious boardrooms. Rival clubs are proactively attempting to poach you ahead of the new season:`,
+                de: isElitePoachTarget
+                  ? `Deine Erfolge und dein Ansehen (${state.reputation}) haben dich zum begehrtesten Sportdirektor gemacht. Top-Klubs versuchen aktiv, dich mit +15% Transferbudget von ${state.club.name} abzuwerben:`
+                  : `Dein Erfolg bei ${state.club.name} hat andere Vorstände auf den Plan gerufen. Folgende Vereine versuchen aktiv, dich abzuwerben:`,
+              },
+              clubs: poachedClubs,
+            });
+          }, 600);
+          return;
+        }
+      }
+
       // Random Season Event (85% chance per season)
       const eventRoll = Math.random();
       if (eventRoll < 0.85) {
@@ -10767,7 +10933,19 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           );
           return; // Do NOT popEvent()
         }
-        showToast(lang === 'de' ? 'Du bleibst bei deinem aktuellen Verein.' : 'You decided to stay at your current club.', 'info');
+        if (String(pendingEvent.id || '').startsWith('proactive_poach_')) {
+          updated.club.morale = Math.min(100, (updated.club.morale || 80) + 3);
+          latestGameStateRef.current = updated;
+          setGameState(updated);
+          showToast(
+            lang === 'de'
+              ? `Abwerbung abgelehnt! Deine Treue zu ${updated.club.name} begeistert Fans & Vorstand (+3 Moral).`
+              : `Poaching approach rejected! Your loyalty to ${updated.club.name} thrills the fans & board (+3 Morale).`,
+            'success'
+          );
+        } else {
+          showToast(lang === 'de' ? 'Du bleibst bei deinem aktuellen Verein.' : 'You decided to stay at your current club.', 'info');
+        }
         popEvent();
         return;
       }

@@ -146,9 +146,13 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
 
   const getEventKicker = () => {
     if (event.type === 'job_offer') {
-      return isSackedOffer
-        ? t('Official Board Resolution · Relieved of Duties', 'Offizieller Vorstandsbeschluss · Vertragsauflösung')
-        : t('Executive Opportunities · Contract Offers', 'Trainerangebote · Vertragsangebote');
+      if (isSackedOffer) {
+        return t('Official Board Resolution · Relieved of Duties', 'Offizieller Vorstandsbeschluss · Vertragsauflösung');
+      }
+      if (String(event.id || '').startsWith('proactive_poach_')) {
+        return t('Proactive Headhunting · Executive Poaching', 'Aktive Abwerbung · Direktoren-Abwerbung');
+      }
+      return t('Executive Opportunities · Contract Offers', 'Trainerangebote · Vertragsangebote');
     }
     if (event.type === 'board_expectation') return t('Board Directive', 'Vorstandsvorgabe');
     if (event.type === 'club_welcome') return t('Club Appointment', 'Amtsantritt');
@@ -269,8 +273,21 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-sm sm:text-base text-white group-hover:text-sky-200 transition-colors break-words tracking-tight leading-tight">
-                          {c.name}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-bold text-sm sm:text-base text-white group-hover:text-sky-200 transition-colors break-words tracking-tight leading-tight">
+                            {c.name}
+                          </span>
+                          {c.isInsolventGiant ? (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                              <i className="fa-solid fa-fire-flame-curved text-[9px] text-amber-400"></i>
+                              <span>{t('Fallen Giant', 'Gefallener Gigant')}</span>
+                            </span>
+                          ) : (c.tier === 1 && c.baseOvr >= 83) ? (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                              <i className="fa-solid fa-crown text-[9px] text-emerald-400"></i>
+                              <span>{t('Premium Club', 'Top-Klub')}</span>
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-[11px] text-zinc-400 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 font-medium">
                           <span className="shrink-0">{countryObj?.flag || '🌐'}</span>

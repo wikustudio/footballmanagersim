@@ -123,6 +123,36 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     expect(safeguardsSrc).toContain('Single-pass linear tier balancing');
     expect(safeguardsSrc).toContain('const deficit = 18 - inUpper.length;');
   });
+
+  it('ensures single-trophy Champions League wrap avoids multi-trophy wording and 100-rep directors receive premium job offers and proactive poaching', () => {
+    const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+    const seasonFinishSrc = fs.readFileSync('src/components/SeasonFinishModal.tsx', 'utf-8');
+    const jobMarketSrc = fs.readFileSync('src/components/JobMarketModal.tsx', 'utf-8');
+    const eventUiSrc = fs.readFileSync('src/components/EventUI.tsx', 'utf-8');
+
+    // 1. SeasonFinishModal does not show 'SILVERWARE & CUP GLORY!' or 'Silverware & Championship Honours' when only 1 trophy is won
+    expect(seasonFinishSrc).not.toContain("'SILVERWARE & CUP GLORY!'");
+    expect(seasonFinishSrc).not.toContain("'Silverware & Championship Honours'");
+    expect(seasonFinishSrc).toContain("`${(trophyList[0]?.name || 'Cup').toUpperCase()} GLORY!`");
+    expect(seasonFinishSrc).toContain("trophyList[0]?.badge || (isChamp ? 'Championship Honour' : 'Season Trophy Honour')");
+
+    // 2. High-rep (100 rep) and multi-trophy directors qualify for heavyweight premium Tier 1 offers (both unmodded and modded giants)
+    expect(appSrc).toContain('const totalCareerTrophies = Math.max(');
+    expect(appSrc).toContain('rep >= 85 ||');
+    expect(appSrc).toContain('(rep >= 78 && (totalCareerTrophies >= 2 || everWonLeagueTitle))');
+    expect(appSrc).toContain('if (!isBadSeason && (isHeavyweightEligible || hasWonCL || rep >= 80)) {\n      targetTiers = [1];');
+    expect(appSrc).toContain("'Real Madrid'");
+    expect(appSrc).toContain("'FC Bayern München'");
+    expect(appSrc).toContain('const minGiantOvr = rep >= 90 || (rep >= 85 && totalCareerTrophies >= 2) || hasWonCL ? 84 : 82;');
+
+    // 3. Proactive poaching triggers after successful seasons with +15% war-chest budget bonus and loyalty morale reward on decline
+    expect(appSrc).toContain("id: 'proactive_poach_' + Date.now()");
+    expect(appSrc).toContain('PROACTIVE POACHING · ELITE CLUB INQUIRIES');
+    expect(appSrc).toContain('const warChestBudget = Math.round(Math.max(baseStartBudget, c.currentBudget || 0) * 1.15);');
+    expect(appSrc).toContain("if (String(pendingEvent.id || '').startsWith('proactive_poach_'))");
+    expect(jobMarketSrc).toContain('Premium Club · Executive Offer');
+    expect(eventUiSrc).toContain('Proactive Headhunting · Executive Poaching');
+  });
 });
 
 
