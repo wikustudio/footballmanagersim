@@ -47,7 +47,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
   const selectedCrash = reports.find((r) => r.id === selectedCrashId) || reports[0] || null;
   const diagnosticText = includeDiagnostics ? formatDiagnosticSummary(gameState, selectedCrash) : '';
 
-  const subjectLine = `[FMS v2.2 ${reportType === 'bug' ? 'Bug / Crash Report' : 'Feature Request'}] ${
+  const subjectLine = `[FMS v2.3 ${reportType === 'bug' ? 'Bug / Crash Report' : 'Feature Request'}] ${
     title.trim() || (reportType === 'bug' ? (selectedCrash ? selectedCrash.message.slice(0, 50) : 'Gameplay Issue') : 'Feature Suggestion')
   }`;
 

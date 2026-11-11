@@ -213,8 +213,8 @@ export const parseAndNormalizeModBudget = (
     if (normalized >= 1000000) {
       normalized = normalized / 1000;
     }
-    // 2. Full Euro sums >= 100,000 are full Euros across all tiers (e.g. 120,000 -> 120)
-    else if (normalized >= 100000) {
+    // 2. Full Euro sums > 250,000 in Tier 1 (above €250M engine cap) or >= 100,000 in Tier 2+ (above €60M Tier 2 cap) are full Euros
+    else if ((safeTier === 1 && normalized > 250000) || (safeTier >= 2 && normalized >= 100000)) {
       normalized = normalized / 1000;
     }
     // 3. For amateur / lower tiers (Tier 6-11), max engine budget is 600K.

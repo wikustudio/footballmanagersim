@@ -233,34 +233,35 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
             );
             const outcome: 'C' | 'P' | 'R' | undefined = (rawOutcome === 'R' && (isTier1Only || isBottomTier || h.survived)) ? undefined : rawOutcome;
 
+            const safeClubName = h.clubName || state.club.name || 'Club';
             const matchingDbClub = clubsDb?.find(
               c => (h.clubId != null && (c.id === h.clubId || String(c.id) === String(h.clubId))) ||
-                   c.name === h.clubName || 
-                   c.name.toLowerCase() === h.clubName.toLowerCase() ||
-                   (h.clubName === state.club.name && (c.id === state.club.id || String(c.id) === String(state.club.id)))
+                   c.name === safeClubName || 
+                   c.name.toLowerCase() === safeClubName.toLowerCase() ||
+                   (safeClubName === state.club.name && (c.id === state.club.id || String(c.id) === String(state.club.id)))
             );
-            const cleanParentName = h.clubName
+            const cleanParentName = safeClubName
               .replace(/\s+II$/, '')
               .replace(/\s+\(?B\)?$/, '')
               .replace(/\s+Castilla$/, '')
               .replace(/\s+B$/, '')
               .replace(/\s+2$/, '')
               .trim();
-            const parentDbClub = !matchingDbClub?.logo && cleanParentName !== h.clubName
+            const parentDbClub = !matchingDbClub?.logo && cleanParentName !== safeClubName
               ? clubsDb?.find(c => c.name === cleanParentName || c.name.toLowerCase() === cleanParentName.toLowerCase())
               : null;
             const rowLogo = isModActive 
-              ? (h.logo || (h.clubName === state.club.name ? state.club.logo : undefined) || matchingDbClub?.logo || parentDbClub?.logo)
+              ? (h.logo || (safeClubName === state.club.name ? state.club.logo : undefined) || matchingDbClub?.logo || parentDbClub?.logo)
               : undefined;
             const rowFallbackLogo = isModActive
-              ? (h.fallbackLogo || (h.clubName === state.club.name ? state.club.fallbackLogo : undefined) || matchingDbClub?.fallbackLogo || parentDbClub?.fallbackLogo)
+              ? (h.fallbackLogo || (safeClubName === state.club.name ? state.club.fallbackLogo : undefined) || matchingDbClub?.fallbackLogo || parentDbClub?.fallbackLogo)
               : undefined;
-            const rowId = matchingDbClub?.id || (h.clubName === state.club.name ? state.club.id : h.clubId);
+            const rowId = matchingDbClub?.id || (safeClubName === state.club.name ? state.club.id : h.clubId);
             const rowColor = matchingDbClub?.color || h.color;
-            const displayName = isModActive && matchingDbClub ? matchingDbClub.name : h.clubName;
+            const displayName = isModActive && matchingDbClub ? matchingDbClub.name : safeClubName;
 
             return (
-              <div key={`${h.year}-${h.clubName}-${originalIndex}`} className={`flex flex-col py-2 px-2.5 hover:bg-white/[0.04] transition-all rounded-xl border-b border-white/[0.04] ${rowAnim}`}>
+              <div key={`${h.year}-${safeClubName}-${originalIndex}`} className={`flex flex-col py-2 px-2.5 hover:bg-white/[0.04] transition-all rounded-xl border-b border-white/[0.04] ${rowAnim}`}>
               <div
                 className={`flex items-center justify-between`}
               >
@@ -345,11 +346,11 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                   </div>
                 ) : (
                   <div className="flex items-center justify-end gap-2 sm:gap-3 w-[50%] sm:w-[55%] font-medium text-[11px] sm:text-[12px] text-zinc-400 tabular-nums shrink-0">
-                    <div className={`w-5 sm:w-6 text-center font-bold ${getOvrColor(h.ovr)}`}>
-                      {h.ovr}
+                    <div className={`w-5 sm:w-6 text-center font-bold ${getOvrColor(h.ovr || 50)}`}>
+                      {h.ovr ?? '—'}
                     </div>
                     <div className="w-5 sm:w-6 text-center text-white relative">
-                      <span>{h.pos}.</span>
+                      <span>{h.pos ?? '—'}.</span>
                       {h.pointsDeducted && h.pointsDeducted > 0 && (
                         <span
                           className="text-[9px] font-black text-rose-400 ml-0.5"
@@ -363,29 +364,29 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                         </span>
                       )}
                     </div>
-                    <div className="hidden sm:block w-6 text-center text-emerald-400">{h.gf}</div>
-                    <div className="hidden sm:block w-6 text-center text-rose-400">{h.ga}</div>
+                    <div className="hidden sm:block w-6 text-center text-emerald-400">{h.gf ?? 0}</div>
+                    <div className="hidden sm:block w-6 text-center text-rose-400">{h.ga ?? 0}</div>
                     <div 
                       className="w-9 sm:w-10 text-right cursor-help"
                       title={isDe 
                         ? `Durchschnittliche Zuschauer: ${h.att ? h.att.toLocaleString('de-DE') : '—'} pro Heimspiel (${((h.att || 0) * 17).toLocaleString('de-DE')} Gesamtzuschauer)` 
                         : `Average attendance: ${h.att ? h.att.toLocaleString('en-US') : '—'} per home fixture (${((h.att || 0) * 17).toLocaleString('en-US')} total season crowd)`}
                     >
-                      {formatNum(h.att)}
+                      {h.att != null ? formatNum(h.att) : '—'}
                     </div>
                     <div
                       className={`w-7 sm:w-9 text-right cursor-help ${
-                        h.util >= 95
+                        (h.util ?? 0) >= 95
                           ? 'text-emerald-400 font-semibold'
-                          : h.util < 50
+                          : h.util != null && h.util < 50
                           ? 'text-rose-400'
                           : 'text-zinc-300'
                       }`}
                       title={isDe
-                        ? `Stadionauslastung: ${h.util}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} Plätze Kapazität)` : ''}`
-                        : `Stadium utilization: ${h.util}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} seat capacity)` : ''}`}
+                        ? `Stadionauslastung: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} Plätze Kapazität)` : ''}`
+                        : `Stadium utilization: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} seat capacity)` : ''}`}
                     >
-                      {h.util}%
+                      {h.util != null ? `${h.util}%` : '—'}
                     </div>
                   </div>
                 )}

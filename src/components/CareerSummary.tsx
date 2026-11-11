@@ -112,14 +112,18 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
   useEffect(() => {
     let isMounted = true;
     const fetchSummary = async () => {
+      const resolvedManagerName = state.managerName || (lang === 'de' ? 'Der Manager' : 'The Manager');
+      const uniqueHistoryClubs = Array.from(new Set((state.history?.map(h => h.clubName) || []).filter(Boolean)));
+      const safeManagedClubs = uniqueHistoryClubs.length > 0 ? uniqueHistoryClubs : [state.club.name];
       try {
         const response = await fetch('/api/generate-career-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            directorName: (state.managerName || (lang === 'de' ? 'Der Manager' : 'The Manager')),
+            managerName: resolvedManagerName,
+            directorName: resolvedManagerName,
             clubName: state.club.name,
-            managedClubs: Array.from(new Set(state.history?.map(h => h.clubName) || [])),
+            managedClubs: safeManagedClubs,
             seasons: state.history?.length || 0,
             matches: state.totals?.matches || 0,
             wins: state.totals?.wins || 0,
@@ -150,22 +154,23 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
           const matches = state.totals?.matches || 0;
           const wins = state.totals?.wins || 0;
           const winPct = matches > 0 ? Math.round((wins / matches) * 100) : 0;
-          const managerName = state.managerName || (lang === 'de' ? 'Der Manager' : 'The Manager');
+          const managerName = resolvedManagerName;
+          const clubsSnippet = safeManagedClubs.slice(0, 3).join(', ');
 
           const earlyQuits = [
-            `After a mere ${seasons} seasons across clubs like ${Array.from(new Set(state.history?.map(h => h.clubName) || [])).slice(0, 3).join(', ')}, ${managerName} packed their bags, proving they simply couldn't handle the heat.`,
+            `After a mere ${seasons} seasons across clubs like ${clubsSnippet}, ${managerName} packed their bags, proving they simply couldn't handle the heat.`,
             `${managerName} throws in the towel after just ${seasons} seasons, stepping away from the technical area.`,
             `Fleeing management after ${seasons} seasons, ${managerName} leaves behind an intriguing tactical legacy at ${state.club.name}.`
           ];
 
           const endlessCareers = [
-            `Stepping through ${seasons} campaigns at clubs like ${Array.from(new Set(state.history?.map(h => h.clubName) || [])).slice(0, 3).join(', ')}, ${managerName} has basically become part of modern football folklore.`,
+            `Stepping through ${seasons} campaigns at clubs like ${clubsSnippet}, ${managerName} has basically become part of modern football folklore.`,
             `After ${seasons} seasons at the highest level, ${managerName} concludes a historic and enduring managerial reign.`,
             `${seasons} seasons, ${matches} matches. ${managerName}'s tenure stands as an indelible landmark.`
           ];
 
           const standardCareers = [
-            `${managerName} calls time on a textbook ${seasons}-season stint across clubs like ${Array.from(new Set(state.history?.map(h => h.clubName) || [])).slice(0, 3).join(', ')}, stepping away from the touchline with distinction.`,
+            `${managerName} calls time on a textbook ${seasons}-season stint across clubs like ${clubsSnippet}, stepping away from the touchline with distinction.`,
             `The ${managerName} era comes to an end after ${seasons} campaigns of refined sporting direction and high-stakes football.`,
             `After ${seasons} seasons of tactical mastery and roster management, ${managerName} bids farewell to the supporters of ${state.club.name}.`
           ];

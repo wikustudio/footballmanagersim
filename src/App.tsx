@@ -366,6 +366,19 @@ export const sanitizeGameState = (state: any): GameState | null => {
         };
       }
 
+      h = {
+        ...h,
+        clubName: h.clubName || cleanClub?.name || 'Club',
+        ovr: typeof h.ovr === 'number' && Number.isFinite(h.ovr) ? h.ovr : (cleanClub?.baseOvr || 60),
+        pos: typeof h.pos === 'number' && Number.isFinite(h.pos)
+          ? h.pos
+          : (typeof h.position === 'number' && Number.isFinite(h.position) ? h.position : 10),
+        gf: typeof h.gf === 'number' && Number.isFinite(h.gf) ? h.gf : 0,
+        ga: typeof h.ga === 'number' && Number.isFinite(h.ga) ? h.ga : 0,
+        att: typeof h.att === 'number' && Number.isFinite(h.att) ? h.att : 0,
+        util: typeof h.util === 'number' && Number.isFinite(h.util) ? h.util : 0,
+      };
+
       return h;
     }) : [],
     managerName: sanitizePlayerName(state.managerName) || state.managerName || 'Manager',
@@ -2311,6 +2324,8 @@ export default function App() {
       if (gameState && !gameState.isCareerOver) saveHighscore(gameState);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       localStorage.removeItem(DYNAMIC_UNIVERSE_STORAGE_KEY);
+      removeFromIndexedDB(LOCAL_STORAGE_KEY);
+      removeFromIndexedDB(DYNAMIC_UNIVERSE_STORAGE_KEY);
       if (!isModActive) {
         setClubsDb(getSafeDefaultClubs());
       } else {
@@ -5447,22 +5462,35 @@ export default function App() {
     if (isHeavyweightEligible) {
       const topGiantNames = [
         'Madrid FC',
+        'Madrid Blanco',
         'Real Madrid',
+        'Real Madrid CF',
         'Catalonia FC',
+        'Barcelona',
         'FC Barcelona',
         'Manchester Blue',
         'Manchester City',
+        'Manchester Red',
+        'Manchester United',
         'North London Red',
+        'London Cannon',
         'Arsenal',
+        'Arsenal FC',
         'FC Bavaria',
+        'Bavaria München',
         'FC Bayern München',
         'Bayern Munich',
+        'SV Leverkusen 04',
+        'Bayer Leverkusen',
+        'Bayer 04 Leverkusen',
         'PSG',
         'Paris Saint-Germain',
         'Sporting CP',
         'SL Benfica',
+        'S.L. Benfica',
         'FC Porto',
         'Borussia West',
+        'Prussia Dortmund',
         'Borussia Dortmund',
         'Milan Blue',
         'Inter',
@@ -5470,15 +5498,17 @@ export default function App() {
         'AC Milan',
         'Piemonte Calcio',
         'Juventus',
+        'Juventus FC',
         'Merseyside Red',
+        'Liverpool Red',
         'Liverpool',
-        'Atltico M.',
+        'Liverpool FC',
+        'Madrid Rojo y Blanco',
         'Atlético Madrid',
+        'Atlético de Madrid',
         'London Blue',
         'Chelsea',
-        'Manchester United',
-        'Bayer Leverkusen',
-        'Bayer 04 Leverkusen',
+        'Chelsea FC',
       ];
       const minGiantOvr = rep >= 90 || (rep >= 85 && totalCareerTrophies >= 2) || hasWonCL ? 84 : 82;
       let giantCandidates = currentClubsDb.filter(
@@ -5688,7 +5718,7 @@ export default function App() {
       const lowerTierNarratives = [
         "The board has heavily invested in the squad. They expect promotion at all costs this season, anything less is a failure.",
         "A financially prudent club looking to sustain their league status and organically grow through youth development.",
-        "Currently battling the drop. You have been brought in as a firefighteravoid relegation to the amateur leagues at all costs.",
+        "Currently battling the drop. You have been brought in as a firefighter — avoid relegation to the amateur leagues at all costs.",
         "Fierce local rivalry demands dominance. The fans care more about beating the local neighbors than winning the league.",
         "Extremely tight finances. You will need to rely heavily on the youth academy and free transfers to survive.",
         "A community-owned club with passionate ultras. They want aggressive, attacking football and a strong cup run.",
@@ -5791,8 +5821,8 @@ export default function App() {
       medicalLevel: preservedMedical,
       fanBase: isReserveClub(newClub.name) ? initialFans : Math.max(newClub.fanBase || 0, existingInDb?.fanBase || 0, savedFacilities?.fanBase || 0, initialFans),
     };
-    const startingBudget = newClub.offerBudget != null
-      ? parseAndNormalizeModBudget(newClub.offerBudget, targetTier, newClub.country || 'GER')
+    const startingBudget = typeof newClub.offerBudget === 'number' && Number.isFinite(newClub.offerBudget) && newClub.offerBudget > 0
+      ? Math.round(newClub.offerBudget)
       : newClub.currentBudget != null
       ? parseAndNormalizeModBudget(newClub.currentBudget, targetTier, newClub.country || 'GER')
       : getStartingBudget(targetTier, newClub.country || 'GER');
@@ -10722,7 +10752,10 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           .slice(0, 3)
           .map(c => {
             const baseStartBudget = getStartingBudget(c.tier || 1, c.country || 'GER');
-            const warChestBudget = Math.round(Math.max(baseStartBudget, c.currentBudget || 0) * 1.15);
+            const normalizedCurrentBudget = c.currentBudget != null
+              ? parseAndNormalizeModBudget(c.currentBudget, c.tier || 1, c.country || 'GER')
+              : baseStartBudget;
+            const warChestBudget = Math.round(Math.max(baseStartBudget, normalizedCurrentBudget) * 1.15);
             return {
               ...c,
               offerBudget: warChestBudget,
@@ -10916,6 +10949,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.isCareerOver = true;
         saveHighscore(updated);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        removeFromIndexedDB(LOCAL_STORAGE_KEY);
         setGameState(updated);
         popEvent();
         showToast(lang === 'de' ? 'Karriere beendet.' : 'Career ended.', 'info');
@@ -10953,8 +10987,14 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const selectedClub = pendingEvent.clubs?.[choiceIndex - 1];
       if (selectedClub) {
         const dbMatch = clubsDb.find(c => (selectedClub.id != null && (c.id === selectedClub.id || String(c.id) === String(selectedClub.id))) || (c.name && selectedClub.name && c.name.toLowerCase().trim() === selectedClub.name.toLowerCase().trim()));
-        const liveTier = (gameState.livingTiers && ((selectedClub.id != null ? gameState.livingTiers[selectedClub.id] : undefined) ?? (selectedClub.name ? gameState.livingTiers[selectedClub.name.toLowerCase().trim()] : undefined)));
-        const savedFac = gameState.managedClubFacilities?.[String(selectedClub.id || selectedClub.name)];
+        const selectedLower = selectedClub.name ? selectedClub.name.toLowerCase().trim() : '';
+        const selectedCountry = selectedClub.country || dbMatch?.country || 'GER';
+        const liveTier = (liveState.livingTiers && (
+          (selectedClub.id != null ? liveState.livingTiers[selectedClub.id] : undefined) ??
+          (selectedLower ? liveState.livingTiers[`${selectedCountry}_${selectedLower}`] : undefined) ??
+          (selectedLower ? liveState.livingTiers[selectedLower] : undefined)
+        ));
+        const savedFac = liveState.managedClubFacilities?.[String(selectedClub.id || selectedClub.name)];
         const resolvedOvr = dbMatch?.baseOvr ?? selectedClub.baseOvr ?? 70;
         const resolvedTier = (typeof liveTier === 'number' && liveTier >= 1) ? liveTier : (dbMatch?.tier ?? selectedClub.tier);
         const isInsolventOffer = Boolean(selectedClub.isInsolventGiant || dbMatch?.isInsolventGiant);

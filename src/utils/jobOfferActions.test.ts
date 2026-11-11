@@ -148,11 +148,89 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     // 3. Proactive poaching triggers after successful seasons with +15% war-chest budget bonus and loyalty morale reward on decline
     expect(appSrc).toContain("id: 'proactive_poach_' + Date.now()");
     expect(appSrc).toContain('PROACTIVE POACHING · ELITE CLUB INQUIRIES');
-    expect(appSrc).toContain('const warChestBudget = Math.round(Math.max(baseStartBudget, c.currentBudget || 0) * 1.15);');
+    expect(appSrc).toContain('const warChestBudget = Math.round(Math.max(baseStartBudget, normalizedCurrentBudget) * 1.15);');
     expect(appSrc).toContain("if (String(pendingEvent.id || '').startsWith('proactive_poach_'))");
     expect(jobMarketSrc).toContain('Premium Club · Executive Offer');
     expect(eventUiSrc).toContain('Proactive Headhunting · Executive Poaching');
   });
+
+  it('ensures CareerSummary sends both managerName and directorName and server/serverless handlers resolve both safely without undefined', () => {
+    const careerSummarySrc = fs.readFileSync('src/components/CareerSummary.tsx', 'utf-8');
+    const serverSrc = fs.readFileSync('server.ts', 'utf-8');
+    const netlifyFnSrc = fs.readFileSync('netlify/functions/generate-career-summary.ts', 'utf-8');
+
+    expect(careerSummarySrc).toContain('managerName: resolvedManagerName,');
+    expect(careerSummarySrc).toContain('directorName: resolvedManagerName,');
+    expect(serverSrc).toContain("(typeof directorName === 'string' && directorName.trim())");
+    expect(netlifyFnSrc).toContain("(typeof directorName === 'string' && directorName.trim())");
+  });
+
+  it('prevents toLocaleString render crashes in SeasonHistoryTable/formatNum and aligns ErrorBoundary with v3 save state', async () => {
+    const { formatNum } = await import('../data/gameConstants');
+    const { sanitizeGameState } = await import('../App');
+
+    // 1. formatNum safely handles undefined, null, NaN, and valid numbers
+    expect(formatNum(undefined)).toBe('0');
+    expect(formatNum(null)).toBe('0');
+    expect(formatNum(Number.NaN)).toBe('0');
+    expect(formatNum(45000)).toBe((45000).toLocaleString());
+
+    // 2. sanitizeGameState fills safe numeric defaults for partial legacy history entries
+    const sanitized = sanitizeGameState({
+      club: { id: 1, name: 'Test FC', tier: 1, baseOvr: 78, country: 'GER', color: '1d4ed8', stadium: 25000, rep: 75, fanBase: 50000 },
+      year: 2027,
+      startYear: 2026,
+      seasonCount: 2,
+      history: [{ year: 2026, tier: 1, position: 4 }],
+    });
+    expect(sanitized).not.toBeNull();
+    expect(sanitized!.history[0].clubName).toBe('Test FC');
+    expect(sanitized!.history[0].ovr).toBe(78);
+    expect(sanitized!.history[0].pos).toBe(4);
+    expect(sanitized!.history[0].att).toBe(0);
+    expect(sanitized!.history[0].util).toBe(0);
+
+    // 3. Both src and root SeasonHistoryTable guard optional att/util/clubName fields
+    const srcTable = fs.readFileSync('src/components/SeasonHistoryTable.tsx', 'utf-8');
+    const rootTable = fs.readFileSync('components/SeasonHistoryTable.tsx', 'utf-8');
+    expect(srcTable).toContain("h.att != null ? formatNum(h.att) : '—'");
+    expect(rootTable).toContain("h.att != null ? formatNum(h.att) : '—'");
+    expect(srcTable).toContain("const safeClubName = h.clubName || state.club.name || 'Club';");
+    expect(rootTable).toContain("const safeClubName = h.clubName || state.club.name || 'Club';");
+
+    // 4. ErrorBoundary reads/clears footy_manager_sim_state_v3 (+ IndexedDB) and skips auto-emails on localhost/webdriver
+    const errorBoundarySrc = fs.readFileSync('src/components/ErrorBoundary.tsx', 'utf-8');
+    expect(errorBoundarySrc).toContain("localStorage.getItem('footy_manager_sim_state_v3')");
+    expect(errorBoundarySrc).toContain("localStorage.removeItem('footy_manager_sim_state_v3')");
+    expect(errorBoundarySrc).toContain("removeFromIndexedDB('footy_manager_sim_state_v3')");
+    expect(errorBoundarySrc).toContain("window.location.hostname === 'localhost'");
+    expect(errorBoundarySrc).toContain('Boolean(navigator.webdriver)');
+  }, 20000);
+
+  it('aligns UI badges, patch notes spotlight, crash/feedback headers, and package metadata on v2.3', () => {
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+    const onboardingSrc = fs.readFileSync('src/components/Onboarding.tsx', 'utf-8');
+    const aboutSrc = fs.readFileSync('src/components/AboutPage.tsx', 'utf-8');
+    const feedbackSrc = fs.readFileSync('src/components/FeedbackModal.tsx', 'utf-8');
+    const errorBoundarySrc = fs.readFileSync('src/components/ErrorBoundary.tsx', 'utf-8');
+    const serverSrc = fs.readFileSync('server.ts', 'utf-8');
+    const netlifyFeedbackSrc = fs.readFileSync('netlify/functions/feedback.ts', 'utf-8');
+
+    expect(pkg.version).toBe('2.3.0');
+    expect(onboardingSrc).toContain('v 2.3');
+    expect(onboardingSrc).not.toContain('v 2.2');
+    expect(aboutSrc).toContain('<span className="text-zinc-400">v2.3</span>');
+    expect(aboutSrc).toContain('v2.3 Spotlight');
+    expect(aboutSrc).toContain('v2.2 Archive');
+    expect(feedbackSrc).toContain('[FMS v2.3');
+    expect(errorBoundarySrc).toContain('[FMS v2.3 Auto Crash Report]');
+    expect(serverSrc).toContain('[FMS v2.3');
+    expect(serverSrc).toContain('FootballManagerSim/2.3');
+    expect(netlifyFeedbackSrc).toContain('[FMS v2.3');
+    expect(netlifyFeedbackSrc).toContain('FootballManagerSim/2.3');
+  });
 });
+
+
 
 

@@ -1,5 +1,6 @@
 import React, { ErrorInfo, ReactNode } from 'react';
 import { recordCrashReport, formatDiagnosticSummary, submitFeedbackReport } from '../utils/crashReporter';
+import { removeFromIndexedDB } from '../utils/storageManager';
 
 interface Props {
   children: ReactNode;
@@ -29,27 +30,52 @@ export class ErrorBoundary extends React.Component<Props, State> {
     (window as any).RENDER_ERROR_DUMP = error.message + ' ' + error.stack;
 
     try {
-      const entry = recordCrashReport(error, null, 'React Render Crash');
-      const diagnostics = formatDiagnosticSummary(null, entry);
-      submitFeedbackReport({
-        type: 'bug',
-        subject: `[FMS v2.2 Auto Crash Report] ${error.message.slice(0, 60)}`,
-        title: error.message,
-        description: `Automatic crash captured by ErrorBoundary.\nComponent Stack:\n${errorInfo?.componentStack || 'N/A'}`,
-        diagnostics,
-        crashReport: entry,
-        timestamp: new Date().toISOString(),
-      }).catch(() => {
-        // Silently ignore network errors on crash boundary
-      });
+      let savedGameState: any = null;
+      try {
+        const rawSave =
+          localStorage.getItem('footy_manager_sim_state_v3') ||
+          localStorage.getItem('footy_manager_sim_state_v2');
+        if (rawSave) {
+          savedGameState = JSON.parse(rawSave);
+        }
+      } catch {
+        // Ignore parse error
+      }
+      const entry = recordCrashReport(error, savedGameState, 'React Render Crash');
+      const diagnostics = formatDiagnosticSummary(savedGameState, entry);
+      const isAutomatedOrLocal =
+        (typeof navigator !== 'undefined' && Boolean(navigator.webdriver)) ||
+        (typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'));
+
+      if (!isAutomatedOrLocal) {
+        submitFeedbackReport({
+          type: 'bug',
+          subject: `[FMS v2.3 Auto Crash Report] ${error.message.slice(0, 60)}`,
+          title: error.message,
+          description: `Automatic crash captured by ErrorBoundary.\nComponent Stack:\n${errorInfo?.componentStack || 'N/A'}`,
+          diagnostics,
+          crashReport: entry,
+          timestamp: new Date().toISOString(),
+        }).catch(() => {
+          // Silently ignore network errors on crash boundary
+        });
+      }
     } catch {
       // Ignore secondary crash reporter errors
     }
   }
 
-  handleReset = () => {
+  handleReset = async () => {
     try {
+      localStorage.removeItem('footy_manager_sim_state_v3');
       localStorage.removeItem('footy_manager_sim_state_v2');
+      localStorage.removeItem('fms_dynamic_universe_clubs');
+      await Promise.allSettled([
+        removeFromIndexedDB('footy_manager_sim_state_v3'),
+        removeFromIndexedDB('fms_dynamic_universe_clubs'),
+      ]);
     } catch (e) {
       console.error(e);
     }

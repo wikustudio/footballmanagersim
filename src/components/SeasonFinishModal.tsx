@@ -2045,7 +2045,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         <div className="flex justify-between items-center text-xs mb-1.5">
                           <span className="text-zinc-400">Average Turnout</span>
                           <span className="font-semibold text-white tabular-nums">
-                            {Math.round(avgAttendance).toLocaleString()} / {state.club.stadium.toLocaleString()}
+                            {Math.round(avgAttendance || 0).toLocaleString()} / {(state.club.stadium || 15000).toLocaleString()}
                           </span>
                         </div>
                         <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden mb-1">
@@ -2073,7 +2073,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     <div className="pt-2.5 border-t border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
                       <span>Ground Capacity</span>
                       <span className="tabular-nums font-semibold text-white">
-                        {state.club.stadium.toLocaleString()} seats
+                        {(state.club.stadium || 15000).toLocaleString()} seats
                       </span>
                     </div>
                   </div>

@@ -249,8 +249,8 @@ interface OfferCardProps {
 
 const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept, t, isModActive }) => {
   const league = getLeagueInfo(club.tier, club.country || 'GER');
-  const startingBudget = club.offerBudget != null
-    ? parseAndNormalizeModBudget(club.offerBudget, club.tier, club.country || 'GER')
+  const startingBudget = typeof club.offerBudget === 'number' && Number.isFinite(club.offerBudget) && club.offerBudget > 0
+    ? Math.round(club.offerBudget)
     : club.currentBudget != null
     ? parseAndNormalizeModBudget(club.currentBudget, club.tier, club.country || 'GER')
     : getStartingBudget(club.tier, club.country || 'GER');

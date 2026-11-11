@@ -213,8 +213,8 @@ export const parseAndNormalizeModBudget = (
     if (normalized >= 1000000) {
       normalized = normalized / 1000;
     }
-    // 2. Full Euro sums >= 100,000 are full Euros across all tiers (e.g. 120,000 -> 120)
-    else if (normalized >= 100000) {
+    // 2. Full Euro sums > 250,000 in Tier 1 (above €250M engine cap) or >= 100,000 in Tier 2+ (above €60M Tier 2 cap) are full Euros
+    else if ((safeTier === 1 && normalized > 250000) || (safeTier >= 2 && normalized >= 100000)) {
       normalized = normalized / 1000;
     }
     // 3. For amateur / lower tiers (Tier 6-11), max engine budget is 600K.
@@ -950,7 +950,7 @@ export const normalizeAndValidateCustomDb = (data: any): CustomDbValidationResul
     const rawOvr = item.baseOvr ?? item.ovr ?? item.rating ?? item.overall ?? item.base_ovr ?? item.score;
     const parsedOvr = rawOvr != null && rawOvr !== '' ? Number(rawOvr) : NaN;
     const baseOvr = Number.isFinite(parsedOvr)
-      ? Math.max(35, Math.min(99, Math.round(parsedOvr)))
+      ? Math.max(10, Math.min(99, Math.round(parsedOvr)))
       : undefined;
 
     const rawStadium = item.stadium ?? item.capacity ?? item.stadiumCapacity ?? item.ground;

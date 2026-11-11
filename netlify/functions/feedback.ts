@@ -26,7 +26,7 @@ export const handler = async (event: any) => {
     const { type, subject, title, description, contactEmail, diagnostics, crashReport, crashLogs, timestamp } = body;
 
     const reportTypeLabel = type === 'feature' ? 'Feature Request' : 'Bug / Crash Report';
-    const emailSubject = subject || `[FMS v2.2 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
+    const emailSubject = subject || `[FMS v2.3 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
     const submittedAt = timestamp || new Date().toISOString();
 
     const crashSummary = crashReport
@@ -140,7 +140,7 @@ export const handler = async (event: any) => {
             'Accept': 'application/json',
             'Origin': originHeader,
             'Referer': refererHeader,
-            'User-Agent': headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.2)'
+            'User-Agent': headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.3)'
           },
           body: JSON.stringify(formSubmitPayload)
         });

@@ -246,8 +246,8 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
               const countryCode = c.country || 'GER';
               const countryObj = COUNTRIES[countryCode] || COUNTRIES['GER'];
               const lgInfo = getLeagueInfo(c.tier || 1, countryCode);
-              const displayBudget = c.offerBudget != null
-                ? parseAndNormalizeModBudget(c.offerBudget, c.tier || 1, countryCode)
+              const displayBudget = typeof c.offerBudget === 'number' && Number.isFinite(c.offerBudget) && c.offerBudget > 0
+                ? Math.round(c.offerBudget)
                 : c.currentBudget != null
                 ? parseAndNormalizeModBudget(c.currentBudget, c.tier || 1, countryCode)
                 : getStartingBudget(c.tier || 1, countryCode);
@@ -553,7 +553,7 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
             </div>
             <div className="flex flex-col items-center p-2 rounded-xl bg-white/[0.02]">
               <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{lang === 'de' ? 'Stadion' : 'Capacity'}</span>
-              <span className="text-sm font-bold text-white mt-0.5 font-mono">{event.newClub.stadium.toLocaleString()}</span>
+              <span className="text-sm font-bold text-white mt-0.5 font-mono">{(event.newClub.stadium || 15000).toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center p-2 rounded-xl bg-white/[0.02]">
               <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{lang === 'de' ? 'Budget' : 'War Chest'}</span>

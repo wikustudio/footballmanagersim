@@ -278,7 +278,7 @@ describe('7-Point Pre-Launch Verification Suite', () => {
 
     let sawFriendly = false;
     let sawHostile = false;
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 2500; i++) {
       const ev = generateRandomEvent(indebtedState);
       if (ev && ev.type === 'dyn_takeover') {
         if (ev.title.en.includes('Hostile Leveraged Buyout')) {

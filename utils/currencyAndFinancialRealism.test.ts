@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   formatMoney,
+  formatNum,
   getStartingBudget,
   getCountryMult,
   setGlobalCurrencyCountry,
@@ -20,6 +21,12 @@ describe('Universal Currency & Financial Realism across All Nations', () => {
   });
 
   describe('Currency Symbols and Formatting across Countries', () => {
+    it('safely formats undefined, null, and NaN numbers via formatNum without crashing', () => {
+      expect(formatNum(undefined)).toBe('0');
+      expect(formatNum(null)).toBe('0');
+      expect(formatNum(NaN)).toBe('0');
+      expect(formatNum(81365)).toBe((81365).toLocaleString());
+    });
     it('verifies Argentina formats authentic dollar/peso symbol ($) for domestic and international figures', () => {
       expect(getCountryCurrency('ARG')).toBe('$');
       expect(formatMoney(3800, 'ARG')).toBe('$3.8M');
@@ -109,6 +116,13 @@ describe('Universal Currency & Financial Realism across All Nations', () => {
       const clampedBudget = parseAndNormalizeModBudget(86670000, 1, 'ARG');
       expect(clampedBudget).toBeLessThanOrEqual(12000);
       expect(formatMoney(clampedBudget, 'ARG')).toBe('$12M');
+    });
+
+    it('preserves Tier 1 powerhouse war chests between €100M and €250M (100,000–250,000 engine units) without collapsing to €3M', () => {
+      expect(parseAndNormalizeModBudget(103500, 1, 'ESP')).toBe(103500);
+      expect(formatMoney(103500, 'ESP')).toBe('€103.5M');
+      expect(parseAndNormalizeModBudget(250000, 1, 'ENG')).toBe(250000);
+      expect(parseAndNormalizeModBudget(87480000, 1, 'ESP')).toBe(87480);
     });
   });
 

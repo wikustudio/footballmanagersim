@@ -2332,7 +2332,8 @@ export const HISTORICAL_DIRECTORS: HistoricalManager[] = [
   { id: 'ferguson', name: 'Sir Alan Forgeson', trophies: 49, score: 600000 },
 ];
 
-export const formatNum = (num: number): string => num.toLocaleString();
+export const formatNum = (num?: number | null): string =>
+  (typeof num === 'number' && Number.isFinite(num) ? num : 0).toLocaleString();
 
 export const getMinAllowedTierForReserve = (country?: string): number => {
   const code = normalizeCountryCode(country);

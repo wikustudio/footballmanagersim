@@ -59,7 +59,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
           <i className="fa-solid fa-compass text-sky-400"></i>
           <span>{isDe ? 'Kompendium & Spielmechaniken' : 'Rulebook & Game Mechanics'}</span>
           <span className="text-zinc-600">·</span>
-          <span className="text-zinc-400">v2.2</span>
+          <span className="text-zinc-400">v2.3</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] mb-5">
@@ -119,21 +119,119 @@ export const AboutPage: React.FC<AboutPageProps> = ({
 
       {/* Main Bento Grid */}
       <div className="space-y-6">
-        {/* v2.2 Spotlight Bento Box */}
-        {activeSection === 'updates' && (
+        {/* v2.3 Spotlight Bento Box */}
+        {(activeSection === 'all' || activeSection === 'updates') && (
           <div className="bg-gradient-to-br from-[#131724]/90 via-[#10121a]/90 to-[#0e1017]/90 border border-sky-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
-                  v2.2 Spotlight
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
+                  v2.3 Spotlight
                 </span>
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Executive Poaching, Giant Offers & Save Integrity
+                </h2>
+              </div>
+              <span className="shrink-0 whitespace-nowrap text-xs text-amber-300 font-semibold flex items-center gap-1.5">
+                <i className="fa-solid fa-sparkles text-amber-400"></i>
+                <span>Latest Release</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Proactive Poaching & War Chests */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-emerald-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm mb-3 border border-emerald-500/20">
+                    <i className="fa-solid fa-briefcase"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Proactive Executive Poaching
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Breakout promotions, titles, and continental runs now trigger direct rival headhunting approaches backed by a +15% transfer war chest—or a +3 squad morale loyalty boost when you stay.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-emerald-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>+15% War-Chest Headhunting</span>
+                </div>
+              </div>
+
+              {/* 2. Premium Superclub Director Offers */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-amber-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm mb-3 border border-amber-500/20">
+                    <i className="fa-solid fa-crown"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Premium Club Executive Offers
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    High-reputation (85–100 Rep) and multi-trophy Sporting Directors now unlock guaranteed heavyweight Tier 1 vacancies across European and global powerhouses in both base and CR27 modded databases.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-amber-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Elite Tier 1 Giant Vacancies</span>
+                </div>
+              </div>
+
+              {/* 3. Season Chronology & v3 Save Integrity */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-sky-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm mb-3 border border-sky-500/20">
+                    <i className="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Chronology & v3 Save Integrity
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Hardened post-season year advancement across localStorage and IndexedDB backups, crash-proof legacy history hydration, and full v3 save state diagnostics on recovery.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-sky-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Zero-Regression Season Sync</span>
+                </div>
+              </div>
+
+              {/* 4. Boardroom Dossier & Wrap Polish */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-purple-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm mb-3 border border-purple-500/20">
+                    <i className="fa-solid fa-building-columns"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Refined Dossier & Season Wrap
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Streamlined Prestige & Macro Club Identity cards with clean Pros/Trade-offs layout, accurate single-cup vs. multi-trophy Season Wrap headlines, and sharpened Career Summary narratives.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-purple-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Executive UI & Copy Polish</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* v2.2 Historical Archive Bento Box */}
+        {activeSection === 'updates' && (
+          <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-zinc-300 bg-white/[0.08] border border-white/[0.12] px-2.5 py-1 rounded-xl">
+                  v2.2 Archive
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-zinc-200 tracking-tight">
                   11-Tier Road-to-Glory, Finals Integrity & Delta Save Engine
                 </h2>
               </div>
-              <span className="text-xs text-amber-300 font-semibold flex items-center gap-1.5">
-                <i className="fa-solid fa-sparkles text-amber-400"></i>
-                <span>Latest Release</span>
+              <span className="shrink-0 whitespace-nowrap text-xs text-zinc-400 font-medium flex items-center gap-1.5">
+                <i className="fa-solid fa-clock-rotate-left text-zinc-500"></i>
+                <span>Archived Milestone</span>
               </span>
             </div>
 

@@ -5016,7 +5016,7 @@ export const generateRandomEvent = (currentState: GameState): GameEvent | null =
               de: '⚠️ Feindliche Leveraged-Buyout-Drohung'
             },
             desc: {
-              en: 'Warning: Due diligence reveals the approaching consortium intends a debt-financed Leveraged Buyout (LBO) that would Saddle the treasury with acquisition fees instead of fresh equity!',
+              en: 'Warning: Due diligence reveals the approaching consortium intends a debt-financed Leveraged Buyout (LBO) that would saddle the treasury with acquisition fees instead of fresh equity!',
               de: 'Warnung: Die Prüfung zeigt, dass das Konsortium einen fremdfinanzierten Leveraged Buyout (LBO) plant, der die Vereinskasse belastet statt frisches Kapital zu bringen!'
             },
             opt1: {
