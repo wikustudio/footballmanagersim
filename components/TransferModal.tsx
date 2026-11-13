@@ -492,7 +492,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider">
                           <span className="text-amber-400">
                             <i className="fa-solid fa-fire-flame-curved mr-1.5" />
-                            {t('Veteran Ringer Gamble (Tiers 3–11)', 'Altstar-Aufstiegswette (Liga 3–11)')}
+                            {t('Veteran Ringer', 'Altstar-Vertrag')}
                           </span>
                           <span className="text-zinc-600" aria-hidden="true">·</span>
                           <span className="text-emerald-400 font-mono">
@@ -501,21 +501,21 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         </div>
                         <div className="text-sm font-bold text-white tracking-tight">
                           {ringerEcon.alreadySigned && state.veteranRingerName
-                            ? `${t('Active Veteran Ringer:', 'Aktiver Altstar:')} ${state.veteranRingerName}`
-                            : `${t('Recruit Ex-Top-Flight Legend', 'Ex-Erstliga-Ikone verpflichten')} (e.g. ${featuredLegend.name})`}
+                            ? state.veteranRingerName
+                            : `${t('Sign Legend', 'Ikone verpflichten')} (${featuredLegend.name})`}
                         </div>
                         <p className="text-[11px] text-zinc-400 leading-snug">
                           {t(
-                            `Instant +5 OVR promotion boost for 1 season (retires at season end). Adds +${formatMoney(ringerEcon.annualWageBurdenK)} (+30%) to annual wage bill.`,
-                            `Sofortiger +5 GES Aufstiegs-Boost für 1 Saison (Karriereende nach der Saison). Erhöht das Jahresgehalt um +${formatMoney(ringerEcon.annualWageBurdenK)} (+30%).`
+                            `+5 OVR for 1 season. +${formatMoney(ringerEcon.annualWageBurdenK)}/yr wages.`,
+                            `+5 GES für 1 Saison. +${formatMoney(ringerEcon.annualWageBurdenK)}/Jahr Gehalt.`
                           )}
                         </p>
                         {ringerEcon.isBlockedByDebtVeto && (
                           <div className="text-[10px] font-semibold text-rose-400 flex items-center gap-1.5 pt-1">
                             <i className="fa-solid fa-ban" />
                             {t(
-                              'Board Debt Veto: Luxury veteran contracts blocked during financial distress or debt.',
-                              'Vorstands-Veto: Luxus-Altstarverträge bei Verschuldung gesperrt.'
+                              'Blocked while in debt.',
+                              'Bei Verschuldung gesperrt.'
                             )}
                           </div>
                         )}
@@ -529,7 +529,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                             e.stopPropagation();
                             handleAction(onSignVeteranRinger);
                           }}
-                          className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition flex flex-col items-center justify-center min-w-[144px] border ${
+                          className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition flex flex-col items-center justify-center min-w-[128px] border ${
                             ringerEcon.alreadySigned
                               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 cursor-not-allowed'
                               : isRingerDisabled
@@ -539,12 +539,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         >
                           {ringerEcon.alreadySigned ? (
                             <>
-                              <span>{t('Signed for Season', 'Für 1 Jahr im Kader')}</span>
-                              <span className="text-[10px] font-mono opacity-80">+5 OVR Active</span>
+                              <span>{t('Signed', 'Aktiv')}</span>
+                              <span className="text-[10px] font-mono opacity-80">+5 OVR</span>
                             </>
                           ) : (
                             <>
-                              <span>{t('Sign Veteran Ringer', 'Altstar Verpflichten')}</span>
+                              <span>{t('Sign Legend', 'Verpflichten')}</span>
                               <span className="text-[10px] font-mono font-semibold tabular-nums">
                                 {formatMoney(ringerEcon.signingFeeK)} {t('Fee', 'Handgeld')}
                               </span>

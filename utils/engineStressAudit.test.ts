@@ -137,7 +137,7 @@ describe('Comprehensive Game Logic Stress Audit & State Guardians', () => {
 
   describe('Runtime State Guardians (Auto-Healing & Validation)', () => {
     it('verifies sanitizeGameState enforces tier bounds, shields bounds, and reputation safety on corrupted states', async () => {
-      const { sanitizeGameState } = await import('../src/App');
+      const { sanitizeGameState } = await import('../App');
 
       const corruptedState: any = {
         club: {

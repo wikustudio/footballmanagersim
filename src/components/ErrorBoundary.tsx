@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (!isAutomatedOrLocal) {
         submitFeedbackReport({
           type: 'bug',
-          subject: `[FMS v2.3 Auto Crash Report] ${error.message.slice(0, 60)}`,
+          subject: `[FMS v2.6 Auto Crash Report] ${error.message.slice(0, 60)}`,
           title: error.message,
           description: `Automatic crash captured by ErrorBoundary.\nComponent Stack:\n${errorInfo?.componentStack || 'N/A'}`,
           diagnostics,

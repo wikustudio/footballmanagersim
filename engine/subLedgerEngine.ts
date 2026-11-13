@@ -20,10 +20,8 @@ export function calculateAcademySubLedger(state: GameState): AcademyRoiReport {
   const fin = calculateClubFinancials({ ...state, isManaged: true });
   const totalAcademyOp = (fin as any).academyOp || 150;
   const scoutingDialPct = Math.max(0, Math.min(50, state.academyScoutingDial ?? 0)); // 0 to 50%
-  const fixedBaseUpkeepK = scoutingDialPct > 0
-    ? Math.round(totalAcademyOp / (1 + scoutingDialPct / 100))
-    : totalAcademyOp;
-  const variableScoutingK = Math.max(0, totalAcademyOp - fixedBaseUpkeepK);
+  const fixedBaseUpkeepK = (fin as any).baseAcademyOp ?? totalAcademyOp;
+  const variableScoutingK = (fin as any).scoutingDialExtraK ?? 0;
 
   const history = state.academySpendHistory || [];
   const currentYear = state.year || 2026;

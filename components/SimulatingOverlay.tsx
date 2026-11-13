@@ -33,7 +33,7 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
   const tier = gameState.club?.tier || 1;
   const league = getLeagueInfo(tier, country);
   const tierBenchmarkOvr = getClubOvr({ baseOvr: league?.avgOvr }, 70);
-  const playerOvr = getClubOvr(gameState?.club, tierBenchmarkOvr);
+  const playerOvr = getClubOvr(gameState?.club, 65);
 
   // 2-Half Dynamic Outcome Sync:
   // Lock 1st-half outcomes in pendingSeasonState._meta.
@@ -126,19 +126,23 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     });
   };
 
+  const onSyncRef = useRef(onSyncPendingSeason);
+  onSyncRef.current = onSyncPendingSeason;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const onTriggerMidSeasonDilemmaRef = useRef(onTriggerMidSeasonDilemma);
+  onTriggerMidSeasonDilemmaRef.current = onTriggerMidSeasonDilemma;
+
   const handleSkipSim = () => {
     if (completedRef.current) return;
     setCurrentIdx(targetEndIdx);
     completedRef.current = true;
-    if (!isSecondHalf && onTriggerMidSeasonDilemma) {
-      onTriggerMidSeasonDilemma();
+    if (!isSecondHalf && onTriggerMidSeasonDilemmaRef.current) {
+      onTriggerMidSeasonDilemmaRef.current();
     } else {
-      onComplete();
+      onCompleteRef.current();
     }
   };
-
-  const onSyncRef = useRef(onSyncPendingSeason);
-  onSyncRef.current = onSyncPendingSeason;
 
   // Sync the exact sum of visual userGoals (gf) and oppGoals (ga) and 3-1-0 points back to pendingSeasonState
   useEffect(() => {
@@ -201,7 +205,7 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
       const fallbackTimer = setTimeout(() => {
         if (!completedRef.current) {
           completedRef.current = true;
-          onComplete();
+          onCompleteRef.current();
         }
       }, 450);
       return () => clearTimeout(fallbackTimer);
@@ -211,10 +215,10 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
       const finishTimer = setTimeout(() => {
         if (!completedRef.current) {
           completedRef.current = true;
-          if (!isSecondHalf && onTriggerMidSeasonDilemma) {
-            onTriggerMidSeasonDilemma();
+          if (!isSecondHalf && onTriggerMidSeasonDilemmaRef.current) {
+            onTriggerMidSeasonDilemmaRef.current();
           } else {
-            onComplete();
+            onCompleteRef.current();
           }
         }
       }, isFastMode ? 220 : 520);
@@ -226,7 +230,7 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     }, isFastMode ? 38 : 95);
 
     return () => clearTimeout(tickTimer);
-  }, [isOpen, currentIdx, targetEndIdx, schedule.length, isSecondHalf, isFastMode, onTriggerMidSeasonDilemma, onComplete]);
+  }, [isOpen, currentIdx, targetEndIdx, schedule.length, isSecondHalf, isFastMode]);
 
   if (!isOpen) return null;
 

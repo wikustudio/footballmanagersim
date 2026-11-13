@@ -119,9 +119,12 @@ describe('Universal Currency & Financial Realism across All Nations', () => {
     });
 
     it('preserves Tier 1 powerhouse war chests between €100M and €250M (100,000–250,000 engine units) without collapsing to €3M', () => {
+      // Real Madrid CF modded budget (90,000 = €90M) + 15% proactive poaching war chest = 103,500 (€103.5M)
       expect(parseAndNormalizeModBudget(103500, 1, 'ESP')).toBe(103500);
       expect(formatMoney(103500, 'ESP')).toBe('€103.5M');
+      // Manchester City / Sovereign powerhouse up to €250M cap
       expect(parseAndNormalizeModBudget(250000, 1, 'ENG')).toBe(250000);
+      // Full-euro Tier 1 budgets (>= 1,000,000) still normalize cleanly to thousands
       expect(parseAndNormalizeModBudget(87480000, 1, 'ESP')).toBe(87480);
     });
   });

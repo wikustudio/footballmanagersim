@@ -329,6 +329,14 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     else if (matches.some(m => m.stage === 'Semi-Final')) bestFinish = 'Semi-Finalist 🥉';
     else if (matches.some(m => m.stage === 'Quarter-Final')) bestFinish = 'Quarter-Finalist';
 
+    const grandFinalMatch = matches.find(m => m.stage === 'Grand Final');
+    const finalWinnerGoals = grandFinalMatch
+      ? Math.max(grandFinalMatch.teamGoals || 0, grandFinalMatch.oppGoals || 0)
+      : undefined;
+    const finalLoserGoals = grandFinalMatch
+      ? Math.min(grandFinalMatch.teamGoals || 0, grandFinalMatch.oppGoals || 0)
+      : undefined;
+
     const campaignStats: WorldCupCampaignStats = {
       matchesPlayed: groupPlayed + knockoutPlayed,
       matchesWon: groupWins + knockoutWins,
@@ -337,7 +345,22 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       goalsFor: groupGf + knockoutGf,
       goalsAgainst: groupGa + knockoutGa,
       bestFinish,
-      teamName: activeTeam.name
+      teamName: activeTeam.name,
+      teamFlag: activeTeam.flag,
+      hostCountry: hostNation ? `${hostNation.flag} ${hostNation.name} (${hostNation.city})` : undefined,
+      coachName: appointedCoach?.name,
+      coachStyle: appointedCoach?.style,
+      runnerUp: grandFinalMatch
+        ? wonTrophy
+          ? grandFinalMatch.opponent?.name
+          : activeTeam.name
+        : undefined,
+      finalScore:
+        grandFinalMatch && finalWinnerGoals != null && finalLoserGoals != null
+          ? `${finalWinnerGoals}–${finalLoserGoals}`
+          : undefined,
+      tournamentWinner:
+        grandFinalMatch && !wonTrophy ? grandFinalMatch.opponent?.name : undefined,
     };
     onComplete(wonTrophy, activeTeam.name, campaignStats);
   };

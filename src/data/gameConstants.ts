@@ -309,6 +309,7 @@ export const getMaxTier = (country: string = 'GER', customOrClubs?: number | Clu
 
 export const getLeagueInfo = (tier: number, country: string = 'GER', customName?: string): LeagueInfo => {
   const code = normalizeCountryCode(country);
+  const safeCustomName = typeof customName === 'string' && customName.trim().length > 0 ? customName : undefined;
   // Strictly prevent phantom tiers in countries with static pyramids (e.g. Japan only has Tier 1 and 2)
   if (code === 'JPN' && tier > 2) {
     return COUNTRY_LEAGUES.JPN[2];
@@ -319,7 +320,7 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
   if (countryLeagues && countryLeagues[tier]) {
     return {
       ...countryLeagues[tier],
-      name: customName || countryLeagues[tier].name
+      name: safeCustomName || countryLeagues[tier].name
     };
   }
 
@@ -331,7 +332,7 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
     const countryName = countryObj?.name || code;
     return {
       ...topLeague,
-      name: customName || `${countryName} Division ${tier}`,
+      name: safeCustomName || `${countryName} Division ${tier}`,
       tag: `D${tier}`,
       avgOvr: Math.max(50, Math.floor(topLeague.avgOvr - (tier - 1) * 5)),
       ticket: Math.max(8, Math.floor(topLeague.ticket / divisor)),
@@ -357,7 +358,7 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
   
   return {
     ...baseLeagueInfo,
-    name: customName || `${adjective} League ${tier}`,
+    name: safeCustomName || `${adjective} League ${tier}`,
     tag: `L${tier}`,
     avgOvr: Math.max(50, Math.floor(baseLeagueInfo.avgOvr - (tier - 1) * 5)),
     ticket: Math.max(8, Math.floor(baseLeagueInfo.ticket / divisor)),

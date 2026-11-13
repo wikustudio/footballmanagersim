@@ -107,11 +107,17 @@ export const MatchdayActionDock: React.FC<MatchdayActionDockProps> = ({
         formBadge: 'text-sky-300 bg-sky-500/15 border-sky-500/30',
       };
 
-  // Spacebar shortcut handler when dock is visible and no input is focused
+  // Spacebar shortcut handler when dock is visible and no input or modal dialog is active
   useEffect(() => {
     if (isHidden) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return;
+      if (e.code !== 'Space' || e.repeat) return;
+      if (
+        typeof document !== 'undefined' &&
+        document.querySelector('[role="dialog"], [aria-modal="true"], [data-wc-modal="true"]')
+      ) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (
         target &&

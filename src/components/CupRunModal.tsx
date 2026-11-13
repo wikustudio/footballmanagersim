@@ -10,7 +10,7 @@ import { simplifyClubName } from '../engine/moddingEngine';
 import { PrestigeTrophy } from './PrestigeTrophy';
 import { getCompetitionTheme } from '../utils/prestigeTheme';
 import { BroadcastBadge } from './BroadcastBadge';
-import { isCanadianMLSClub, rand } from '../data/gameConstants';
+import { isCanadianMLSClub, isReserveClub, rand } from '../data/gameConstants';
 
 interface CupRunModalProps {
   clubsDb?: Club[];
@@ -403,9 +403,9 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   const playerOvr = Math.min(100, club.baseOvr + (hasTacticalGeniusPerk ? 2 : 0));
 
   const generateOpponent = (r: Round) => {
-    const isReserveTeam = (name: string) => {
-      const lower = name.toLowerCase();
-      return lower.endsWith(' ii') || lower.endsWith(' b') || lower.includes('reserve') || lower.includes(' u21') || lower.includes(' u23') || lower.includes(' castilla') || lower.startsWith('jong ') || lower.includes(' jong ');
+    const isReserveTeam = (name: string, cObj?: Partial<Club>) => {
+      if (cObj?.isReserve) return true;
+      return isReserveClub(name);
     };
     
     let selectedName = 'FC Opponent';
@@ -443,7 +443,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     };
 
     const isClubEligibleForCup = (c: Club): boolean => {
-      if (c.id === gameState.club.id || isReserveTeam(c.name)) return false;
+      if (c.id === gameState.club.id || isReserveTeam(c.name, c)) return false;
       const cCountry = c.country || 'GER';
       if (cupRun.id === 'dfb') {
         if (country === 'CAN') {
@@ -1064,9 +1064,10 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     let scoreStr = '';
 
     const stadium = currentStadium || getStadiumInfo(opponent.name, round, isDe, cupRun.id, effectiveCountry, clubsDb);
+    const stadiumCapStr = (stadium?.capacity ?? 15000).toLocaleString();
     const magicText = round === 'final'
-      ? `A magical cup final at ${stadium.name} in front of ${stadium.capacity.toLocaleString()} roaring supporters!`
-      : `Electric cup tie at ${stadium.name} with ${stadium.capacity.toLocaleString()} fans in attendance.`;
+      ? `A magical cup final at ${stadium.name} in front of ${stadiumCapStr} roaring supporters!`
+      : `Electric cup tie at ${stadium.name} with ${stadiumCapStr} fans in attendance.`;
 
     if (isSetPiece) {
       isWin = roll < winProb;
@@ -1454,7 +1455,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     <i className="fa-solid fa-location-dot text-zinc-500 text-[10px]" />
                     <span>{stadium.name}</span>
                     <span className="text-zinc-600">·</span>
-                    <span className="tabular-nums text-zinc-300">{stadium.capacity.toLocaleString()}</span> capacity
+                    <span className="tabular-nums text-zinc-300">{(stadium?.capacity ?? 15000).toLocaleString()}</span> capacity
                   </p>
                 </div>
               </div>

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { GameState, Language, WorldCupCampaignHistoryRecord } from '../types';
 import { BroadcastBadge } from './BroadcastBadge';
+import { buildWorldCupAlmanacHistory } from '../utils/championsAlmanac';
 
 interface ManagerialWorldCupModalProps {
   state: GameState;
@@ -16,15 +17,31 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
   isModActive = false,
   onClose,
 }) => {
+  const [activeTab, setActiveTab] = useState<'campaigns' | 'almanac'>('campaigns');
+  const worldCupAlmanacList = useMemo(
+    () => buildWorldCupAlmanacHistory(state, true, isModActive),
+    [state, isModActive]
+  );
   // Collect all actual campaigns without dropping any records
   const campaignsList: WorldCupCampaignHistoryRecord[] = [];
   const usedYears = new Set<number>();
+
+  const earliestHistYr = (state.history || []).reduce(
+    (min, h) => (h?.year ? Math.min(min, Number(h.year)) : min),
+    Infinity
+  );
+  const resolvedStartYear = Math.max(
+    1950,
+    Number(state.startYear) ||
+      (Number.isFinite(earliestHistYr) ? earliestHistYr : Number(state.year) || 2026)
+  );
+  const firstWcYear = resolvedStartYear + ((6 - (resolvedStartYear % 4)) % 4);
 
   // 1. First, preserve every campaign in state.worldCupCampaigns
   const rawCampaigns = Array.isArray(state.worldCupCampaigns) ? state.worldCupCampaigns : [];
   rawCampaigns.forEach((c, index) => {
     if (!c) return;
-    let year = typeof c.year === 'number' ? c.year : (2026 + index * 4);
+    let year = typeof c.year === 'number' ? c.year : (firstWcYear + index * 4);
     // If year is duplicated among raw campaigns, assign distinct 4-year cycle year
     while (usedYears.has(year)) {
       year += 4;
@@ -50,7 +67,7 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
     if (t && t.name && (t.name.toLowerCase().includes('world cup') || t.name.toLowerCase().includes('weltmeister'))) {
       const existing = campaignsList.find(c => c.year === t.year || (c.wonTrophy && c.year === t.year));
       if (!existing) {
-        let yr = typeof t.year === 'number' ? t.year : 2026;
+        let yr = typeof t.year === 'number' ? t.year : firstWcYear;
         while (usedYears.has(yr)) {
           yr += 4;
         }
@@ -76,7 +93,7 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
     if (h && h.trophiesThisYear?.wc) {
       const existing = campaignsList.find(c => c.year === h.year);
       if (!existing) {
-        let yr = typeof h.year === 'number' ? h.year : 2026;
+        let yr = typeof h.year === 'number' ? h.year : firstWcYear;
         while (usedYears.has(yr)) {
           yr += 4;
         }
@@ -107,7 +124,7 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
   );
 
   if (campaignsList.length === 0 && expectedCount > 0 && expectedCount <= 8) {
-    const candidateYears = [2026, 2030, 2034, 2038, 2042];
+    const candidateYears = [0, 1, 2, 3, 4].map(idx => firstWcYear + idx * 4);
     for (const y of candidateYears) {
       if (campaignsList.length >= expectedCount) break;
       if (!usedYears.has(y)) {
@@ -289,83 +306,181 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
             </div>
           </div>
 
-          {/* Campaigns Timeline */}
-          <div>
-            <div className="text-[11px] uppercase font-bold tracking-wider text-zinc-400 mb-2.5 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <i className="fas fa-list-check text-amber-400"></i>
-                <span>Tournament Campaigns Managed</span>
-              </span>
-              <span className="font-mono text-zinc-500 tabular-nums">{tournamentsPlayed} Total</span>
+          {/* Tab Switcher: Your Campaigns vs All-Time World Cup History */}
+          <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
+            <div className="flex items-center gap-1.5 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => setActiveTab('campaigns')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'campaigns'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Your Campaigns ({tournamentsPlayed})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('almanac')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  activeTab === 'almanac'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                All World Cup Winners ({worldCupAlmanacList.length})
+              </button>
             </div>
+          </div>
 
-            {campaigns.length === 0 ? (
-              <div className="bg-white/[0.02] rounded-2xl p-8 border border-white/[0.06] text-center">
-                <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mx-auto mb-3 text-xl">
-                  <i className="fas fa-globe"></i>
-                </div>
-                <h3 className="text-base font-bold text-white mb-1">No International Campaigns Yet</h3>
-                <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-                  Every 4 years (2026, 2030, 2034...), national federations invite top-flight sporting directors (Tier 1 &amp; 80+ reputation) to take charge of a nation in the World Cup.
-                </p>
+          {activeTab === 'campaigns' ? (
+            <div>
+              <div className="text-[11px] uppercase font-bold tracking-wider text-zinc-400 mb-2.5 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <i className="fas fa-list-check text-amber-400"></i>
+                  <span>Tournament Campaigns Managed</span>
+                </span>
+                <span className="font-mono text-zinc-500 tabular-nums">{tournamentsPlayed} Total</span>
               </div>
-            ) : (
-              <div className="space-y-2.5">
-                {campaigns.map((c, idx) => (
-                  <div
-                    key={idx}
-                    className={`rounded-2xl p-4 border transition ${
-                      c.wonTrophy
-                        ? 'bg-gradient-to-r from-amber-500/[0.10] via-white/[0.03] to-transparent border-amber-500/35 shadow-sm'
-                        : 'bg-white/[0.02] border-white/[0.06]'
-                    }`}
+
+              {campaigns.length === 0 ? (
+                <div className="bg-white/[0.02] rounded-2xl p-8 border border-white/[0.06] text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mx-auto text-xl">
+                    <i className="fas fa-globe"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white mb-1">No International Campaigns Yet</h3>
+                    <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                      Every 4 years (2026, 2030, 2034...), national federations invite top-flight sporting directors (Tier 1 &amp; 80+ reputation) to take charge of a nation in the World Cup.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('almanac')}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
-                          c.wonTrophy ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' : 'bg-white/[0.04] border border-white/[0.08] text-white'
-                        }`}>
-                          {c.wonTrophy ? '🏆' : '⚽'}
+                    Browse All-Time World Cup Winners ({worldCupAlmanacList.length})
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {campaigns.map((c, idx) => (
+                    <div
+                      key={idx}
+                      className={`rounded-2xl p-4 border transition ${
+                        c.wonTrophy
+                          ? 'bg-gradient-to-r from-amber-500/[0.10] via-white/[0.03] to-transparent border-amber-500/35 shadow-sm'
+                          : 'bg-white/[0.02] border-white/[0.06]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
+                            c.wonTrophy ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' : 'bg-white/[0.04] border border-white/[0.08] text-white'
+                          }`}>
+                            {c.wonTrophy ? '🏆' : '⚽'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <span className="text-sm font-black text-white">{c.teamName}</span>
+                              <span className="text-xs font-mono text-amber-400 font-bold tabular-nums">{c.year}</span>
+                              <BroadcastBadge
+                                country={c.teamName.includes('Brazil') ? 'BRA' : c.teamName.includes('England') ? 'ENG' : c.teamName.includes('Germany') ? 'GER' : c.teamName.includes('France') ? 'FRA' : (state.club?.country || 'USA')}
+                                competitionId="world cup"
+                                isModActive={isModActive}
+                              />
+                            </div>
+                            <div className="text-[11px] text-zinc-400 font-mono tabular-nums flex items-center gap-1.5 flex-wrap">
+                              <span>{c.matchesPlayed} MP</span>
+                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span className="text-emerald-400">{c.matchesWon}W</span>
+                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span className="text-zinc-300">{c.matchesDrawn}D</span>
+                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span className="text-rose-400">{c.matchesLost}L</span>
+                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span>Goals {c.goalsFor}:{c.goalsAgainst}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                            <span className="text-sm font-black text-white">{c.teamName}</span>
-                            <span className="text-xs font-mono text-amber-400 font-bold tabular-nums">{c.year}</span>
-                            <BroadcastBadge
-                              country={c.teamName.includes('Brazil') ? 'BRA' : c.teamName.includes('England') ? 'ENG' : c.teamName.includes('Germany') ? 'GER' : c.teamName.includes('France') ? 'FRA' : (state.club?.country || 'USA')}
-                              competitionId="world cup"
-                              isModActive={isModActive}
-                            />
-                          </div>
-                          <div className="text-[11px] text-zinc-400 font-mono tabular-nums flex items-center gap-1.5 flex-wrap">
-                            <span>{c.matchesPlayed} MP</span>
-                            <span aria-hidden="true" className="text-zinc-600">·</span>
-                            <span className="text-emerald-400">{c.matchesWon}W</span>
-                            <span aria-hidden="true" className="text-zinc-600">·</span>
-                            <span className="text-zinc-300">{c.matchesDrawn}D</span>
-                            <span aria-hidden="true" className="text-zinc-600">·</span>
-                            <span className="text-rose-400">{c.matchesLost}L</span>
-                            <span aria-hidden="true" className="text-zinc-600">·</span>
-                            <span>Goals {c.goalsFor}:{c.goalsAgainst}</span>
-                          </div>
+
+                        <div className="text-right shrink-0">
+                          <span className={`text-xs font-black uppercase tracking-wider ${
+                            c.wonTrophy
+                              ? 'text-amber-300'
+                              : 'text-zinc-400'
+                          }`}>
+                            {c.bestFinish}
+                          </span>
                         </div>
                       </div>
-
-                      <div className="text-right shrink-0">
-                        <span className={`text-xs font-black uppercase tracking-wider ${
-                          c.wonTrophy
-                            ? 'text-amber-300'
-                            : 'text-zinc-400'
-                        }`}>
-                          {c.bestFinish}
-                        </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="text-[11px] uppercase font-bold tracking-wider text-zinc-400 mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <i className="fas fa-globe text-amber-400"></i>
+                  <span>National Team World Cup Roll of Honour</span>
+                </span>
+                <span className="font-mono text-zinc-500 tabular-nums">{worldCupAlmanacList.length} Editions</span>
+              </div>
+              {worldCupAlmanacList.map(wc => (
+                <div
+                  key={wc.id}
+                  className={`rounded-2xl p-3.5 border transition flex items-center justify-between gap-3 ${
+                    wc.isUserClub
+                      ? 'bg-gradient-to-r from-amber-500/[0.12] via-white/[0.03] to-transparent border-amber-400/40'
+                      : 'bg-white/[0.02] border-white/[0.06]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm font-mono font-black text-amber-400 tabular-nums w-11 shrink-0">
+                      {wc.year}
+                    </span>
+                    <div className="w-9 h-9 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-base shrink-0">
+                      {wc.flag || '🌍'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black text-white">{wc.clubName}</span>
+                        {wc.isUserClub && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[9px] font-black uppercase">
+                            YOU
+                          </span>
+                        )}
+                        {wc.isPastManagerClub && (
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[9px] font-black uppercase">
+                            EX
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 truncate">
+                        Coach: <span className="text-zinc-200">{wc.coachName}</span>
+                        {wc.hostCountry ? ` · Host: ${wc.hostFlag || ''} ${wc.hostCountry}` : ''}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <div className="text-right shrink-0">
+                    {wc.finalScore && wc.runnerUp ? (
+                      <div className="text-xs font-bold text-amber-300 tabular-nums">
+                        {wc.finalScore} <span className="text-zinc-400 font-normal">vs {wc.runnerUp}</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-bold text-amber-300">World Champions 🏆</div>
+                    )}
+                    <div className="text-[10px] text-zinc-500">
+                      {wc.isHistoricalLore ? 'Historical Lore' : 'Simulated Edition'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

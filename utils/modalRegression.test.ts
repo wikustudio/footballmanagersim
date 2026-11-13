@@ -701,11 +701,12 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
     });
 
     it('verifies sanitizeGameState and season completion advance 2010 season to 2011 and never return to start of 2010', async () => {
-      const { sanitizeGameState } = await import('../src/App');
+      const { sanitizeGameState } = await import('../App');
       const fs = await import('fs');
       const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
       const mainSrc = fs.readFileSync('src/main.tsx', 'utf-8');
 
+      // Exact state from live bug report: Milton Keynes Dons after completing 2010 season (#2, 1 history entry, phase start)
       const regressed2010State = {
         managerName: 'ALEX',
         startYear: 2010,
@@ -758,6 +759,7 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(healed!.history).toHaveLength(1);
       expect(healed!.history[0].year).toBe(2010);
 
+      // Stuck mid-season state where 2010 history entry was already recorded
       const stuckMid2010State = {
         ...regressed2010State,
         seasonCount: 1,
@@ -769,6 +771,7 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(healedMid!.year).toBe(2011);
       expect(healedMid!.seasonCount).toBe(2);
 
+      // Verify App.tsx and main.tsx guards against premature phase reset and mid-season SW reload
       expect(appSrc).not.toContain("setGameState(prev => prev ? { ...prev, seasonPhase: 'start', pendingSeasonState: null } : prev);");
       expect(appSrc).toContain('minExpectedNextYear');
       expect(mainSrc).toContain('if (Date.now() - bootedAt < 4000) updateSW(true);');

@@ -349,6 +349,7 @@ export interface GameState {
   wonderkidOvrBoost?: number;
   top4FinishStreak?: number;
   lastJobOfferYear?: number;
+  lastPoachDeclinedYear?: number;
   clubLeagueHistories?: Record<string | number, ClubSeasonRecord[]>;
   managedClubFacilities?: Record<string | number, {
     tier?: number;
@@ -715,15 +716,18 @@ export interface WorldCupCampaignStats {
   goalsAgainst: number;
   bestFinish: string;
   teamName: string;
+  teamFlag?: string;
+  hostCountry?: string;
+  coachName?: string;
+  coachStyle?: string;
+  runnerUp?: string;
+  finalScore?: string;
+  tournamentWinner?: string;
 }
 
 export interface WorldCupCampaignHistoryRecord extends WorldCupCampaignStats {
   year: number;
   wonTrophy: boolean;
-  teamFlag?: string;
-  hostCountry?: string;
-  coachName?: string;
-  coachStyle?: string;
 }
 
 export interface InternationalTournamentState {

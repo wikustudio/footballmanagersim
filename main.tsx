@@ -30,6 +30,27 @@ const rootElem = document.getElementById('root')!;
 const preboot = document.getElementById('fms-preboot-shell');
 if (preboot) preboot.remove();
 
+// Guard against browser extensions and auto-translate (e.g. Chrome/Safari Translate)
+// wrapping text nodes in <font> tags, which causes React reconciler to throw
+// "NotFoundError: Failed to execute 'removeChild' on 'Node'" during modal transitions.
+if (typeof Node === 'function' && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child.parentNode !== this) {
+      return child;
+    }
+    return originalRemoveChild.apply(this, arguments as any) as T;
+  };
+
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      return newNode;
+    }
+    return originalInsertBefore.apply(this, arguments as any) as T;
+  };
+}
+
 createRoot(rootElem).render(
   <StrictMode>
     <ErrorBoundary>

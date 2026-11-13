@@ -15,10 +15,17 @@ interface EventUIProps {
 export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onResolve }) => {
   const [isResolving, setIsResolving] = React.useState(false);
 
+  React.useEffect(() => {
+    setIsResolving(false);
+  }, [event?.id, event?.type]);
+
   const handleChoice = (choiceIndex: number) => {
     if (isResolving) return;
     setIsResolving(true);
     onResolve(choiceIndex);
+    setTimeout(() => {
+      setIsResolving(false);
+    }, 320);
   };
 
   const t = (en: string, de?: string, _ignoredEs?: string) =>
@@ -139,9 +146,13 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
 
   const getEventKicker = () => {
     if (event.type === 'job_offer') {
-      return isSackedOffer
-        ? t('Official Board Resolution · Relieved of Duties', 'Offizieller Vorstandsbeschluss · Vertragsauflösung')
-        : t('Executive Opportunities · Contract Offers', 'Trainerangebote · Vertragsangebote');
+      if (isSackedOffer) {
+        return t('Official Board Resolution · Relieved of Duties', 'Offizieller Vorstandsbeschluss · Vertragsauflösung');
+      }
+      if (String(event.id || '').startsWith('proactive_poach_')) {
+        return t('Proactive Headhunting · Executive Poaching', 'Aktive Abwerbung · Direktoren-Abwerbung');
+      }
+      return t('Executive Opportunities · Contract Offers', 'Trainerangebote · Vertragsangebote');
     }
     if (event.type === 'board_expectation') return t('Board Directive', 'Vorstandsvorgabe');
     if (event.type === 'club_welcome') return t('Club Appointment', 'Amtsantritt');
@@ -235,8 +246,8 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
               const countryCode = c.country || 'GER';
               const countryObj = COUNTRIES[countryCode] || COUNTRIES['GER'];
               const lgInfo = getLeagueInfo(c.tier || 1, countryCode);
-              const displayBudget = c.offerBudget != null
-                ? parseAndNormalizeModBudget(c.offerBudget, c.tier || 1, countryCode)
+              const displayBudget = typeof c.offerBudget === 'number' && Number.isFinite(c.offerBudget) && c.offerBudget > 0
+                ? Math.round(c.offerBudget)
                 : c.currentBudget != null
                 ? parseAndNormalizeModBudget(c.currentBudget, c.tier || 1, countryCode)
                 : getStartingBudget(c.tier || 1, countryCode);
@@ -262,8 +273,21 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-sm sm:text-base text-white group-hover:text-sky-200 transition-colors break-words tracking-tight leading-tight">
-                          {c.name}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-bold text-sm sm:text-base text-white group-hover:text-sky-200 transition-colors break-words tracking-tight leading-tight">
+                            {c.name}
+                          </span>
+                          {c.isInsolventGiant ? (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                              <i className="fa-solid fa-fire-flame-curved text-[9px] text-amber-400"></i>
+                              <span>{t('Fallen Giant', 'Gefallener Gigant')}</span>
+                            </span>
+                          ) : (c.tier === 1 && c.baseOvr >= 83) ? (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[9px] font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                              <i className="fa-solid fa-crown text-[9px] text-emerald-400"></i>
+                              <span>{t('Premium Club', 'Top-Klub')}</span>
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-[11px] text-zinc-400 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 font-medium">
                           <span className="shrink-0">{countryObj?.flag || '🌐'}</span>
@@ -529,7 +553,7 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
             </div>
             <div className="flex flex-col items-center p-2 rounded-xl bg-white/[0.02]">
               <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{lang === 'de' ? 'Stadion' : 'Capacity'}</span>
-              <span className="text-sm font-bold text-white mt-0.5 font-mono">{event.newClub.stadium.toLocaleString()}</span>
+              <span className="text-sm font-bold text-white mt-0.5 font-mono">{(event.newClub.stadium || 15000).toLocaleString()}</span>
             </div>
             <div className="flex flex-col items-center p-2 rounded-xl bg-white/[0.02]">
               <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{lang === 'de' ? 'Budget' : 'War Chest'}</span>
@@ -558,11 +582,13 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
           <h2 className={`text-xl sm:text-2xl font-bold tracking-tight mb-2 ${
             isEmergency ? 'text-rose-300' : 'text-white'
           } leading-tight`}>
-            {getLoc(lang, event.title)}
+            {getLoc(lang, event.title) || t('Executive Update', 'Vorstands-Update')}
           </h2>
-          <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 text-xs sm:text-[13px] text-zinc-300 font-normal leading-relaxed text-left sm:text-center">
-            {getLoc(lang, event.desc)}
-          </div>
+          {getLoc(lang, event.desc) && (
+            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4 text-xs sm:text-[13px] text-zinc-300 font-normal leading-relaxed text-left sm:text-center">
+              {getLoc(lang, event.desc)}
+            </div>
+          )}
         </div>
       )}
 
@@ -623,6 +649,18 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
               </div>
             </div>
             {buildOutcomeChips(event.opt3)}
+          </button>
+        )}
+
+        {!event.opt1 && !event.opt2 && !event.opt3 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleChoice(0); }}
+            disabled={isResolving}
+            className="w-full bg-sky-500 hover:bg-sky-400 text-white font-semibold py-3.5 px-5 justify-center items-center shadow-[0_4px_20px_rgba(14,165,233,0.3)] rounded-2xl transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex relative overflow-hidden group cursor-pointer border border-sky-400/30"
+          >
+            <span className="font-semibold text-xs sm:text-sm text-white text-center">
+              {t('Continue', 'Weiter')}
+            </span>
           </button>
         )}
       </div>

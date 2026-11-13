@@ -17,13 +17,23 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
   dilemmaId,
   onResolveDilemma,
 }) => {
-  if (!isOpen) return null;
-
   const lang = gameState.language || 'en';
   const dilemmas = getManagerialDilemmas(gameState);
   const dilemma = dilemmas.find((d) => d.id === dilemmaId) || dilemmas[0];
 
-  if (!dilemma) return null;
+  React.useEffect(() => {
+    if (isOpen && !dilemma) {
+      onResolveDilemma('B', {
+        id: 'fallback',
+        title: { en: 'Standard Preparation', de: 'Standard-Vorbereitung' },
+        desc: { en: '', de: '' },
+        optionA: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'emerald' },
+        optionB: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'sky' },
+      });
+    }
+  }, [isOpen, dilemma, onResolveDilemma]);
+
+  if (!isOpen || !dilemma) return null;
 
   const pending = gameState.pendingSeasonState;
   const currentMd = pending?.dilemmaMatchday || 17;

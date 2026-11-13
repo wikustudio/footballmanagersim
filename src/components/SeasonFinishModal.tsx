@@ -11,6 +11,7 @@ import { ClubLogo } from './ClubLogo';
 import { REAL_CLUB_ALIASES, simplifyClubName } from '../engine/moddingEngine';
 import { PrestigeTrophy } from './PrestigeTrophy';
 import { getAllUniverseMovements, getHeadlineCategory, isMajorUniverseHeadline } from '../utils/universeMovements';
+import { ChampionsAlmanacView, TrophyLeadersChartView } from './HistoryAndAlmanacViews';
 
 interface SeasonFinishModalProps {
   state: GameState;
@@ -121,7 +122,16 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   const [top3Rank, setTop3Rank] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'squad' | 'table' | 'world'>('overview');
+  const [worldAlmanacTab, setWorldAlmanacTab] = useState<'almanac' | 'leaders'>('almanac');
+  const [almanacCountry, setAlmanacCountry] = useState<string>(state.club.country || 'GER');
+  const [almanacTier, setAlmanacTier] = useState<number>(seasonData.tier || 1);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (state.club?.country) {
+      setAlmanacCountry(state.club.country);
+    }
+  }, [state.club?.country]);
 
   const switchTab = (tab: 'overview' | 'squad' | 'table' | 'world') => {
     setActiveTab(tab);
@@ -224,12 +234,25 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     };
   }, [isChamp, isPromoted, isRelegated]);
 
-  // Keyboard shortcut: Press Enter to proceed (guarded against duplicate calls or overlapping modals)
+
+  // Keyboard shortcut: Press Enter to proceed (guarded against interactive controls, duplicate calls, or overlapping modals)
   const hasClosedRef = useRef(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !isDownloading && !hasClosedRef.current) {
+      if (e.key === 'Enter' && !e.repeat && !isDownloading && !hasClosedRef.current) {
         if (typeof document !== 'undefined' && document.querySelector('[data-wc-modal="true"]')) {
+          return;
+        }
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === 'SELECT' ||
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'BUTTON' ||
+            target.tagName === 'A' ||
+            target.isContentEditable)
+        ) {
           return;
         }
         hasClosedRef.current = true;
@@ -2774,91 +2797,62 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   </div>
                 )}
 
-                {/* Pyramid Movements: Promotions & Relegations */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Promotions */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm">
-                    <div className="flex items-center justify-between mb-3 border-b border-white/[0.05] pb-2">
-                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i className="fa-solid fa-arrow-trend-up text-xs"></i>
-                        Promoted to Higher Tiers
+                {/* Champions Almanac & Trophy Leaders */}
+                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i className={`fa-solid ${worldAlmanacTab === 'almanac' ? 'fa-trophy text-amber-400' : 'fa-chart-simple text-emerald-400'} text-xs`}></i>
+                        {worldAlmanacTab === 'almanac' ? 'Champions Almanac' : 'Top 5 Trophy Leaders'}
                       </span>
-                      <span className="text-[10px] text-zinc-400">{promotionsList.length} Moves</span>
                     </div>
-                    {promotionsList.length > 0 ? (
-                      <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                        {promotionsList.map((p) => (
-                          <div
-                            key={p.id}
-                            className="bg-black/30 border border-white/[0.04] rounded-xl p-2.5 flex items-center justify-between text-xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <ClubLogo
-                                name={p.clubName}
-                                id={p.clubId}
-                                color={p.clubColor}
-                                logo={p.clubLogo}
-                                isModActive={isModActive}
-                                className="w-6 h-6 object-contain shrink-0"
-                                fallbackClassName="w-6 h-6 rounded text-[9px] flex items-center justify-center font-bold text-white shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <div className="font-bold text-white break-words">{p.clubName}</div>
-                                <div className="text-[10px] text-emerald-400 truncate">{p.reason}</div>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded-full shrink-0 ml-2">
-                              {p.toLeagueName}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-zinc-400 py-3 text-center">No promotions recorded.</div>
-                    )}
+                    <div className="bg-black/40 border border-white/[0.08] rounded-xl p-1 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setWorldAlmanacTab('almanac')}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                          worldAlmanacTab === 'almanac'
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        Champions Almanac
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorldAlmanacTab('leaders')}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                          worldAlmanacTab === 'leaders'
+                            ? 'bg-emerald-500 text-slate-950'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        Top 5 Trophy Chart
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Relegations */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm">
-                    <div className="flex items-center justify-between mb-3 border-b border-white/[0.05] pb-2">
-                      <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i className="fa-solid fa-arrow-trend-down text-xs"></i>
-                        Relegated & Demoted
-                      </span>
-                      <span className="text-[10px] text-zinc-400">{relegationsList.length} Moves</span>
-                    </div>
-                    {relegationsList.length > 0 ? (
-                      <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                        {relegationsList.map((r) => (
-                          <div
-                            key={r.id}
-                            className="bg-black/30 border border-white/[0.04] rounded-xl p-2.5 flex items-center justify-between text-xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <ClubLogo
-                                name={r.clubName}
-                                id={r.clubId}
-                                color={r.clubColor}
-                                logo={r.clubLogo}
-                                isModActive={isModActive}
-                                className="w-6 h-6 object-contain shrink-0"
-                                fallbackClassName="w-6 h-6 rounded text-[9px] flex items-center justify-center font-bold text-white shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <div className="font-bold text-white break-words">{r.clubName}</div>
-                                <div className="text-[10px] text-rose-400 truncate">{r.reason}</div>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-semibold text-rose-300 bg-rose-500/15 border border-rose-500/25 px-2 py-0.5 rounded-full shrink-0 ml-2">
-                              {r.toLeagueName}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-zinc-400 py-3 text-center">No relegations recorded.</div>
-                    )}
-                  </div>
+                  {worldAlmanacTab === 'almanac' ? (
+                    <ChampionsAlmanacView
+                      state={state}
+                      clubsDb={clubsDb}
+                      initialCountry={almanacCountry}
+                      initialTier={almanacTier}
+                      onSelectCountry={setAlmanacCountry}
+                      onSelectTier={setAlmanacTier}
+                      isModActive={isModActive}
+                    />
+                  ) : (
+                    <TrophyLeadersChartView
+                      state={state}
+                      clubsDb={clubsDb}
+                      initialCountry={almanacCountry}
+                      initialTier={almanacTier}
+                      onSelectCountry={setAlmanacCountry}
+                      onSelectTier={setAlmanacTier}
+                      isModActive={isModActive}
+                    />
+                  )}
                 </div>
 
                 {/* Blockbuster Heavyweight Transfers */}

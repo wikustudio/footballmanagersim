@@ -1,5 +1,4 @@
 import { GameState } from '../types';
-import { supabase } from '../lib/supabaseClient';
 
 export interface CrashReportEntry {
   id: string;
@@ -165,7 +164,6 @@ export interface FeedbackReportPayload {
 
 export async function submitFeedbackReport(payload: FeedbackReportPayload): Promise<{
   ok: boolean;
-  supabaseSaved: boolean;
   netlifyFormSaved: boolean;
   apiSaved: boolean;
 }> {
@@ -191,28 +189,7 @@ export async function submitFeedbackReport(payload: FeedbackReportPayload): Prom
   formParams.append('crashSummary', crashSummary);
   formParams.append('timestamp', submittedAt);
 
-  const supabaseRow = {
-    report_type: payload.type === 'feature' ? 'feature' : 'bug',
-    subject: payload.subject,
-    title: payload.title || 'Untitled Report',
-    description: payload.description || '(No additional details provided)',
-    contact_email: payload.contactEmail || 'anonymous',
-    diagnostics: payload.diagnostics || '(No diagnostics attached)',
-    crash_summary: crashSummary,
-    crash_report: crash || null,
-    recipient_email: 'kuehnewilly@gmail.com',
-    created_at: submittedAt,
-  };
-
-  const supabaseInsertPromise = supabase
-    ? Promise.resolve(supabase.from('feedback_reports').insert(supabaseRow)).then(
-        ({ error }) => !error,
-        () => false
-      )
-    : Promise.resolve(false);
-
-  const [supabaseResult, netlifyResult, apiResult] = await Promise.allSettled([
-    supabaseInsertPromise,
+  const [netlifyResult, apiResult] = await Promise.allSettled([
     fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -228,16 +205,13 @@ export async function submitFeedbackReport(payload: FeedbackReportPayload): Prom
     }),
   ]);
 
-  const supabaseSaved =
-    supabaseResult.status === 'fulfilled' && Boolean(supabaseResult.value);
   const netlifyFormSaved =
     netlifyResult.status === 'fulfilled' && netlifyResult.value.ok;
   const apiSaved =
     apiResult.status === 'fulfilled' && apiResult.value.ok;
 
   return {
-    ok: supabaseSaved || netlifyFormSaved || apiSaved,
-    supabaseSaved,
+    ok: netlifyFormSaved || apiSaved,
     netlifyFormSaved,
     apiSaved,
   };

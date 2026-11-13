@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { simulateAiLeagues } from '../engine/simulateAiLeagues';
+import { calculateProbabilisticSeason } from '../engine/seasonSimEngine';
 import { isReserveClub, getMaxTier, calculateClubFinancials, getLeagueInfo } from '../data/gameConstants';
 import { ALL_CLUBS as CLUBS } from '../data/clubsData';
 import { Club } from '../types';
@@ -252,4 +253,70 @@ describe('Football Realism Blindspot Audit & Stress Test', () => {
       });
     });
   });
+
+  describe('6. Dominant Club GF / GA Realism (Full-Season & Winter Break 2nd Half)', () => {
+    it('ensures elite top-flight clubs (e.g. Bayern Munich 90+ OVR) finishing 1st or 2nd concede realistic goals (<= 38 GA, never 50-64 GA)', () => {
+      const bayernClub: Club = {
+        id: 1,
+        name: 'FC Bayern Munich',
+        tier: 1,
+        country: 'GER',
+        baseOvr: 91,
+        stadium: 75000,
+        fanBase: 75000,
+        academyLevel: 5,
+        medicalLevel: 5,
+        morale: 95,
+        color: '#dc052d',
+      };
+
+      const tactics = ['Gegenpressing', 'Total Football', 'Tiki-Taka', 'Direct Counter', 'Defensive'];
+
+      for (let i = 0; i < 40; i++) {
+        const tactic = tactics[i % tactics.length];
+        const baseState: any = {
+          club: { ...bayernClub },
+          year: 2026 + i,
+          tactic,
+          managerSkills: ['tactical_mastermind'],
+          currentCoach: {
+            id: 'coach_1',
+            name: 'Hansi Flick',
+            style: tactic,
+            ovrBoost: 2,
+          },
+          stadiumPolicy: 'balanced',
+        };
+
+        const fullSeason = calculateProbabilisticSeason(baseState, CLUBS, false);
+        expect(fullSeason.wins + fullSeason.draws + fullSeason.losses).toBe(34);
+        expect(fullSeason.gf - fullSeason.ga).toBe(fullSeason.gd);
+
+        if (fullSeason.pos <= 2) {
+          expect(fullSeason.ga, `Full season GA for pos ${fullSeason.pos} (${tactic})`).toBeLessThanOrEqual(38);
+          expect(fullSeason.ga, `Full season GA floor`).toBeGreaterThanOrEqual(15);
+          expect(fullSeason.gd, `Full season GD for pos ${fullSeason.pos}`).toBeGreaterThanOrEqual(30);
+        }
+
+        // Simulate Winter Break tactic/OVR adjustment triggering 2nd-half recalculation
+        const modifiedState: any = {
+          ...baseState,
+          club: { ...bayernClub, baseOvr: 92, morale: 98 },
+          pendingSeasonState: fullSeason,
+        };
+        const secondHalfRecalc = calculateProbabilisticSeason(modifiedState, CLUBS, false, {
+          lockFirstHalfFrom: fullSeason,
+          dilemmaChoice: 'A',
+        });
+
+        expect(secondHalfRecalc.wins + secondHalfRecalc.draws + secondHalfRecalc.losses).toBe(34);
+        expect(secondHalfRecalc.gf - secondHalfRecalc.ga).toBe(secondHalfRecalc.gd);
+        if (secondHalfRecalc.pos <= 2) {
+          expect(secondHalfRecalc.ga, `2nd-half recalc GA for pos ${secondHalfRecalc.pos} (${tactic})`).toBeLessThanOrEqual(38);
+          expect(secondHalfRecalc.gd, `2nd-half recalc GD for pos ${secondHalfRecalc.pos}`).toBeGreaterThanOrEqual(28);
+        }
+      }
+    });
+  });
 });
+

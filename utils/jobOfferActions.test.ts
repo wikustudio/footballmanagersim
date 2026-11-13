@@ -166,8 +166,8 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
   });
 
   it('prevents toLocaleString render crashes in SeasonHistoryTable/formatNum and aligns ErrorBoundary with v3 save state', async () => {
-    const { formatNum } = await import('../src/data/gameConstants');
-    const { sanitizeGameState } = await import('../src/App');
+    const { formatNum } = await import('../data/gameConstants');
+    const { sanitizeGameState } = await import('../App');
 
     // 1. formatNum safely handles undefined, null, NaN, and valid numbers
     expect(formatNum(undefined)).toBe('0');
@@ -207,7 +207,7 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     expect(errorBoundarySrc).toContain('Boolean(navigator.webdriver)');
   }, 20000);
 
-  it('aligns UI badges, patch notes spotlight, crash/feedback headers, and package metadata on v2.3', () => {
+  it('aligns UI badges, patch notes spotlight, crash/feedback headers, and package metadata on v2.6', () => {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
     const onboardingSrc = fs.readFileSync('src/components/Onboarding.tsx', 'utf-8');
     const aboutSrc = fs.readFileSync('src/components/AboutPage.tsx', 'utf-8');
@@ -216,21 +216,58 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     const serverSrc = fs.readFileSync('server.ts', 'utf-8');
     const netlifyFeedbackSrc = fs.readFileSync('netlify/functions/feedback.ts', 'utf-8');
 
-    expect(pkg.version).toBe('2.3.0');
-    expect(onboardingSrc).toContain('v 2.3');
+    expect(pkg.version).toBe('2.6.0');
+    expect(onboardingSrc).toContain('v 2.6');
     expect(onboardingSrc).not.toContain('v 2.2');
-    expect(aboutSrc).toContain('<span className="text-zinc-400">v2.3</span>');
-    expect(aboutSrc).toContain('v2.3 Spotlight');
+    expect(aboutSrc).toContain('<span className="text-zinc-400">v2.6</span>');
+    expect(aboutSrc).toContain('v2.6 Spotlight');
+    expect(aboutSrc).toContain('v2.3 Archive');
     expect(aboutSrc).toContain('v2.2 Archive');
-    expect(feedbackSrc).toContain('[FMS v2.3');
-    expect(errorBoundarySrc).toContain('[FMS v2.3 Auto Crash Report]');
-    expect(serverSrc).toContain('[FMS v2.3');
-    expect(serverSrc).toContain('FootballManagerSim/2.3');
-    expect(netlifyFeedbackSrc).toContain('[FMS v2.3');
-    expect(netlifyFeedbackSrc).toContain('FootballManagerSim/2.3');
+    expect(feedbackSrc).toContain('[FMS v2.6');
+    expect(errorBoundarySrc).toContain('[FMS v2.6 Auto Crash Report]');
+    expect(serverSrc).toContain('[FMS v2.6');
+    expect(serverSrc).toContain('FootballManagerSim/2.6');
+    expect(netlifyFeedbackSrc).toContain('[FMS v2.6');
+    expect(netlifyFeedbackSrc).toContain('FootballManagerSim/2.6');
+
+    // Verify handleAcceptJobOffer strips temporary coach/loan/ringer boosts from departing club,
+    // aligns lastOvr with boostedNewClubOvr, and saves state immediately
+    const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+    expect(appSrc).toContain('const trueDepartingBaseOvr = adjustOvr(departingClub.baseOvr || 60, -(departingCoachBoost + departingTempBoost));');
+    expect(appSrc).toContain('(currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain || 5) : 0)');
+    expect(appSrc).toContain('updated.lastOvr = boostedNewClubOvr;');
+
+    // Verify continental qualification upgrades cup qualification (e.g. ECL -> EL) and non-destructive reputation ceiling
+    expect(appSrc).toContain('if (euroRank(leagueEuro) > euroRank(euroNextSeason))');
+    expect(appSrc).toContain('const effectiveRepTier = Math.min(seasonTier, nextTier);');
+    expect(appSrc).toContain('Loan players returned to parent clubs');
+    expect(appSrc).toContain('Emergency amateur call-ups to meet 18-man squad minimum');
+
+    // Verify root main.tsx includes the browser auto-translate removeChild/insertBefore guard
+    const rootMain = fs.readFileSync('main.tsx', 'utf-8');
+    expect(rootMain).toContain('const originalRemoveChild = Node.prototype.removeChild;');
+  });
+
+  it('prevents dynasty random-event starvation, World Cup modal collisions, MatchdayActionDock overlap, and Enter-on-select dismissal', () => {
+    const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+    const dockSrc = fs.readFileSync('src/components/MatchdayActionDock.tsx', 'utf-8');
+    const historyTableSrc = fs.readFileSync('src/components/SeasonHistoryTable.tsx', 'utf-8');
+    const seasonFinishSrc = fs.readFileSync('src/components/SeasonFinishModal.tsx', 'utf-8');
+
+    // 1. Balanced poaching cadence + loyalty cooldown + World Cup & Cup Final non-collision
+    expect(appSrc).toContain('const isSummerWorldCupInviteYear =');
+    expect(appSrc).toContain('updated.lastPoachDeclinedYear = (updated.year || 2026) - 1;');
+    expect(appSrc).toContain('!isSummerWorldCupInviteYear && (state.madeCupFinal || eventRoll < 0.85)');
+
+    // 2. MatchdayActionDock hides behind FeedbackModal and ignores Space when any dialog is mounted
+    expect(appSrc).toContain('showFeedbackModal ||');
+    expect(dockSrc).toContain("document.querySelector('[role=\"dialog\"], [aria-modal=\"true\"], [data-wc-modal=\"true\"]')");
+
+    // 3. SeasonHistoryTable scroll container includes pb-24 clearance above floating dock and removes the Almanac tab switcher
+    expect(historyTableSrc).toContain('overflow-y-auto px-3 pb-24 h-full');
+    expect(historyTableSrc).not.toContain('Champions Almanac');
+
+    // 4. SeasonFinishModal Enter shortcut ignores focused SELECT/INPUT/BUTTON controls
+    expect(seasonFinishSrc).toContain("target.tagName === 'SELECT'");
   });
 });
-
-
-
-

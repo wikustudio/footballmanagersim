@@ -8,6 +8,7 @@ import { autoRepairClubsDb, autoRepairSingleClub } from '../utils/modSafeguards'
 import { t as tr } from '../data/translations';
 import { getAllUniverseMovements, isMajorUniverseHeadline, getHeadlineCategory } from '../utils/universeMovements';
 import { getParentClub } from '../engine/simulateAiLeagues';
+import { ChampionsAlmanacView, TrophyLeadersChartView } from './HistoryAndAlmanacViews';
 
 interface TableRow {
   pos: number;
@@ -89,8 +90,8 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   const sanitizedClubsDb = useMemo(() => autoRepairClubsDb(clubsDb, Boolean(isModActive), state), [clubsDb, isModActive, state]);
   const effectiveUserClub = useMemo(() => autoRepairSingleClub(state.club, Boolean(isModActive)), [state.club, isModActive]);
 
-  // Primary Tab: 'standings' (The Local Table) or 'universe' (The Living World)
-  const [activeTab, setActiveTab] = useState<'standings' | 'universe'>('standings');
+  // Primary Tab: 'standings' (The Local Table), 'universe' (Champions Almanac), or 'leaders' (Top 5 Trophy Leaders Bar Chart)
+  const [activeTab, setActiveTab] = useState<'standings' | 'universe' | 'leaders'>('standings');
 
   // Universe Movements Filter (defaults to 'headlines' for high-impact world events)
   const [movementFilter, setMovementFilter] = useState<'headlines' | 'domestic' | 'cups' | 'career' | 'all'>('headlines');
@@ -114,16 +115,23 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
   // Selected Tier Pill (managers can scout Tier 1, Tier 2, Tier 3, etc.)
   const [selectedTier, setSelectedTier] = useState<number>(Math.min(userActiveTier, maxTierForCountry));
+  const [almanacCountry, setAlmanacCountry] = useState<string>(currentCountry);
+  const [almanacTier, setAlmanacTier] = useState<number>(Math.min(userActiveTier, maxTierForCountry));
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
   const universeScrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setAlmanacCountry(currentCountry);
+  }, [currentCountry]);
 
   // Synchronize and clamp tier if max tier changes, but DO NOT force reset when season changes to allow free navigation
   React.useEffect(() => {
     setSelectedTier((prev) => Math.min(prev, maxTierForCountry));
+    setAlmanacTier((prev) => Math.min(prev, getMaxTier(almanacCountry, sanitizedClubsDb)));
     if (tableScrollRef.current) {
       tableScrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
-  }, [maxTierForCountry, selectedSeason]);
+  }, [maxTierForCountry, selectedSeason, almanacCountry, sanitizedClubsDb]);
 
   React.useEffect(() => {
     if (universeScrollRef.current) {
@@ -863,15 +871,15 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   const allMovements = useMemo(() => getAllUniverseMovements(state, sanitizedClubsDb, isModActive), [state, sanitizedClubsDb, isModActive]);
   
   const availableUniverseYears = useMemo(() => {
-    return Array.from(new Set(allMovements.map(m => Number(m.year) || 2024))).sort((a: number, b: number) => b - a);
-  }, [allMovements]);
+    return Array.from(new Set(allMovements.map(m => Number(m.year) || Number(state.startYear) || 2024))).sort((a: number, b: number) => b - a);
+  }, [allMovements, state.startYear]);
 
   const latestUniverseYear = useMemo(() => {
     if (availableUniverseYears.length > 0) {
       return availableUniverseYears[0];
     }
-    return Math.max(2024, Number(state.year) || 2026);
-  }, [availableUniverseYears, state.year]);
+    return Math.max(1950, (Number(state.year) || Number(state.startYear) || 2026) - 1);
+  }, [availableUniverseYears, state.year, state.startYear]);
 
   const filteredMovements = useMemo(() => {
     const list = allMovements.filter((m) => {
@@ -1105,7 +1113,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         <div className="p-2 sm:p-5 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between gap-2 sm:gap-4 shrink-0 relative z-10">
           <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
             <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-1 sm:p-2 shadow-inner shrink-0">
-              {currentLeagueInfo?.logo ? (
+              {activeTab === 'standings' && currentLeagueInfo?.logo ? (
                 <img
                   src={currentLeagueInfo.logo}
                   alt={`${currentLeagueInfo.name} logo`}
@@ -1114,16 +1122,40 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                   className="w-5 h-5 sm:w-7 sm:h-7 object-contain drop-shadow"
                 />
               ) : (
-                <i className={`fas ${activeTab === 'standings' ? 'fa-list-ol' : 'fa-arrows-up-down'} text-sm sm:text-base text-sky-400`}></i>
+                <i
+                  className={`fas ${
+                    activeTab === 'standings'
+                      ? 'fa-list-ol text-sky-400'
+                      : activeTab === 'universe'
+                      ? 'fa-trophy text-amber-400'
+                      : 'fa-chart-simple text-emerald-400'
+                  } text-sm sm:text-base`}
+                ></i>
               )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-sky-400 bg-sky-500/10 border border-sky-400/20 px-1.5 py-0.2 rounded-md tracking-wider shrink-0">
-                  {leagueTag}
+                <span
+                  className={`text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-md tracking-wider shrink-0 border ${
+                    activeTab === 'standings'
+                      ? 'text-sky-400 bg-sky-500/10 border-sky-400/20'
+                      : activeTab === 'universe'
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-400/20'
+                      : 'text-emerald-400 bg-emerald-500/10 border-emerald-400/20'
+                  }`}
+                >
+                  {activeTab === 'standings'
+                    ? leagueTag
+                    : activeTab === 'universe'
+                    ? 'HALL OF CHAMPIONS'
+                    : 'TROPHY LEADERBOARD'}
                 </span>
                 <span className="text-[11px] sm:text-xs text-zinc-400 font-medium truncate hidden sm:inline">
-                  {currentLeagueInfo.name}
+                  {activeTab === 'standings'
+                    ? currentLeagueInfo.name
+                    : `${COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.flag || ''} ${
+                        COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.name || almanacCountry
+                      } & Global Archive`}
                 </span>
               </div>
               <h2 className="text-xs sm:text-xl font-black text-white tracking-tight mt-0.5 truncate py-0.5 leading-normal">
@@ -1133,13 +1165,15 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                           ? `${yearTag} Mid-Season Standings` 
                           : `${yearTag} Pre-Season`)
                       : `${yearTag} Final Standings`)
-                  : 'Universe Movements'}
+                  : activeTab === 'universe'
+                  ? 'Champions Almanac'
+                  : 'Top 5 Trophy Leaders'}
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Primary Tab Switcher: Standings vs Universe Movements */}
+            {/* Primary Tab Switcher: Standings vs Champions Almanac vs Trophy Leaders */}
             <div className="bg-black/40 border border-white/[0.08] rounded-xl p-0.5 sm:p-1 flex items-center gap-0.5 sm:gap-1 shadow-inner">
               <button
                 type="button"
@@ -1159,15 +1193,26 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                 onClick={() => setActiveTab('universe')}
                 className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                   activeTab === 'universe'
-                    ? 'bg-sky-500 text-white shadow-sm'
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
-                <i className="fa-solid fa-arrows-up-down text-[11px]"></i>
-                <span>Movements</span>
-                <span className="ml-0.5 sm:ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-black bg-white/20 text-white">
-                  {allMovements.length}
-                </span>
+                <i className="fa-solid fa-trophy text-[11px]"></i>
+                <span className="hidden sm:inline">Champions Almanac</span>
+                <span className="sm:hidden">Almanac</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('leaders')}
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                  activeTab === 'leaders'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                <i className="fa-solid fa-chart-simple text-[11px]"></i>
+                <span className="hidden sm:inline">Trophy Leaders</span>
+                <span className="sm:hidden">Top 5</span>
               </button>
             </div>
 
@@ -1585,420 +1630,45 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'universe' ? (
           /* ──────────────────────────────────────────────────────────
-              PART 2: THE UNIVERSE MOVEMENTS TAB (THE LIVING WORLD)
+              PART 2: CHAMPIONS ALMANAC (GLOBAL & REGIONAL WINNERS)
               ────────────────────────────────────────────────────────── */
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Unified Filter Toolbar for Universe Movements */}
-            <div className="px-3 sm:px-6 py-2 bg-white/[0.02] border-b border-white/[0.06] flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              
-              {/* Quick Filter Pills (Scrollable horizontally) */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setMovementFilter('headlines')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    movementFilter === 'headlines'
-                      ? 'bg-sky-500 text-white shadow-sm ring-1 ring-sky-400/30'
-                      : 'bg-black/40 text-zinc-400 hover:text-white border border-white/[0.08]'
-                  }`}
-                >
-                  <i className="fa-solid fa-fire text-amber-400 text-[10px]"></i>
-                  <span>Headlines ({headlineCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMovementFilter('domestic')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    movementFilter === 'domestic'
-                      ? 'bg-sky-500 text-white shadow-sm ring-1 ring-sky-400/30'
-                      : 'bg-black/40 text-zinc-400 hover:text-white border border-white/[0.08]'
-                  }`}
-                >
-                  <span>{COUNTRIES[currentCountry]?.flag || '🏳️'}</span>
-                  <span>Domestic ({domesticCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMovementFilter('cups')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    movementFilter === 'cups'
-                      ? 'bg-amber-400 text-black shadow-md font-extrabold ring-1 ring-amber-300'
-                      : 'bg-black/40 text-amber-400/80 hover:text-amber-300 border border-amber-500/20'
-                  }`}
-                >
-                  <i className="fa-solid fa-trophy text-[10px]"></i>
-                  <span>Cups ({cupCount})</span>
-                </button>
-
-                {careerCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setMovementFilter('career')}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                      movementFilter === 'career'
-                        ? 'bg-purple-600 text-white shadow-sm ring-1 ring-purple-400/30'
-                        : 'bg-black/40 text-purple-400/80 hover:bg-purple-500/10 border border-purple-500/20'
-                    }`}
-                  >
-                    <i className="fa-solid fa-user-tie text-[10px]"></i>
-                    <span>Career ({careerCount})</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setMovementFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0 ${
-                    movementFilter === 'all'
-                      ? 'bg-white/20 text-white shadow-sm'
-                      : 'bg-black/40 text-zinc-400 hover:text-white border border-white/[0.08]'
-                  }`}
-                >
-                  <span>All ({seasonScopedMovements.length})</span>
-                </button>
-              </div>
-
-              {/* Dropdowns Container for Seasons & Regions */}
-              <div className="flex flex-row flex-wrap items-center gap-x-4 gap-y-2 shrink-0 sm:ml-auto mt-1 sm:mt-0">
-                {/* Year Dropdown */}
-                {availableUniverseYears.length > 1 && (
-                  <div className="relative inline-flex items-center">
-                    <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 text-white font-sans text-[11px] font-bold rounded-lg pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap">
-                      <span>
-                        {universeSeasonFilter === 'all'
-                          ? 'All Years'
-                          : universeSeasonFilter === 'latest'
-                          ? `Latest (${latestUniverseYear})`
-                          : String(universeSeasonFilter)}
-                      </span>
-                      <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-400 pointer-events-none"></i>
-                    </div>
-                    <select
-                      value={universeSeasonFilter}
-                      onChange={(e) => setUniverseSeasonFilter(e.target.value === 'latest' || e.target.value === 'all' ? e.target.value : Number(e.target.value))}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
-                      aria-label="Select Season Filter"
-                    >
-                      <option value="all">All Years</option>
-                      <option value="latest">Latest ({latestUniverseYear})</option>
-                      {availableUniverseYears.filter(yr => yr !== latestUniverseYear).map((yr) => (
-                        <option key={yr} value={yr}>{yr}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Region Dropdown (Only when Cups is active) */}
-                {movementFilter === 'cups' && (
-                  <div className="relative inline-flex items-center">
-                    <div className="flex items-center gap-1.5 bg-black/60 border border-amber-500/20 text-amber-400 font-sans text-[11px] font-bold rounded-lg pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap">
-                      <span>
-                        {(() => {
-                          const labels: Record<string, string> = {
-                            ALL: `All (${cupRegionCounts.total})`,
-                            CONMEBOL: `Libertadores (${cupRegionCounts.conmebol})`,
-                            CONCACAF: `Concacaf (${cupRegionCounts.concacaf})`,
-                            AFC: `Asia (${cupRegionCounts.afc})`,
-                            UEFA: `Europe (${cupRegionCounts.uefa})`,
-                            WORLD: `World (${cupRegionCounts.world})`,
-                          };
-                          return labels[cupRegionFilter] || cupRegionFilter;
-                        })()}
-                      </span>
-                      <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-amber-500/70 pointer-events-none"></i>
-                    </div>
-                    <select
-                      value={cupRegionFilter}
-                      onChange={(e) => setCupRegionFilter(e.target.value as any)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
-                      aria-label="Select Tournament Region"
-                    >
-                      <option value="ALL">All ({cupRegionCounts.total})</option>
-                      <option value="CONMEBOL">Libertadores ({cupRegionCounts.conmebol})</option>
-                      <option value="CONCACAF">Concacaf ({cupRegionCounts.concacaf})</option>
-                      <option value="AFC">Asia ({cupRegionCounts.afc})</option>
-                      <option value="UEFA">Europe ({cupRegionCounts.uefa})</option>
-                      <option value="WORLD">World ({cupRegionCounts.world})</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-            {/* Universe Movements Feed Cards */}
             <div
               ref={universeScrollRef}
               className="flex-1 min-h-0 p-2.5 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar space-y-2 touch-pan-y"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              {/* Top Breaking Story Banner - Hero Card inside scrollable feed */}
-              {topBreakingStory && (() => {
-                const cat = getHeadlineCategory(topBreakingStory);
-                const isCup = topBreakingStory.type === 'cup_champion';
-                return (
-                  <div
-                    className={`bg-gradient-to-r ${
-                      isCup
-                        ? 'from-amber-500/20 via-yellow-500/10 to-transparent border-amber-400/40 shadow-[0_0_20px_rgba(251,191,36,0.12)]'
-                        : 'from-sky-500/15 via-indigo-500/10 to-transparent border-sky-400/30 shadow-md'
-                    } border rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl ${
-                          isCup
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                            : 'bg-sky-500/20 text-sky-300 border-sky-400/30'
-                        } border flex items-center justify-center shrink-0 text-sm shadow-sm`}
-                      >
-                        <i className={`fa-solid ${isCup ? cat.icon : 'fa-newspaper'} ${isCup ? 'text-amber-400' : 'text-sky-400'}`}></i>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`text-[9px] font-black uppercase tracking-wider ${
-                              isCup
-                                ? 'text-amber-300 bg-amber-400/15 border-amber-400/30'
-                                : 'text-sky-400 bg-sky-400/15 border-sky-400/25'
-                            } px-2 py-0.5 rounded-full border flex items-center gap-1`}
-                          >
-                            <span>Headline Bulletin</span>
-                            <span>·</span>
-                            <span>{cat.label}</span>
-                          </span>
-                          <span className="text-[11px] text-zinc-400 font-mono">{topBreakingStory.year} Season</span>
-                        </div>
-                        <div className="text-sm font-bold text-white truncate mt-0.5 flex items-center gap-1.5">
-                          <span className={isCup ? 'text-amber-300' : 'text-sky-300'}>{topBreakingStory.clubName}</span>
-                          <span className="text-zinc-500">·</span>
-                          <span className="text-zinc-200 font-medium truncate">{topBreakingStory.reason}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                      <span
-                        className={`text-xs font-mono font-bold ${
-                          isCup ? 'text-amber-300 border-amber-400/25' : 'text-zinc-300 border-white/10'
-                        } bg-black/40 px-2.5 py-1 rounded-lg border flex items-center gap-1.5`}
-                      >
-                        {isCup && <i className="fa-solid fa-trophy text-amber-400 text-[10px]"></i>}
-                        <span>{topBreakingStory.fromLeagueName}</span>
-                        <span className="text-zinc-500">➔</span>
-                        <span className={isCup ? 'text-amber-200' : 'text-zinc-200'}>{topBreakingStory.toLeagueName}</span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {filteredMovements.length > 0 ? (
-                filteredMovements.map((move) => {
-                  const isUser = move.isUserClub;
-                  const isPastClub = move.isPastManagerClub;
-                  // Strictly ensure champions/title-winners can NEVER be tagged as relegated, and transfers NEVER trigger championship banners
-                  const isTransfer = move.type === 'transfer_saga';
-                  const isCupChamp = move.type === 'cup_champion';
-                  const isPromo = move.type === 'promotion';
-                  const isInsolv = move.type === 'insolvency_drop';
-                  const isCinderella = move.type === 'cinderella_surge';
-                  const isContQual = (move as any).type === 'continental_qual' || (move.pos != null && move.pos > 1 && /continental|qualification/i.test(move.reason || ''));
-                  const isChamp = !isTransfer && !isContQual && (move.pos === 1 || move.type === 'title_won' || (typeof move.reason === 'string' && /(?:^|\b)(?:champion|meister|winner|trophy|glory|triumph)(?:\b|$)/i.test(move.reason)));
-                  const isTitleWon = !isTransfer && !isContQual && (move.type === 'title_won' || (isChamp && !isCupChamp && !isInsolv && !isPromo));
-                  const isReleg = move.type === 'relegation' && !isChamp && move.pos !== 1 && !isTransfer;
-                  const cat = getHeadlineCategory(move);
-
-                  let statusBadge = null;
-                  if (isTransfer) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1 shrink-0">
-                        <span>🔄 Transfer</span>
-                      </span>
-                    );
-                  } else if (isContQual) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1 shrink-0">
-                        <span>🌍 Continental Qual.</span>
-                      </span>
-                    );
-                  } else if (isTitleWon || (isChamp && !isCupChamp && !isPromo)) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                        <span>👑 Champions</span>
-                      </span>
-                    );
-                  } else if (isCupChamp) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                        <span>🏆 Cup Champion</span>
-                      </span>
-                    );
-                  } else if (isInsolv) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                        <span>⚠️ Insolvency Drop</span>
-                      </span>
-                    );
-                  } else if (isCinderella) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 shrink-0">
-                        <span>✨ Cinderella Run</span>
-                      </span>
-                    );
-                  } else if (isPromo) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
-                        <span>{isChamp || move.pos === 1 ? '👑 Champions' : '⬆️ Promoted'}</span>
-                      </span>
-                    );
-                  } else if (isReleg) {
-                    statusBadge = (
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1 shrink-0">
-                        <span>⬇️ Relegated</span>
-                      </span>
-                    );
-                  }
-
-                  const cardBorder = isUser
-                    ? 'border-sky-400/50 bg-sky-500/10 shadow-[0_0_20px_rgba(56,189,248,0.15)] ring-1 ring-sky-400/30'
-                    : isPastClub
-                    ? 'border-purple-400/50 bg-purple-500/[0.07] hover:bg-purple-500/15 shadow-[0_0_20px_rgba(192,132,252,0.15)] ring-1 ring-purple-400/30'
-                    : isTransfer
-                    ? 'border-sky-500/30 bg-sky-500/[0.04] hover:bg-sky-500/[0.08] shadow-[0_0_15px_rgba(14,165,233,0.1)]'
-                    : isContQual
-                    ? 'border-sky-400/30 bg-sky-500/[0.05] hover:bg-sky-500/[0.08] shadow-[0_0_15px_rgba(56,189,248,0.1)]'
-                    : isCupChamp || isTitleWon || isChamp
-                    ? 'border-amber-400/40 bg-amber-500/[0.05] hover:bg-amber-500/[0.08] shadow-[0_0_15px_rgba(251,191,36,0.1)]'
-                    : isPromo
-                    ? 'border-emerald-500/20 bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]'
-                    : isCinderella
-                    ? 'border-purple-500/25 bg-purple-500/[0.03] hover:bg-purple-500/[0.06]'
-                    : isInsolv
-                    ? 'border-amber-500/25 bg-amber-500/[0.03] hover:bg-amber-500/[0.06]'
-                    : isReleg
-                    ? 'border-rose-500/20 bg-rose-500/[0.02] hover:bg-rose-500/[0.05]'
-                    : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]';
-
-                  return (
-                    <div
-                      key={move.id}
-                      className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${cardBorder}`}
-                    >
-                      {/* Left: Club, Category & Headline info */}
-                      <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-                        <div className="w-10 h-10 shrink-0 aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-black/40 border border-white/10 shadow-sm mt-0.5 sm:mt-0">
-                          <ClubLogo
-                            name={move.clubName}
-                            id={typeof move.clubId === 'number' ? move.clubId : undefined}
-                            color={move.clubColor || '#38bdf8'}
-                            logo={move.clubLogo}
-                            isModActive={isModActive}
-                            className="w-10 h-10 shrink-0 aspect-square p-1 object-contain"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border flex items-center gap-1 ${cat.color}`}>
-                              <i className={`fa-solid ${cat.icon} text-[8px]`}></i>
-                              <span>{cat.label}</span>
-                            </span>
-                            <span className="text-[10px] text-zinc-500 font-mono">{move.year}</span>
-                            {isUser && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-sky-400 text-black shadow-sm tracking-wider">
-                                YOUR CLUB
-                              </span>
-                            )}
-                            {isPastClub && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-purple-500/30 text-purple-300 border border-purple-400/40 shadow-sm tracking-wider">
-                                FORMER CLUB
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap min-w-0">
-                            <span className="text-sm font-bold text-white leading-normal py-0.5">
-                              {move.clubName}
-                            </span>
-                            <span className="text-xs shrink-0" title={COUNTRIES[move.country]?.name || move.country}>
-                              {COUNTRIES[move.country]?.flag || '🏳️'}
-                            </span>
-                            {move.country === currentCountry && !isUser && !isPastClub && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-400 font-mono shrink-0">
-                                Domestic
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-zinc-300 mt-1 font-medium leading-relaxed">
-                            {getRegion(move.country || 'GER') !== 'UEFA' && move.reason
-                              ? move.reason.replace(/European Continental Qualification/gi, `${getContinentalCupNames(move.country || 'GER').cl} Qualification`)
-                              : move.reason}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Pathway & Status Tag */}
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 border-white/[0.06] pt-2 sm:pt-0">
-                        {/* The Pathway: e.g. 2. Bundesliga ➔ 1. Bundesliga */}
-                        <div className="flex items-center gap-2 text-xs font-mono font-bold bg-black/40 px-3 py-1.5 rounded-xl border border-white/[0.08]">
-                          <span className="text-zinc-400">{move.fromLeagueName}</span>
-                          <i
-                            className={`fa-solid ${
-                              isContQual
-                                ? 'fa-globe text-sky-400'
-                                : isTitleWon || isChamp
-                                ? 'fa-crown text-amber-400'
-                                : isCupChamp
-                                ? 'fa-trophy text-amber-400'
-                                : isPromo
-                                ? 'fa-arrow-right text-emerald-400'
-                                : isCinderella
-                                ? 'fa-wand-magic-sparkles text-purple-400'
-                                : isTransfer
-                                ? 'fa-arrow-right-arrow-left text-sky-400'
-                                : isInsolv
-                                ? 'fa-arrow-down text-amber-400'
-                                : isReleg
-                                ? 'fa-arrow-right text-rose-400'
-                                : 'fa-arrow-right text-zinc-400'
-                            } text-[10px]`}
-                          ></i>
-                          <span
-                            className={
-                              isContQual
-                                ? 'text-sky-300 font-bold'
-                                : isTitleWon || isCupChamp || isChamp
-                                ? 'text-amber-300 font-bold'
-                                : isPromo
-                                ? 'text-emerald-300 font-bold'
-                                : isCinderella
-                                ? 'text-purple-300 font-bold'
-                                : isTransfer
-                                ? 'text-sky-300 font-bold'
-                                : isInsolv
-                                ? 'text-amber-300 font-bold'
-                                : isReleg
-                                ? 'text-rose-300'
-                                : 'text-zinc-300'
-                            }
-                          >
-                            {move.toLeagueName}
-                          </span>
-                        </div>
-
-                        {statusBadge}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-12 text-center text-zinc-400 text-xs">
-                  <i className="fa-solid fa-filter text-lg text-zinc-600 mb-2 block"></i>
-                  <span>No movements found for the selected filter.</span>
-                </div>
-              )}
+              <ChampionsAlmanacView
+                state={state}
+                clubsDb={sanitizedClubsDb}
+                initialCountry={almanacCountry}
+                initialTier={almanacTier}
+                onSelectCountry={setAlmanacCountry}
+                onSelectTier={setAlmanacTier}
+                isModActive={isModActive}
+              />
+            </div>
+          </div>
+        ) : (
+          /* ──────────────────────────────────────────────────────────
+              PART 3: TOP 5 TROPHY LEADERS BAR CHART VIEW
+              ────────────────────────────────────────────────────────── */
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div
+              className="flex-1 min-h-0 p-2.5 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar space-y-2 touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <TrophyLeadersChartView
+                state={state}
+                clubsDb={sanitizedClubsDb}
+                initialCountry={almanacCountry}
+                initialTier={almanacTier}
+                onSelectCountry={setAlmanacCountry}
+                onSelectTier={setAlmanacTier}
+                isModActive={isModActive}
+              />
             </div>
           </div>
         )}

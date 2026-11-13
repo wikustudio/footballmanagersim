@@ -494,7 +494,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
                       <div className="p-5 sm:p-6 flex flex-col gap-4 relative z-10">
                         <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">
                           <span>{playerMatch.locationText}</span>
-                          <span>{playerMatch.att.toLocaleString()} Fans</span>
+                          <span>{(playerMatch.att ?? 0).toLocaleString()} Fans</span>
                         </div>
 
                         <div className="flex items-center justify-between w-full">

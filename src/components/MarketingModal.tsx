@@ -359,7 +359,7 @@ export const MarketingModal: React.FC<MarketingModalProps> = ({
               </div>
               <div className="text-base sm:text-lg font-bold tabular-nums text-emerald-400 flex items-center gap-1.5">
                 <i className="fa-solid fa-users text-xs"></i>
-                <span>{fanBase.toLocaleString()}</span>
+                <span>{(fanBase ?? 0).toLocaleString()}</span>
               </div>
             </div>
             <div className="text-right sm:text-left">
@@ -368,7 +368,7 @@ export const MarketingModal: React.FC<MarketingModalProps> = ({
               </div>
               <div className="text-base sm:text-lg font-bold tabular-nums text-sky-400 flex items-center gap-1.5 justify-end sm:justify-start">
                 <i className="fa-solid fa-building-shield text-xs"></i>
-                <span>{catchment.softCapacityCeiling.toLocaleString()}</span>
+                <span>{(catchment?.softCapacityCeiling ?? 15000).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -423,9 +423,9 @@ export const MarketingModal: React.FC<MarketingModalProps> = ({
                   </div>
                 </div>
                 <div className="font-bold tabular-nums text-xs sm:text-sm shrink-0">
-                  {lastOutcome.result.fanDelta > 0
-                    ? `+${lastOutcome.result.fanDelta.toLocaleString()}`
-                    : lastOutcome.result.fanDelta.toLocaleString()}{' '}
+                  {(lastOutcome.result.fanDelta ?? 0) > 0
+                    ? `+${(lastOutcome.result.fanDelta ?? 0).toLocaleString()}`
+                    : (lastOutcome.result.fanDelta ?? 0).toLocaleString()}{' '}
                   Fans
                 </div>
               </div>

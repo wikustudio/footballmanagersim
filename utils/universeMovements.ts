@@ -1027,12 +1027,30 @@ export function getAllUniverseMovements(
     }
   });
 
+  // Determine career start year so historical careers (e.g., 1954, 1974, 1990) never leak 2024 baseline events
+  const earliestHistoryYear = (state.history || []).reduce(
+    (min, h) => (h.year ? Math.min(min, Number(h.year)) : min),
+    Infinity
+  );
+  const inferredStartFromSeasonCount =
+    Number(state.year) && Number(state.seasonCount) > 1
+      ? Number(state.year) - (Number(state.seasonCount) - 1)
+      : undefined;
+  const careerStartYear = Math.max(
+    1950,
+    Number(state.startYear) ||
+      (Number.isFinite(earliestHistoryYear)
+        ? earliestHistoryYear
+        : inferredStartFromSeasonCount || Math.min(2026, Number(state.year) || 2026))
+  );
+  const includeModern2024Baseline = careerStartYear >= 2025;
+
   // Initial collected pool of movements
   const allInitial = [
     ...dynamicMovements,
     ...synthesizedHistoryMovements,
     ...synthesizedCupMovements,
-    ...BASELINE_UNIVERSE_MOVEMENTS
+    ...(includeModern2024Baseline ? BASELINE_UNIVERSE_MOVEMENTS : [])
   ];
 
   // Continental & World Cup Templates for complete historical & ongoing coverage
@@ -1048,20 +1066,26 @@ export function getAllUniverseMovements(
     { key: 'afc', name: 'AFC Champions League', region: 'AFC', matcher: /afc|asian.*champion/i, defaultCountry: 'JPN', reason: 'AFC Champions League Winners · Kings of Asia' },
   ];
 
-  const currentActiveYear = Number(state.year) || 2026;
-  const maxYear = currentActiveYear > 2026
-    ? Math.max(2026, currentActiveYear - 1, ...allInitial.map(m => Number(m.year) || 2024))
-    : Math.max(2024, ...allInitial.map(m => Number(m.year) || 2024));
+  const currentActiveYear = Number(state.year) || careerStartYear;
+  const completedSimMaxYear = Math.max(
+    currentActiveYear - 1,
+    ...allInitial.map(m => Number(m.year) || 0)
+  );
 
-  const yearsToFill = new Set<number>([2024]);
-  if (maxYear >= 2026) {
-    for (let yr = 2026; yr <= maxYear; yr++) {
-      yearsToFill.add(yr);
+  const yearsToFill = new Set<number>();
+  if (includeModern2024Baseline) {
+    yearsToFill.add(2024);
+  }
+  if (completedSimMaxYear >= careerStartYear) {
+    for (let yr = careerStartYear; yr <= completedSimMaxYear; yr++) {
+      if (yr >= 1950) yearsToFill.add(yr);
     }
   }
   for (const m of allInitial) {
     const yr = Number(m.year);
-    if (yr >= 2024) yearsToFill.add(yr);
+    if (yr >= 1950 && (includeModern2024Baseline || yr !== 2024 || careerStartYear <= 2024 && completedSimMaxYear >= 2024)) {
+      yearsToFill.add(yr);
+    }
   }
 
   const candidateSource = Array.isArray(clubsDb) && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
@@ -1073,6 +1097,18 @@ export function getAllUniverseMovements(
   const backfilledCupMovements: UniverseMovement[] = [];
 
   for (const yr of Array.from(yearsToFill).sort((a, b) => a - b)) {
+    const histInYr = (state.history || []).find(h => Number(h.year) === yr);
+    const activeUserIdInYr = histInYr?.clubId ?? state.club?.id;
+    const activeUserNameNormInYr = (histInYr?.clubName || state.club?.name || '').toLowerCase().trim();
+    const activeUserCountryInYr = (histInYr?.country || state.club?.country || 'GER').toUpperCase();
+    const activeUserRegionInYr = CONMEBOL_COUNTRIES.includes(activeUserCountryInYr)
+      ? 'CONMEBOL'
+      : CONCACAF_COUNTRIES.includes(activeUserCountryInYr)
+      ? 'CONCACAF'
+      : AFC_COUNTRIES.includes(activeUserCountryInYr)
+      ? 'AFC'
+      : 'UEFA';
+
     for (const tmpl of CONTINENTAL_CUP_TEMPLATES) {
       const alreadyHasCup = allInitial.some(m => m.type === 'cup_champion' && Number(m.year) === yr && tmpl.matcher.test(m.fromLeagueName || ''));
       if (alreadyHasCup) continue;
@@ -1086,14 +1122,46 @@ export function getAllUniverseMovements(
       if (pool.length === 0) pool = candidateSource.filter(c => c.tier === 1);
       if (pool.length === 0) continue;
 
+      // Check whether the user's club actually won this exact cup in trophiesThisYear
+      const isPremierCont = tmpl.key === 'cl' || tmpl.key === 'libertadores' || tmpl.key === 'concacaf' || tmpl.key === 'afc';
+      const isSecCont = tmpl.key === 'el' || tmpl.key === 'sudamericana' || tmpl.key === 'leagues';
+      const isTerCont = tmpl.key === 'ecl';
+      const isWorldCup = tmpl.key === 'cwc';
+      const userWonThisCup = Boolean(
+        histInYr &&
+          ((isWorldCup && (Number(histInYr.trophiesThisYear?.cwc) || 0) > 0) ||
+            (tmpl.region === activeUserRegionInYr &&
+              ((isPremierCont && (Number(histInYr.trophiesThisYear?.cl) || 0) > 0) ||
+                (isSecCont && (Number(histInYr.trophiesThisYear?.el) || 0) > 0) ||
+                (isTerCont && (Number(histInYr.trophiesThisYear?.ecl) || 0) > 0))))
+      );
+
+      // If the user did not win this cup in this simulated season, exclude the user's club from the AI pool
+      const filteredPool = !userWonThisCup && histInYr
+        ? pool.filter(
+            c =>
+              (activeUserIdInYr == null || Number(c.id) !== Number(activeUserIdInYr)) &&
+              c.name.toLowerCase().trim() !== activeUserNameNormInYr
+          )
+        : pool;
+      const effectivePool = filteredPool.length > 0 ? filteredPool : pool;
+
       // Realistic selection pool: top heavyweights for premier trophies
       const isPremier = tmpl.key === 'cl' || tmpl.key === 'cwc' || tmpl.key === 'libertadores';
-      const selectionPool = isPremier ? pool.slice(0, Math.min(8, pool.length)) : pool.slice(0, Math.min(16, pool.length));
+      const selectionPool = isPremier ? effectivePool.slice(0, Math.min(8, effectivePool.length)) : effectivePool.slice(0, Math.min(16, effectivePool.length));
 
       // Deterministic pseudo-random index
       const seed = ((yr * 997 + tmpl.key.charCodeAt(0) * 31) >>> 0) % selectionPool.length;
       const offset = tmpl.key === 'el' ? 1 : tmpl.key === 'ecl' ? 2 : tmpl.key === 'sudamericana' ? 1 : tmpl.key === 'leagues' ? 1 : 0;
-      const champ = selectionPool[(seed + offset) % selectionPool.length];
+      const champ = userWonThisCup && histInYr
+        ? {
+            id: activeUserIdInYr,
+            name: histInYr.clubName || state.club.name,
+            logo: histInYr.logo || state.club.logo,
+            color: histInYr.color || state.club.color,
+            country: activeUserCountryInYr,
+          }
+        : selectionPool[(seed + offset) % selectionPool.length];
 
       backfilledCupMovements.push({
         id: `synth-cup-${tmpl.key}-${yr}`,

@@ -59,7 +59,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
           <i className="fa-solid fa-compass text-sky-400"></i>
           <span>{isDe ? 'Kompendium & Spielmechaniken' : 'Rulebook & Game Mechanics'}</span>
           <span className="text-zinc-600">·</span>
-          <span className="text-zinc-400">v2.3</span>
+          <span className="text-zinc-400">v2.6</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.1] mb-5">
@@ -119,21 +119,119 @@ export const AboutPage: React.FC<AboutPageProps> = ({
 
       {/* Main Bento Grid */}
       <div className="space-y-6">
-        {/* v2.3 Spotlight Bento Box */}
+        {/* v2.6 Spotlight Bento Box */}
         {(activeSection === 'all' || activeSection === 'updates') && (
           <div className="bg-gradient-to-br from-[#131724]/90 via-[#10121a]/90 to-[#0e1017]/90 border border-sky-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
                 <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
-                  v2.3 Spotlight
+                  v2.6 Spotlight
                 </span>
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Executive Poaching, Giant Offers & Save Integrity
+                  Global Champions Almanac, World Cup Lore & Era Realism
                 </h2>
               </div>
               <span className="shrink-0 whitespace-nowrap text-xs text-amber-300 font-semibold flex items-center gap-1.5">
                 <i className="fa-solid fa-sparkles text-amber-400"></i>
                 <span>Latest Release</span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Global Champions Almanac & Trophy Leaders */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-emerald-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm mb-3 border border-emerald-500/20">
+                    <i className="fa-solid fa-book-open"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Global Champions Almanac
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Explore every champion from 1950 to your live career across all 45+ nations, divisions, domestic cups, and continental silverware, complete with interactive Top 5 Trophy Leader charts.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-emerald-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>1950–2026+ Lore & Live History</span>
+                </div>
+              </div>
+
+              {/* 2. National Team World Cup History (1930+) */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-amber-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm mb-3 border border-amber-500/20">
+                    <i className="fa-solid fa-earth-americas"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    World Cup History (1930+)
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Full National Team World Cup records dating back to 1930 Montevideo through 2022 and into future 4-year cycles, tracking host nations, stadiums, final scores, runners-up, and winning coaches.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-amber-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Full 1930+ World Cup Archive</span>
+                </div>
+              </div>
+
+              {/* 3. Era-Locked Coaches (1950s–2060s+) */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-sky-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-sm mb-3 border border-sky-500/20">
+                    <i className="fa-solid fa-user-tie"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Era-Locked Coach Timelines
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Strict decade-by-decade managerial rosters from the 1950s through the 2020s plus dedicated future regen coach pools (2030s–2060s+) ensure past legends never resurface out of era.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-sky-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Authentic Decade Isolation</span>
+                </div>
+              </div>
+
+              {/* 4. Cup Eligibility & Takeover Windfalls */}
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4.5 flex flex-col justify-between hover:border-purple-500/30 transition">
+                <div>
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm mb-3 border border-purple-500/20">
+                    <i className="fa-solid fa-trophy"></i>
+                  </div>
+                  <h3 className="text-sm font-bold text-white mb-1.5">
+                    Cup Realism & Takeover Windfalls
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                    Reserve and B-teams are strictly barred from Regional, Domestic, and Continental Cups, while Billionaire & Consortium Takeovers wipe club debt and inject massive transfer war chests.
+                  </p>
+                </div>
+                <div className="text-[11px] font-semibold text-purple-300/90 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
+                  <i className="fa-solid fa-check text-emerald-400"></i>
+                  <span>Senior-Only Cups & Debt Wipeouts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* v2.3 Historical Archive Bento Box */}
+        {activeSection === 'updates' && (
+          <div className="bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl transition-all relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-zinc-300 bg-white/[0.08] border border-white/[0.12] px-2.5 py-1 rounded-xl">
+                  v2.3 Archive
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-zinc-200 tracking-tight">
+                  Executive Poaching, Giant Offers & Save Integrity
+                </h2>
+              </div>
+              <span className="shrink-0 whitespace-nowrap text-xs text-zinc-400 font-medium flex items-center gap-1.5">
+                <i className="fa-solid fa-clock-rotate-left text-zinc-500"></i>
+                <span>Archived Milestone</span>
               </span>
             </div>
 

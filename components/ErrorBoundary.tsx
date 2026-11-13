@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (!isAutomatedOrLocal) {
         submitFeedbackReport({
           type: 'bug',
-          subject: `[FMS v2.3 Auto Crash Report] ${error.message.slice(0, 60)}`,
+          subject: `[FMS v2.6 Auto Crash Report] ${error.message.slice(0, 60)}`,
           title: error.message,
           description: `Automatic crash captured by ErrorBoundary.\nComponent Stack:\n${errorInfo?.componentStack || 'N/A'}`,
           diagnostics,
@@ -66,6 +66,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
       // Ignore secondary crash reporter errors
     }
   }
+
+  handleReloadKeepSave = () => {
+    window.location.reload();
+  };
 
   handleReset = async () => {
     try {
@@ -102,13 +106,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <pre className="text-[10px] text-red-300 text-left overflow-auto max-h-32 mb-4 bg-black/40 p-2.5 rounded-xl border border-red-500/20">
               {(window as any).RENDER_ERROR_DUMP}
             </pre>
-            <button
-              onClick={this.handleReset}
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-rotate-right"></i>
-              Reset & Start Fresh
-            </button>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={this.handleReloadKeepSave}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <i className="fas fa-rotate"></i>
+                Reload & Keep Save
+              </button>
+              <button
+                onClick={this.handleReset}
+                className="w-full bg-white/[0.06] hover:bg-red-600/80 text-zinc-300 hover:text-white font-bold py-2.5 px-6 rounded-xl border border-white/10 transition cursor-pointer flex items-center justify-center gap-2 text-xs"
+              >
+                <i className="fas fa-trash-can"></i>
+                Reset & Start Fresh
+              </button>
+            </div>
           </div>
         </div>
       );

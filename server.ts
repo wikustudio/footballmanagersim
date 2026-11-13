@@ -595,7 +595,7 @@ Walking out of the ${safeClub} facilities for the final time, the dressing room 
     try {
       const { type, subject, title, description, contactEmail, diagnostics, crashReport, crashLogs, timestamp } = req.body || {};
       const reportTypeLabel = type === 'feature' ? 'Feature Request' : 'Bug / Crash Report';
-      const emailSubject = subject || `[FMS v2.3 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
+      const emailSubject = subject || `[FMS v2.6 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
       const submittedAt = timestamp || new Date().toISOString();
 
       const crashSummary = crashReport
@@ -708,7 +708,7 @@ Walking out of the ${safeClub} facilities for the final time, the dressing room 
               'Accept': 'application/json',
               'Origin': originHeader,
               'Referer': refererHeader,
-              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.3)'
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.6)'
             },
             body: JSON.stringify(formSubmitPayload)
           });

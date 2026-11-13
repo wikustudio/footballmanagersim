@@ -1244,7 +1244,9 @@ function* simulateAiLeaguesGen(
   const isUserAfc = AFC_COUNTRIES.includes(userCountry);
   const isUserUefa = UEFA_COUNTRIES.includes(userCountry);
 
-  const tier1AiClubs = updated.filter((c) => c.tier === 1 && c.id !== userClubId);
+  const tier1AiClubs = updated.filter(
+    (c) => c.tier === 1 && c.id !== userClubId && !c.isReserve && !isReserveTeamLocal(c.name)
+  );
 
   // 1. CONMEBOL: Copa Libertadores & Copa Sudamericana
   const conmebolT1 = tier1AiClubs.filter(
@@ -1606,6 +1608,9 @@ function* simulateAiLeaguesGen(
 
     simContext.cupWinners.forEach(cw => {
       const champ = updated.find(c => c.id === cw.winnerId || (cw.winnerName && c.name?.toLowerCase().trim() === cw.winnerName.toLowerCase().trim()));
+      if ((champ && (champ.isReserve || isReserveTeamLocal(champ.name))) || (cw.winnerName && isReserveTeamLocal(cw.winnerName))) {
+        return;
+      }
       const refCountry = champ?.country || userCountry;
 
       let leagueName = 'Cup';

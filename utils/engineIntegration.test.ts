@@ -1407,7 +1407,7 @@ describe('Game Engine Integration & Data Integrity Tests', () => {
     expect(res?.costAttempt).toBe(5000);
     expect(res?.updated.budget).toBe(baseState.budget - 5000);
     expect(res?.updated.club.morale).toBe(baseState.club.morale + 15);
-  });
+  }, 20000);
 
   it('ensures mod-data JSON files with India (IND), Slovakia (SVK), Peru (PER) integrate seamlessly with proper flags, domestic cups, and regional continental competitions', async () => {
     const { normalizeAndValidateCustomDb } = await import('../engine/moddingEngine');

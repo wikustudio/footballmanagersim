@@ -314,9 +314,9 @@ export const sanitizeGameState = (state: any): GameState | null => {
         if (cleanTrophies.wc && cleanTrophies.wc > 1) {
           cleanTrophies.wc = 1;
         }
-        // World Cup tournaments are strictly held every 4 years starting 2026 (2026, 2030, 2034, etc.)
+        // World Cup tournaments are strictly held every 4 years from 1950 onward (1950, 1954, ..., 2026, 2030, etc.)
         // If a season record that isn't a WC year has a WC trophy (e.g. from index 0 corruption), clean it
-        if (cleanTrophies.wc && (h.year - 2026) % 4 !== 0) {
+        if (cleanTrophies.wc && !isWorldCupYear(Number(h.year))) {
           delete cleanTrophies.wc;
         }
         h = { ...h, trophiesThisYear: cleanTrophies, trophyIcons: '' };
@@ -573,10 +573,11 @@ export const sanitizeGameState = (state: any): GameState | null => {
       const raw = Array.isArray(state.worldCupCampaigns) ? state.worldCupCampaigns : [];
       const list: any[] = [];
       const usedYears = new Set<number>();
+      const firstWcYear = resolvedStartYear + ((6 - (resolvedStartYear % 4)) % 4);
 
       raw.forEach((c: any, index: number) => {
         if (!c) return;
-        let year = typeof c.year === 'number' ? c.year : (2026 + index * 4);
+        let year = typeof c.year === 'number' ? c.year : (firstWcYear + index * 4);
         while (usedYears.has(year)) {
           year += 4;
         }
@@ -602,7 +603,7 @@ export const sanitizeGameState = (state: any): GameState | null => {
         .forEach((t: any) => {
           const existing = list.find((c: any) => c.year === t.year || (c.wonTrophy && c.year === t.year));
           if (!existing) {
-            let yr = typeof t.year === 'number' ? t.year : 2026;
+            let yr = typeof t.year === 'number' ? t.year : firstWcYear;
             while (usedYears.has(yr)) {
               yr += 4;
             }
@@ -627,7 +628,7 @@ export const sanitizeGameState = (state: any): GameState | null => {
         if (h && h.trophiesThisYear?.wc) {
           const existing = list.find((c: any) => c.year === h.year);
           if (!existing) {
-            let yr = typeof h.year === 'number' ? h.year : 2026;
+            let yr = typeof h.year === 'number' ? h.year : firstWcYear;
             while (usedYears.has(yr)) {
               yr += 4;
             }
@@ -658,7 +659,7 @@ export const sanitizeGameState = (state: any): GameState | null => {
       );
 
       if (list.length === 0 && expectedCount > 0 && expectedCount <= 8) {
-        const candidateYears = [2026, 2030, 2034, 2038, 2042];
+        const candidateYears = [0, 1, 2, 3, 4].map(idx => firstWcYear + idx * 4);
         for (const y of candidateYears) {
           if (list.length >= expectedCount) break;
           if (!usedYears.has(y)) {
@@ -1692,7 +1693,14 @@ export default function App() {
       updated.internationalTournamentsPlayed = (updated.internationalTournamentsPlayed || 0) + 1;
       updated.worldCupTournamentsPlayed = (updated.worldCupTournamentsPlayed || 0) + 1;
 
-      const tournamentYear = internationalTournament?.year || updated.year;
+      const rawTournamentYear =
+        internationalTournament?.year ||
+        prev.pendingInternationalTournament?.year ||
+        updated.year;
+      const tournamentYear =
+        !isWorldCupYear(rawTournamentYear) && isWorldCupYear(rawTournamentYear - 1)
+          ? rawTournamentYear - 1
+          : rawTournamentYear;
 
       if (stats) {
         updated.worldCupMatchesPlayed = (updated.worldCupMatchesPlayed || 0) + stats.matchesPlayed;
@@ -1715,6 +1723,13 @@ export default function App() {
           matchesLost: stats.matchesLost,
           goalsFor: stats.goalsFor,
           goalsAgainst: stats.goalsAgainst,
+          ...(stats.teamFlag ? { teamFlag: stats.teamFlag } : {}),
+          ...(stats.hostCountry ? { hostCountry: stats.hostCountry } : {}),
+          ...(stats.coachName ? { coachName: stats.coachName } : {}),
+          ...(stats.coachStyle ? { coachStyle: stats.coachStyle } : {}),
+          ...(stats.runnerUp ? { runnerUp: stats.runnerUp } : {}),
+          ...(stats.finalScore ? { finalScore: stats.finalScore } : {}),
+          ...(stats.tournamentWinner ? { tournamentWinner: stats.tournamentWinner } : {}),
         };
 
         if (!updated.worldCupCampaigns) updated.worldCupCampaigns = [];
@@ -2250,7 +2265,7 @@ export default function App() {
       trophies: [],
       youthPipeline: [],
       currentRival: assignRival(params.club, freshClubs),
-      boardVision: generateBoardVision(params.club, params.startYear || 2026),
+      boardVision: generateBoardVision(params.club, startYear),
       internationalTrophies: 0,
       youthTrophies: 0,
       careerScore: 0,
@@ -2413,6 +2428,7 @@ export default function App() {
       if (wasEjected) {
         updated.currentCoach = { ...targetCoach, contractYearsLeft: newTotalYears };
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, targetCoach.ovrBoost);
+        updated.lastOvr = updated.club.baseOvr;
       } else {
         updated.currentCoach = {
           ...updated.currentCoach,
@@ -2432,6 +2448,7 @@ export default function App() {
         };
       }
       latestGameStateRef.current = updated;
+      safeSaveGameState(LOCAL_STORAGE_KEY, updated);
       return updated;
     });
 
@@ -5854,11 +5871,17 @@ export default function App() {
         // 1. Preserve departing club so it NEVER drops its tier or OVR!
         const prevIdx = newDb.findIndex(c => (departingClub.id != null && (c.id === departingClub.id || String(c.id) === String(departingClub.id))) || c.name.toLowerCase().trim() === departingClub.name.toLowerCase().trim());
         if (prevIdx !== -1) {
+          const departingCoachBoost = currentSnap.currentCoach?.ovrBoost || 0;
+          const departingTempBoost =
+            (currentSnap.activeLoanOvrBoost || 0) +
+            (currentSnap.youthChampOvrBoost || 0) +
+            (currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain || 5) : 0);
+          const trueDepartingBaseOvr = adjustOvr(departingClub.baseOvr || 60, -(departingCoachBoost + departingTempBoost));
           newDb[prevIdx] = {
             ...newDb[prevIdx],
             ...departingClub,
             tier: departingClub.tier,
-            baseOvr: Math.max(departingClub.baseOvr || 0, newDb[prevIdx].baseOvr || 0),
+            baseOvr: Math.max(trueDepartingBaseOvr || 0, newDb[prevIdx].baseOvr || 0),
             stadium: Math.max(departingClub.stadium || 0, newDb[prevIdx].stadium || 0),
             academyLevel: Math.max(departingClub.academyLevel || 1, newDb[prevIdx].academyLevel || 1),
             medicalLevel: Math.max(departingClub.medicalLevel || 1, newDb[prevIdx].medicalLevel || 1),
@@ -6040,7 +6063,7 @@ export default function App() {
       updated.sponsorsPitchedThisSeason = 0;
       updated.globalToursThisSeason = 0;
       updated.stadiumExpandedThisSeason = 0;
-      updated.lastOvr = targetBaseOvr;
+      updated.lastOvr = boostedNewClubOvr;
       updated.academyUpgradedThisSeason = 0;
       updated.medicalUpgradedThisSeason = 0;
       updated.academyCallUpsThisSeason = 0;
@@ -6092,9 +6115,11 @@ export default function App() {
       updated.club.leagueHistory = calculatedLeagueHistory;
 
       latestGameStateRef.current = updated;
+      safeSaveGameState(LOCAL_STORAGE_KEY, updated);
       return updated;
     });
 
+    setSeasonFinishData(null);
     setShowJobMarketModal(false);
     setActiveTransferSaga(null);
     setEventQueue(prev => (prev || []).filter(e => !e.isForced && e.type !== 'job_offer'));
@@ -8170,25 +8195,28 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                         isUserClub: true,
                     };
                     state.universeMovements = [domCupMove, ...(state.universeMovements || [])];
-                } else if (cup.id === 'reg') {
-                    const regCupMove: UniverseMovement = {
-                        id: `user-cup-${cup.id}-${completedSeasonYear}-${Date.now()}`,
-                        year: completedSeasonYear,
-                        clubId: state.club.id,
-                        clubName: state.club.name,
-                        clubColor: state.club.color,
-                        clubLogo: state.club.logo,
-                        country: state.club.country || 'GER',
-                        fromTier: seasonTier,
-                        toTier: seasonTier,
-                        fromLeagueName: cup.nameEn,
-                        toLeagueName: 'Champions',
-                        type: 'cup_champion',
-                        pos: 1,
-                        reason: `${cup.nameEn} Winners · Regional Glory`,
-                        isUserClub: true,
-                    };
-                    state.universeMovements = [regCupMove, ...(state.universeMovements || [])];
+                } else if (cup.id === 'reg' || cup.id === 'lower') {
+                    state.totals.domTrophies += 1;
+                    if (cup.id === 'reg') {
+                        const regCupMove: UniverseMovement = {
+                            id: `user-cup-${cup.id}-${completedSeasonYear}-${Date.now()}`,
+                            year: completedSeasonYear,
+                            clubId: state.club.id,
+                            clubName: state.club.name,
+                            clubColor: state.club.color,
+                            clubLogo: state.club.logo,
+                            country: state.club.country || 'GER',
+                            fromTier: seasonTier,
+                            toTier: seasonTier,
+                            fromLeagueName: cup.nameEn,
+                            toLeagueName: 'Champions',
+                            type: 'cup_champion',
+                            pos: 1,
+                            reason: `${cup.nameEn} Winners · Regional Glory`,
+                            isUserClub: true,
+                        };
+                        state.universeMovements = [regCupMove, ...(state.universeMovements || [])];
+                    }
                 }
 
                 const trophyName = lang === 'de' ? cup.nameDe : cup.nameEn;
@@ -8440,52 +8468,36 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     // Determine Euro Status for Next Season
     // Standard Qualification
-        // League performance can upgrade a cup win (e.g. EL to CL)
+        // League performance can upgrade a cup win (e.g. EFL Cup 'ECL' -> 5th place 'EL', or EL -> Top 4 'CL')
         const isTopLeague = ['GER', 'ENG', 'ESP', 'ITA', 'FRA'].includes(clubCountry);
         const isConmebol = ['BRA', 'ARG', 'COL', 'ECU', 'PER', 'BOL', 'PAR', 'CHI', 'URU', 'VEN'].includes(clubCountry);
         const isConcacaf = ['USA', 'CAN', 'MEX', 'CRC', 'HON'].includes(clubCountry);
         const isAfc = ['JPN', 'KOR', 'AUS', 'KSA', 'IDN', 'IND', 'CHN', 'QAT', 'UAE'].includes(clubCountry);
         const isCaf = ['RSA', 'NGA'].includes(clubCountry);
-        
-        if (isConmebol) {
-            // South America: Copa Libertadores (CL) & Copa Sudamericana (EL)
-            if (seasonTier === 1 && approxPos <= 4) euroNextSeason = 'CL';
-            else if (!euroNextSeason) {
-                if (seasonTier === 1 && approxPos <= 8) euroNextSeason = 'EL';
-                else euroNextSeason = null;
+
+        let leagueEuro: 'CL' | 'EL' | 'ECL' | null = null;
+        if (seasonTier === 1) {
+            if (isConmebol) {
+                if (approxPos <= 4) leagueEuro = 'CL';
+                else if (approxPos <= 8) leagueEuro = 'EL';
+            } else if (isConcacaf || isTopLeague) {
+                if (approxPos <= 4) leagueEuro = 'CL';
+                else if (approxPos <= 6) leagueEuro = 'EL';
+                else if (approxPos === 7) leagueEuro = 'ECL';
+            } else if (isAfc || isCaf) {
+                if (approxPos <= 2) leagueEuro = 'CL';
+                else if (approxPos <= 4) leagueEuro = 'EL';
+                else if (approxPos <= 6) leagueEuro = 'ECL';
+            } else {
+                if (approxPos === 1) leagueEuro = 'CL';
+                else if (approxPos <= 3) leagueEuro = 'EL';
+                else if (approxPos <= 6) leagueEuro = 'ECL';
             }
-        } else if (isConcacaf) {
-            // North America: Champions Cup (CL) & Leagues Cup (EL) & Challenge Cup (ECL)
-            if (seasonTier === 1 && approxPos <= 4) euroNextSeason = 'CL';
-            else if (!euroNextSeason) {
-                if (seasonTier === 1 && approxPos <= 6) euroNextSeason = 'EL';
-                else if (seasonTier === 1 && approxPos === 7) euroNextSeason = 'ECL';
-                else euroNextSeason = null;
-            }
-        } else if (isAfc || isCaf) {
-            // Asia / Africa: Champions League (CL), AFC/CAF Cup (EL) & Challenge Cup (ECL)
-            if (seasonTier === 1 && approxPos <= 2) euroNextSeason = 'CL';
-            else if (!euroNextSeason) {
-                if (seasonTier === 1 && approxPos <= 4) euroNextSeason = 'EL';
-                else if (seasonTier === 1 && approxPos <= 6) euroNextSeason = 'ECL';
-                else euroNextSeason = null;
-            }
-        } else if (isTopLeague) {
-            // Top 5 UEFA leagues
-            if (seasonTier === 1 && approxPos <= 4) euroNextSeason = 'CL';
-            else if (!euroNextSeason) {
-                if (seasonTier === 1 && approxPos <= 6) euroNextSeason = 'EL';
-                else if (seasonTier === 1 && approxPos <= 7) euroNextSeason = 'ECL';
-                else euroNextSeason = null;
-            }
-        } else {
-            // Lower coefficient UEFA leagues
-            if (seasonTier === 1 && approxPos === 1) euroNextSeason = 'CL';
-            else if (!euroNextSeason) {
-                if (seasonTier === 1 && approxPos <= 3) euroNextSeason = 'EL';
-                else if (seasonTier === 1 && approxPos <= 6) euroNextSeason = 'ECL';
-                else euroNextSeason = null;
-            }
+        }
+        const euroRank = (e: 'CL' | 'EL' | 'ECL' | null | undefined) =>
+            e === 'CL' ? 3 : e === 'EL' ? 2 : e === 'ECL' ? 1 : 0;
+        if (euroRank(leagueEuro) > euroRank(euroNextSeason)) {
+            euroNextSeason = leagueEuro;
         }
     
     state.euroStatus = (seasonTier === 1 || trophiesThisYear['dfb'] === 1 || trophiesThisYear['efl'] === 1 || trophiesThisYear['el'] === 1 || trophiesThisYear['ecl'] === 1 || trophiesThisYear['cl'] === 1) ? euroNextSeason : null;
@@ -8565,11 +8577,13 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // Update Totals & Dynamic Reputation Engine
     let repDelta = 0;
     if (trophiesThisYear.cl) repDelta += 12; // Elite Cup / Americas Elite Cup
+    if (trophiesThisYear.cwc) repDelta += 10; // Global Club Cup
     if (trophiesThisYear.el) repDelta += 7;  // Euro Cup / Americas Cup
     if (trophiesThisYear.ecl) repDelta += 4; // Recopa / Euro Challenge Cup
     if (trophiesThisYear.bl) repDelta += 8;  // League 1 Champion
     if (trophiesThisYear.lower) repDelta += 5; // Lower League Champion / Promotion
     if (trophiesThisYear.dfb) repDelta += 5; // Domestic Cup
+    if (trophiesThisYear.efl) repDelta += 4; // League Cup / EFL Cup
     if (trophiesThisYear.reg) repDelta += 2; // Regional Cup
 
     if (seasonTier === 1 && approxPos <= 4 && !trophiesThisYear.bl) {
@@ -8594,17 +8608,20 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     }
 
     // Tier-based reputation ceiling:
-    // In Tier 5, manager reputation is capped (Global Elite is strictly reserved for Tier 1).
-    const maxRepForTier = getMaxReputationForTier(seasonTier);
+    // Use effectiveRepTier = Math.min(seasonTier, nextTier) so promoted directors immediately unlock the higher division cap,
+    // and never hard-clip an accomplished legend's career reputation when taking a lower-league rebuild challenge.
+    const effectiveRepTier = Math.min(seasonTier, nextTier);
+    const maxRepForTier = getMaxReputationForTier(effectiveRepTier);
     if (repDelta > 0 && state.reputation >= maxRepForTier) {
       repDelta = 0; // At tier reputation ceiling until promoted
     }
     let updatedRep = Math.max(1, state.reputation + repDelta);
-    // If stuck in a lower tier with reputation far above the tier ceiling (e.g. from an old save), gently normalize
-    if (seasonTier > 1 && updatedRep > maxRepForTier) {
+    if (repDelta > 0 && effectiveRepTier > 1) {
+      updatedRep = Math.min(maxRepForTier, updatedRep);
+    } else if (effectiveRepTier > 1 && updatedRep > maxRepForTier && nextTier >= seasonLeague && !trophiesThisYear.lower && !trophiesThisYear.dfb && !trophiesThisYear.reg) {
       updatedRep = Math.max(maxRepForTier, updatedRep - 2);
     }
-    state.reputation = Math.min(seasonTier === 1 ? 100 : maxRepForTier, updatedRep);
+    state.reputation = Math.min(100, updatedRep);
     if (!state.totals) {
       state.totals = { matches: 0, wins: 0, att: 0, trophies: 0, domTrophies: 0, intTrophies: 0 };
     }
@@ -8851,6 +8868,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
       state.club.baseOvr = adjustOvr(state.club.baseOvr, -totalPenalty);
       state.club.squadSize = 18;
+      decayReasons.push(
+        isDe
+          ? `Notnagel-Kaderauffüllung auf 18 Spieler (-${totalPenalty} GES)`
+          : `Emergency amateur call-ups to meet 18-man squad minimum (-${totalPenalty} OVR)`
+      );
     } else {
       state.club.squadSize = newSize;
     }
@@ -8963,6 +8985,49 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     });
     state.club.leagueHistory = state.clubLeagueHistories[currentClubKey];
     completedClubHistorySnap = { ...state.clubLeagueHistories };
+
+    // Expire 1-season temporary OVR boosts (Youth Championship, Loanees, Veteran Ringer) BEFORE
+    // evaluating permanent off-season decay (Squad Aging > 80, Director Cap, League Complacency, Poaching)
+    // so temporary loanees or a 1-year ringer never trigger false permanent decay on the remaining squad!
+    if (state.youthChampOvrBoost) {
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.youthChampOvrBoost);
+      state.youthChampOvrBoost = 0;
+    }
+    if (state.activeLoanOvrBoost && state.activeLoanOvrBoost > 0) {
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.activeLoanOvrBoost);
+      decayReasons.push(
+        isDe
+          ? `Leihspieler kehren zu Stammvereinen zurück (-${state.activeLoanOvrBoost} GES)`
+          : `Loan players returned to parent clubs (-${state.activeLoanOvrBoost} OVR)`
+      );
+      state.activeLoanOvrBoost = 0;
+    }
+    if (state.veteranRingerActive) {
+      const ringerName = state.veteranRingerName || 'Veteran Ringer';
+      const ringerDrop = state.veteranRingerOvrGain || 5;
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -ringerDrop);
+      state.club.ovr = state.club.baseOvr;
+      state.club.squadSize = Math.max(18, (state.club.squadSize || 24) - 1);
+      state.veteranRingerActive = false;
+      state.veteranRingerSignedThisSeason = false;
+      state.veteranRingerOvrGain = 0;
+      state.veteranRingerName = undefined;
+      state.veteranRingerWageK = 0;
+      const wasPromoted = nextTier < seasonLeague;
+      const retirementMsg = wasPromoted
+        ? isDe
+          ? `🏆 Altstar-Wette aufgegangen! ${ringerName} führte den Klub zum Aufstieg und geht in den Ruhestand (-${ringerDrop} GES). TV-Gelder decken sein Gehalt!`
+          : `🏆 Veteran Ringer Gamble Paid Off! ${ringerName} carried the club to promotion and retires (-${ringerDrop} OVR). Promotion TV money covers the wage bill!`
+        : isDe
+        ? `⚠️ Altstar-Karriereende: ${ringerName} tritt nach verpasstem Aufstieg zurück (-${ringerDrop} GES). Sein hohes Gehalt zwingt zum Sparkurs!`
+        : `⚠️ Veteran Ringer Retires: ${ringerName} hangs up his boots after missing promotion (-${ringerDrop} OVR). The heavy wage bill forces financial austerity!`;
+      decayReasons.push(retirementMsg);
+      showToast(retirementMsg, wasPromoted ? 'success' : 'warning');
+    } else {
+      state.veteranRingerSignedThisSeason = false;
+      state.veteranRingerOvrGain = 0;
+      state.veteranRingerWageK = 0;
+    }
 
     // Apply Off-Season OVR Decay Mechanics (after Decision Day, Cup Finals, and Season History are finalized)
     const top5 = ['ENG', 'ESP', 'GER', 'ITA', 'FRA'];
@@ -9094,11 +9159,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }, 3000);
     }
 
-    if (state.youthChampOvrBoost) {
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.youthChampOvrBoost);
-      state.youthChampOvrBoost = 0;
-    }
-    
     const maxHistYr = (state.history || []).reduce((maxYr, h) => (typeof h?.year === 'number' && Number.isFinite(h.year) ? Math.max(maxYr, h.year) : maxYr), 0);
     state.year = Math.max(
       (state.year || completedSeasonYear) + 1,
@@ -9466,7 +9526,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const bottomLeagueName = getLeagueInfo(bottomTier, clubCountry).name;
 
       bankruptcyDecisionEvent = {
+        id: 'bankruptcy_decision_' + Date.now(),
         type: 'bankruptcy_decision',
+        isForced: true,
         title: {
           en: `FINANCIAL EMERGENCY (${maxDebtSeasons} YRS DEBT)`,
           de: `FINANZIELLER NOTSTAND (${maxDebtSeasons} SCHULDENJAHRE)`,
@@ -9541,34 +9603,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     state.youthScoutedThisSeason = 0;
     state.pendingSeasonState = null;
 
-    // Pillar 2: Veteran Ringer 1-Season Retirement
-    if (state.veteranRingerActive) {
-      const ringerName = state.veteranRingerName || 'Veteran Ringer';
-      const ringerDrop = state.veteranRingerOvrGain || 5;
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -ringerDrop);
-      state.club.ovr = state.club.baseOvr;
-      state.club.squadSize = Math.max(18, (state.club.squadSize || 24) - 1);
-      state.veteranRingerActive = false;
-      state.veteranRingerSignedThisSeason = false;
-      state.veteranRingerOvrGain = 0;
-      state.veteranRingerName = undefined;
-      state.veteranRingerWageK = 0;
-      const wasPromoted = nextTier < seasonLeague;
-      const retirementMsg = wasPromoted
-        ? isDe
-          ? `🏆 Altstar-Wette aufgegangen! ${ringerName} führte den Klub zum Aufstieg und geht in den Ruhestand (-${ringerDrop} GES). TV-Gelder decken sein Gehalt!`
-          : `🏆 Veteran Ringer Gamble Paid Off! ${ringerName} carried the club to promotion and retires (-${ringerDrop} OVR). Promotion TV money covers the wage bill!`
-        : isDe
-        ? `⚠️ Altstar-Karriereende: ${ringerName} tritt nach verpasstem Aufstieg zurück (-${ringerDrop} GES). Sein hohes Gehalt zwingt zum Sparkurs!`
-        : `⚠️ Veteran Ringer Retires: ${ringerName} hangs up his boots after missing promotion (-${ringerDrop} OVR). The heavy wage bill forces financial austerity!`;
-      decayReasons.push(retirementMsg);
-      showToast(retirementMsg, wasPromoted ? 'success' : 'warning');
-    } else {
-      state.veteranRingerSignedThisSeason = false;
-      state.veteranRingerOvrGain = 0;
-      state.veteranRingerWageK = 0;
-    }
-
     // Pillar 5: Youth Academy Level 5 (World-Class La Masia Complex) — Passive Youth Solidarity Dividend (already credited in financials.net)
     if ((state.club.academyLevel || 1) >= 5 && (financials as any).academyDividend > 0) {
       const divStr = formatMoney((financials as any).academyDividend);
@@ -9597,9 +9631,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     state.winterCampDone = false;
     state.teamBondingThisSeason = false;
     state.fanBondingThisSeason = false;
-    if (state.activeLoanOvrBoost && state.activeLoanOvrBoost > 0) {
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.activeLoanOvrBoost);
-    }
     state.activeLoanOvrBoost = 0;
     state.loansThisSeason = 0;
     state.jobMarketSearchesThisSeason = 0;
@@ -10716,6 +10747,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
       }
 
+      // Check if this summer hosts an eligible World Cup invitation so background season events don't collide with it
+      const isSummerWorldCupInviteYear =
+        !isSackedRelegation &&
+        !sackedJobOffer &&
+        isWorldCupYear(completedSeasonYear) &&
+        isDirectorWorldCupEligible(state.club.tier, state.reputation) &&
+        !(state.worldCupCampaigns || []).some(c => c.year === completedSeasonYear) &&
+        !(state.trophyHistory || []).some(t => t.year === completedSeasonYear && t.name === 'World Cup');
+
       // Proactive Poaching (Executive Headhunting) Check for Successful Directors
       const isPromotedThisSeason = nextTier < seasonLeague;
       const totalCareerTrophiesNow = Math.max(
@@ -10723,26 +10763,40 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         state.trophyHistory?.length || 0,
         state.trophies?.length || 0
       );
+      const isMajorContinentalTriumph = Boolean(trophiesThisYear.cl || trophiesThisYear.cwc);
+      const hasSettledTenure =
+        isMajorContinentalTriumph ||
+        ((state.yearsAtCurrentClub || 0) >= 2 &&
+          state.lastPoachDeclinedYear !== completedSeasonYear - 1);
+
       const isElitePoachTarget =
         !isSackedRelegation &&
         !sackedJobOffer &&
+        !state.madeCupFinal &&
+        !isSummerWorldCupInviteYear &&
+        hasSettledTenure &&
         (wonTrophy ||
           (state.reputation >= 85 && approxPos <= 5) ||
           (state.reputation >= 78 && totalCareerTrophiesNow >= 2 && approxPos <= 6));
       const isRisingPoachTarget =
         !isSackedRelegation &&
         !sackedJobOffer &&
+        !state.madeCupFinal &&
+        !isSummerWorldCupInviteYear &&
+        hasSettledTenure &&
         !isElitePoachTarget &&
         (isPromotedThisSeason || approxPos === 1 || (approxPos <= 3 && state.reputation >= 65));
 
       const poachRoll = Math.random();
       const poachChance =
-        trophiesThisYear.cl || trophiesThisYear.cwc || (wonTrophy && state.reputation >= 85) || (state.reputation >= 95 && approxPos <= 4)
-          ? 1.0
+        !hasSettledTenure || state.madeCupFinal || isSummerWorldCupInviteYear
+          ? 0
+          : isMajorContinentalTriumph || (wonTrophy && state.reputation >= 85) || (state.reputation >= 95 && approxPos <= 4)
+          ? 0.55
           : isElitePoachTarget
-          ? 0.80
+          ? 0.40
           : isRisingPoachTarget
-          ? 0.60
+          ? 0.30
           : 0;
 
       if (poachChance > 0 && poachRoll < poachChance) {
@@ -10794,9 +10848,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
       }
 
-      // Random Season Event (85% chance per season)
+      // Random Season Event (85% chance per non-World-Cup season, or 100% if madeCupFinal)
       const eventRoll = Math.random();
-      if (eventRoll < 0.85) {
+      if (!isSummerWorldCupInviteYear && (state.madeCupFinal || eventRoll < 0.85)) {
         setTimeout(() => {
           triggerRandomSeasonEvent(state);
         }, 600);
@@ -10969,6 +11023,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
         if (String(pendingEvent.id || '').startsWith('proactive_poach_')) {
           updated.club.morale = Math.min(100, (updated.club.morale || 80) + 3);
+          updated.lastPoachDeclinedYear = (updated.year || 2026) - 1;
           latestGameStateRef.current = updated;
           setGameState(updated);
           showToast(
@@ -11039,6 +11094,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         // Changing tier here shatters the 18-team capacity, corrupting future tables & Decision Days.
         // Slashing OVR to -40% will cause natural, engine-compliant relegation next season.
 
+        updated.pendingForcedEvent = undefined;
+        latestGameStateRef.current = updated;
+        safeSaveGameState(LOCAL_STORAGE_KEY, updated);
         setGameState(updated);
         popEvent();
 
@@ -11057,8 +11115,10 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
            updated.reputation = Math.max(10, updated.reputation - 30);
            updated.isCareerOver = true;
            updated.careerScore = Math.floor((updated.careerScore || 0) * 0.5); // Penalty
+           updated.pendingForcedEvent = undefined;
            
            saveHighscore(updated);
+           latestGameStateRef.current = updated;
            setGameState(updated);
            popEvent();
 
@@ -11071,6 +11131,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
            });
            
            localStorage.removeItem('footy_manager_sim_state_v3');
+           removeFromIndexedDB('footy_manager_sim_state_v3');
            return;
         }
 
@@ -11157,9 +11218,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         safeSaveClubsDb(DYNAMIC_UNIVERSE_STORAGE_KEY, repairedInsolvDb);
         safeSaveClubsDb(CLUBS_DB_STORAGE_KEY, repairedInsolvDb);
 
-        setGameState(updated);
-        popEvent();
-
         const oberligaOffers = (generateJobOffers(updated, repairedInsolvDb, 2) || []).filter(Boolean);
         const insolvencyJobOffer: GameEvent = {
           id: 'insolvency_job_offer_' + Date.now(),
@@ -11173,17 +11231,23 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           clubs: oberligaOffers,
         };
         updated.pendingForcedEvent = insolvencyJobOffer;
+        latestGameStateRef.current = updated;
+        safeSaveGameState(LOCAL_STORAGE_KEY, updated);
+        setGameState(updated);
+        popEvent();
         enqueueEvent(insolvencyJobOffer);
         return;
 
       } else if (choiceIndex === 2) { // Resign
         updated.reputation = Math.max(10, updated.reputation - 25);
         updated.isCareerOver = true; // Game Over
+        updated.pendingForcedEvent = undefined;
         
         // Bankruptcy Penalty (-50%)
         updated.careerScore = Math.floor((updated.careerScore || 0) * 0.5);
         
         saveHighscore(updated);
+        latestGameStateRef.current = updated;
         setGameState(updated);
         popEvent();
 
@@ -11196,6 +11260,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         });
         
         localStorage.removeItem('footy_manager_sim_state_v3');
+        removeFromIndexedDB('footy_manager_sim_state_v3');
         return;
       }
     } else if (pendingEvent.type === 'fan_social_media_viral') {
@@ -14626,6 +14691,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 showPrestigeModal ||
                 showMarketingModal ||
                 showIpoModal ||
+                showFeedbackModal ||
                 Boolean(activeModal) ||
                 Boolean(playerRevealData)
               }

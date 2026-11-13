@@ -493,8 +493,8 @@ function* simulateAiLeaguesGen(
         d += 3;
       }
       const l = Math.max(0, 34 - w - d);
-      const gf = Math.max(18, Math.round(w * 1.9 + d * 1.1 + rand(2, 8)));
-      const ga = Math.max(14, Math.round(l * 1.8 + d * 0.9 + rand(2, 6)));
+      const gf = Math.max(22, Math.round(w * 2.15 + d * 1.05 + l * 0.45 + (pos <= 3 ? (4 - pos) * 3 : 0) + rand(1, 6)));
+      const ga = Math.max(18, Math.round(l * 1.75 + d * 0.95 + w * 0.42 + (pos - 1) * 0.45 + rand(2, 6)));
       const gd = gf - ga;
       return {
         pos,
@@ -1244,7 +1244,9 @@ function* simulateAiLeaguesGen(
   const isUserAfc = AFC_COUNTRIES.includes(userCountry);
   const isUserUefa = UEFA_COUNTRIES.includes(userCountry);
 
-  const tier1AiClubs = updated.filter((c) => c.tier === 1 && c.id !== userClubId);
+  const tier1AiClubs = updated.filter(
+    (c) => c.tier === 1 && c.id !== userClubId && !c.isReserve && !isReserveTeamLocal(c.name)
+  );
 
   // 1. CONMEBOL: Copa Libertadores & Copa Sudamericana
   const conmebolT1 = tier1AiClubs.filter(
@@ -1606,6 +1608,9 @@ function* simulateAiLeaguesGen(
 
     simContext.cupWinners.forEach(cw => {
       const champ = updated.find(c => c.id === cw.winnerId || (cw.winnerName && c.name?.toLowerCase().trim() === cw.winnerName.toLowerCase().trim()));
+      if ((champ && (champ.isReserve || isReserveTeamLocal(champ.name))) || (cw.winnerName && isReserveTeamLocal(cw.winnerName))) {
+        return;
+      }
       const refCountry = champ?.country || userCountry;
 
       let leagueName = 'Cup';

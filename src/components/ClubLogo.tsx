@@ -206,7 +206,57 @@ const getLookalikeConfig = (baseName: string, primaryFallback: string) => {
       { keys: ['Lisbon (S)', 'Sporting'], shape: 'circle', pattern: 'stripes-h', sColor: '#ffffff', inner: true, pColor: '#008040' },
       { keys: ['Ajax', 'Amsterdam'], shape: 'shield', pattern: 'center-stripe-v', sColor: '#d2122b', inner: false, pColor: '#ffffff' },
       { keys: ['Celtic'], shape: 'circle', pattern: 'stripes-h', sColor: '#ffffff', inner: true, pColor: '#018749' },
-      { keys: ['Belém OS', 'Belenenses', 'Belem'], shape: 'shield-round', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#008057' }
+      { keys: ['Belém OS', 'Belenenses', 'Belem'], shape: 'shield-round', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#008057' },
+      { keys: ['FC Copenhagen', 'Copenhagen', 'København', 'Kobenhavn'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#004b93' },
+      { keys: ['Brøndby', 'Brondby'], shape: 'shield', pattern: 'halves-v', sColor: '#004b93', inner: true, pColor: '#facc15' },
+      { keys: ['Midtjylland'], shape: 'circle', pattern: 'stripes-h', sColor: '#000000', inner: true, pColor: '#dc2626' },
+      { keys: ['AGF', 'Aarhus'], shape: 'shield-round', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#1e3a8a' },
+      { keys: ['Aalborg', 'AaB'], shape: 'circle', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#dc2626' },
+      { keys: ['Malmö', 'Malmo'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#38bdf8' },
+      { keys: ['IFK Göteborg', 'Göteborg', 'Goteborg'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#1d4ed8' },
+      { keys: ['IFK Norrköping', 'Norrköping', 'Norrkoping'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Djurgården', 'Djurgarden'], shape: 'shield', pattern: 'stripes-v', sColor: '#1e3a8a', inner: true, pColor: '#0284c7' },
+      { keys: ['AIK'], shape: 'shield', pattern: 'solid', sColor: '#facc15', inner: true, pColor: '#0f172a' },
+      { keys: ['Rosenborg'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0f172a' },
+      { keys: ['Bodø/Glimt', 'Bodo/Glimt', 'Bodø'], shape: 'circle', pattern: 'solid', sColor: '#0f172a', inner: true, pColor: '#facc15' },
+      { keys: ['Molde'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0284c7' },
+      { keys: ['Viking'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#1e3a8a' },
+      { keys: ['Fredrikstad'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#dc2626' },
+      { keys: ['Olympiacos', 'Piraeus'], shape: 'circle', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#dc2626' },
+      { keys: ['Panathinaikos'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#15803d' },
+      { keys: ['AEK Athens', 'AEK'], shape: 'shield', pattern: 'stripes-v', sColor: '#000000', inner: true, pColor: '#eab308' },
+      { keys: ['PAOK'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#0f172a' },
+      { keys: ['Dinamo Zagreb', 'Zagreb Blue'], shape: 'circle', pattern: 'halves-v', sColor: '#dc2626', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Hajduk Split', 'Hajduk'], shape: 'circle', pattern: 'checks', sColor: '#dc2626', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Rijeka'], shape: 'shield', pattern: 'cross', sColor: '#38bdf8', inner: true, pColor: '#0284c7' },
+      { keys: ['Colo-Colo', 'Colo Colo'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0f172a' },
+      { keys: ['Universidad de Chile'], shape: 'circle', pattern: 'solid', sColor: '#dc2626', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Universidad Católica', 'Universidad Catolica'], shape: 'shield', pattern: 'center-stripe-h', sColor: '#1d4ed8', inner: true, pColor: '#0284c7' },
+      { keys: ['Universitario'], shape: 'circle', pattern: 'solid', sColor: '#fef3c7', inner: true, pColor: '#7f1d1d' },
+      { keys: ['Alianza Lima'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#1e3a8a' },
+      { keys: ['Sporting Cristal'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0284c7' },
+      { keys: ['Club Olimpia', 'Olimpia'], shape: 'shield', pattern: 'center-stripe-h', sColor: '#ffffff', inner: true, pColor: '#0f172a' },
+      { keys: ['Cerro Porteño', 'Cerro Porteno'], shape: 'shield', pattern: 'stripes-v', sColor: '#1e3a8a', inner: true, pColor: '#dc2626' },
+      { keys: ['Libertad'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#0f172a' },
+      { keys: ['Club Bolívar', 'Bolivar'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0284c7' },
+      { keys: ['The Strongest'], shape: 'shield', pattern: 'stripes-v', sColor: '#000000', inner: true, pColor: '#eab308' },
+      { keys: ['Wilstermann'], shape: 'shield', pattern: 'solid', sColor: '#1e3a8a', inner: true, pColor: '#dc2626' },
+      { keys: ['Slovan Bratislava', 'Slovan'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#0284c7' },
+      { keys: ['MŠK Žilina', 'Zilina'], shape: 'shield', pattern: 'halves-v', sColor: '#15803d', inner: true, pColor: '#eab308' },
+      { keys: ['Spartak Trnava', 'Trnava'], shape: 'shield', pattern: 'stripes-v', sColor: '#000000', inner: true, pColor: '#dc2626' },
+      { keys: ['Jeonbuk'], shape: 'shield', pattern: 'solid', sColor: '#064e3b', inner: true, pColor: '#16a34a' },
+      { keys: ['Ulsan'], shape: 'shield', pattern: 'stripes-v', sColor: '#facc15', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Seongnam'], shape: 'shield', pattern: 'solid', sColor: '#eab308', inner: true, pColor: '#0f172a' },
+      { keys: ['FC Seoul', 'Seoul'], shape: 'shield', pattern: 'stripes-v', sColor: '#000000', inner: true, pColor: '#b91c1c' },
+      { keys: ['Pohang'], shape: 'shield', pattern: 'stripes-h', sColor: '#000000', inner: true, pColor: '#dc2626' },
+      { keys: ['Suwon'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Persib'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#1d4ed8' },
+      { keys: ['Persija'], shape: 'shield', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#ea580c' },
+      { keys: ['Persipura'], shape: 'shield', pattern: 'stripes-v', sColor: '#000000', inner: true, pColor: '#dc2626' },
+      { keys: ['Mohun Bagan'], shape: 'circle', pattern: 'halves-v', sColor: '#15803d', inner: true, pColor: '#7f1d1d' },
+      { keys: ['East Bengal'], shape: 'circle', pattern: 'halves-v', sColor: '#eab308', inner: true, pColor: '#dc2626' },
+      { keys: ['Mumbai City'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#38bdf8' },
+      { keys: ['Bengaluru'], shape: 'shield', pattern: 'solid', sColor: '#dc2626', inner: true, pColor: '#1d4ed8' }
     ];
 
     const clean = (baseName || '').replace(/\s+\(?B\)?$/, '').trim();
@@ -222,18 +272,23 @@ const getLookalikeConfig = (baseName: string, primaryFallback: string) => {
     const h = hashCode(clean || 'FC');
     const SHAPES = ['shield', 'shield-round', 'shield-modern', 'circle', 'rounded', 'rounded-sm', 'hexagon'];
     const PATTERNS = ['solid', 'stripes-v', 'stripes-h', 'stripes-thin-v', 'stripes-thin-h', 'halves-v', 'halves-h', 'sash-diag', 'sash-diag-reverse', 'quarters', 'cross', 'diamond-check', 'center-stripe-h', 'center-stripe-v', 'checks'];
-        // STRICT OFFICIAL COLOR CONTRAST (Never invent random secondary colors like yellow unless it's their actual primary)
-    // Most real clubs just pair their primary color with white or black.
     const getContrastSecondary = (hex: string = '#ffffff') => {
        const rawHex = hex || '#ffffff';
-       const h = rawHex.startsWith('#') ? rawHex.substr(1) : rawHex;
-       const r = parseInt(h.substr(0, 2), 16) || 0;
-       const g = parseInt(h.substr(2, 2), 16) || 0;
-       const b = parseInt(h.substr(4, 2), 16) || 0;
+       const cleanHex = rawHex.startsWith('#') ? rawHex.substr(1) : rawHex;
+       const r = parseInt(cleanHex.substr(0, 2), 16) || 0;
+       const g = parseInt(cleanHex.substr(2, 2), 16) || 0;
+       const b = parseInt(cleanHex.substr(4, 2), 16) || 0;
        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-       // If primary is very light (like yellow or white), use black. Otherwise use white.
-       return yiq >= 180 ? '#000000' : '#ffffff';
+       return yiq >= 180 ? '#0f172a' : '#ffffff';
     };
+
+    const rawHex = primaryFallback || '#ffffff';
+    const cleanHex = rawHex.startsWith('#') ? rawHex.substr(1) : rawHex;
+    const r = parseInt(cleanHex.substr(0, 2), 16) || 0;
+    const g = parseInt(cleanHex.substr(2, 2), 16) || 0;
+    const b = parseInt(cleanHex.substr(4, 2), 16) || 0;
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    const isVeryLightPrimary = yiq >= 210;
 
     const TEXT_STYLES = ['initials', 'initials', 'single', 'single', 'icon'];
     const ICONS = ['fa-shield-halved', 'fa-futbol', 'fa-crown', 'fa-star', 'fa-bolt', 'fa-anchor', 'fa-leaf'];
@@ -243,7 +298,7 @@ const getLookalikeConfig = (baseName: string, primaryFallback: string) => {
         pattern: PATTERNS[(h >> 2) % PATTERNS.length],
         sColor: getContrastSecondary(primaryFallback),
         pColor: primaryFallback,
-        inner: (h % 2) === 0,
+        inner: isVeryLightPrimary ? true : (h % 2) === 0,
         textStyle: TEXT_STYLES[(h >> 3) % TEXT_STYLES.length],
         icon: ICONS[(h >> 4) % ICONS.length]
     };

@@ -4,8 +4,6 @@ import { getContinentalCupNames, getRegion } from '../utils/regionHelpers';
 import { getLeagueInfo, getDomesticCupInfo, getMaxTier } from '../data/gameConstants';
 import {
   formatNum,
-  getInitials,
-  getMonogramHex,
   getOvrColor,
 } from '../data/gameConstants';
 import { ClubLogo } from './ClubLogo';
@@ -37,8 +35,6 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
   const renderTrophyIcons = (trophiesObj?: TrophiesObj, countryContext?: string, clubName?: string, clubId?: number) => {
     if (!trophiesObj) return null;
     const country = countryContext || state.club.country || 'GER';
-    const isEcu = country === 'ECU';
-    const isUsa = country === 'USA';
     const { cl: clTitle, el: elTitle, ecl: eclTitle } = getContinentalCupNames(country);
 
     const icons: React.ReactNode[] = [];
@@ -126,43 +122,44 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
   );
 
   return (
-    <div className="bg-[#161820]/75 backdrop-blur-2xl rounded-3xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] flex flex-col overflow-hidden h-[500px] lg:h-full w-full flex-1 relative">
-      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-semibold uppercase tracking-wider px-4 pt-3.5 pb-2.5 border-b border-white/[0.08] bg-white/[0.02] shrink-0">
-        <div className="w-[50%] sm:w-[45%] pl-1 flex items-center gap-2">
-          <span>{t('Season', 'Saison')} / {t('Club', 'Club')}</span>
+    <div className="bg-[#161820]/75 backdrop-blur-2xl rounded-3xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] flex flex-col overflow-hidden h-[560px] lg:h-full w-full flex-1 relative">
+      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-semibold uppercase tracking-wider px-6 pt-3 pb-2.5 border-b border-white/[0.08] bg-white/[0.02] shrink-0">
+        <div className="min-w-0 flex-1 pr-2 flex items-center gap-2">
+          <span className="truncate">{t('Year / Club / Tier', 'Jahr / Club / Liga')}</span>
           {hasWorldCupArchive && (
             <button
               onClick={onOpenWorldCupHistory}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 border border-amber-400/30 text-[9px] font-semibold uppercase tracking-wider transition cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 border border-amber-400/30 text-[9px] font-semibold uppercase tracking-wider transition cursor-pointer shrink-0"
               title="Open Managerial World Cup History Archive"
             >
-              <i className="fa-solid fa-trophy text-[9px] text-amber-300"></i>
+              <i className="fa-solid fa-trophy text-[8px] text-amber-300"></i>
               <span>WC Archive</span>
             </button>
           )}
         </div>
-        <div className="flex justify-end gap-2 sm:gap-3 w-[50%] sm:w-[55%] pr-1">
-          <div className="w-5 sm:w-6 text-center">{t('OVR', 'GES')}</div>
-          <div className="w-5 sm:w-6 text-center">{t('Pos', 'Pl')}</div>
-          <div className="hidden sm:block w-6 text-center">{t('GF', 'T+')}</div>
-          <div className="hidden sm:block w-6 text-center">{t('GA', 'T-')}</div>
-          <div className="w-9 sm:w-10 text-right">{t('Att', 'Zus')}</div>
-          <div className="w-7 sm:w-9 text-right">{t('Util', 'Ausl')}</div>
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+          <div className="w-6 text-center">{t('OVR', 'GES')}</div>
+          <div className="w-6 text-center">{t('Pos', 'Pl')}</div>
+          <div className="w-14 sm:w-15 text-center" title="Win–Draw–Loss Record">W–D–L</div>
+          <div className="hidden xl:block w-6 text-center">{t('GF', 'T+')}</div>
+          <div className="hidden xl:block w-6 text-center">{t('GA', 'T-')}</div>
+          <div className="w-11 sm:w-12 text-right">{t('Att', 'Zus')}</div>
+          <div className="w-9 sm:w-10 text-right">{t('Util', 'Ausl')}</div>
         </div>
       </div>
 
       <div
         ref={containerRef}
-        className="overflow-y-auto px-3 pb-4 h-full scroll-smooth custom-scrollbar"
+        className="overflow-y-auto px-3 pb-24 h-full scroll-smooth custom-scrollbar"
       >
-        <div className="space-y-0.5 pt-1">
+        <div className="space-y-1 pt-1.5">
           {/* Active Season Row Placeholder - Positioned at top of reverse chronological history */}
           <div
             ref={activeRowRef}
             id="active-season-row"
-            className="flex items-center justify-between py-2 px-2.5 bg-sky-500/[0.08] rounded-xl border border-sky-400/20 mb-1 fade-in shadow-sm"
+            className="flex items-center justify-between py-2 px-3 bg-sky-500/[0.08] rounded-xl border border-sky-400/20 mb-1 fade-in shadow-sm"
           >
-            <div className="flex items-center gap-2.5 w-[50%] sm:w-[45%] overflow-hidden shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2 overflow-hidden">
               <div className="px-1.5 py-0.5 bg-sky-500/25 text-sky-300 border border-sky-400/40 rounded-md flex items-center justify-center text-[10px] font-bold tabular-nums shrink-0 shadow-sm">
                 {state.year}
               </div>
@@ -173,8 +170,8 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                 {t('Current season underway...', 'Laufende Saison...')}
               </div>
             </div>
-            <div className="w-[50%] sm:w-[55%] flex justify-end items-center pr-2">
-              <span className="text-[9px] sm:text-[10px] font-semibold text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-400/25 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="shrink-0 flex justify-end items-center">
+              <span className="text-[9px] sm:text-[10px] font-semibold text-sky-300 bg-sky-500/15 px-2.5 py-0.5 rounded-full border border-sky-400/25 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping"></span>
                 <span>Active</span>
               </span>
@@ -261,143 +258,160 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
             const displayName = isModActive && matchingDbClub ? matchingDbClub.name : safeClubName;
 
             return (
-              <div key={`${h.year}-${safeClubName}-${originalIndex}`} className={`flex flex-col py-2 px-2.5 hover:bg-white/[0.04] transition-all rounded-xl border-b border-white/[0.04] ${rowAnim}`}>
-              <div
-                className={`flex items-center justify-between`}
-              >
-                <div className="flex items-center gap-2.5 w-[50%] sm:w-[45%] overflow-hidden shrink-0">
-                  <div className="px-1.5 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-400/20 rounded-md flex items-center justify-center text-[10px] font-bold tabular-nums shrink-0 shadow-sm">
-                    {h.year}
-                  </div>
-                  <ClubLogo
-                    name={displayName}
-                    id={rowId}
-                    color={rowColor}
-                    logo={rowLogo}
-                    fallbackLogo={rowFallbackLogo}
-                    isModActive={isModActive}
-                    className="w-7 h-7 sm:w-6 sm:h-6 object-contain shrink-0"
-                    fallbackClassName="w-7 h-7 sm:w-6 sm:h-6 text-[10px] sm:text-[9px] rounded-full flex items-center justify-center font-bold text-white border border-white/10 shrink-0"
-                  />
-                  <div className="flex flex-col justify-center min-w-0">
-                    <div className="font-semibold tracking-tight text-white truncate text-[12px] sm:text-[13px] leading-normal py-0.5">
-                      {displayName}
+              <div key={`${h.year}-${safeClubName}-${originalIndex}`} className={`flex flex-col py-2 px-3 hover:bg-white/[0.04] transition-all rounded-xl border border-white/[0.05] bg-white/[0.015] ${rowAnim}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2 overflow-hidden">
+                    <div className="px-1.5 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-400/20 rounded-md flex items-center justify-center text-[10px] font-bold tabular-nums shrink-0 shadow-sm">
+                      {h.year}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${h.leagueCss} truncate leading-none`}>
-                        {h.leagueTag === '1. BL' ? 'GER 1' : h.leagueTag === '2. BL' ? 'GER 2' : h.leagueTag}
+                    <ClubLogo
+                      name={displayName}
+                      id={rowId}
+                      color={rowColor}
+                      logo={rowLogo}
+                      fallbackLogo={rowFallbackLogo}
+                      isModActive={isModActive}
+                      className="w-7 h-7 sm:w-6 sm:h-6 object-contain shrink-0"
+                      fallbackClassName="w-7 h-7 sm:w-6 sm:h-6 text-[10px] sm:text-[9px] rounded-full flex items-center justify-center font-bold text-white border border-white/10 shrink-0"
+                    />
+                    <div className="flex flex-col justify-center min-w-0">
+                      <div className="font-semibold tracking-tight text-white truncate text-[12px] sm:text-[13px] leading-normal py-0.5">
+                        {displayName}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${h.leagueCss} truncate leading-none`}>
+                          {h.leagueTag === '1. BL' ? 'GER 1' : h.leagueTag === '2. BL' ? 'GER 2' : h.leagueTag}
+                        </span>
+                        {outcome === 'C' && (
+                          <span 
+                            className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-400 text-black shrink-0 shadow-sm" 
+                            title={isDe ? "Meister" : "Champion"}
+                          >
+                            C
+                          </span>
+                        )}
+                        {outcome === 'P' && (
+                          <span 
+                            className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-emerald-500 text-white shrink-0 shadow-sm" 
+                            title={isDe ? "Aufstieg" : "Promoted"}
+                          >
+                            P
+                          </span>
+                        )}
+                        {outcome === 'R' && (
+                          <span 
+                            className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-rose-600 text-white shrink-0 shadow-sm" 
+                            title={isDe ? "Abstieg" : "Relegated"}
+                          >
+                            R
+                          </span>
+                        )}
+                        {h.financialRelegation && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 tracking-tight leading-none flex items-center gap-1 shrink-0" title={isDe ? "Zwangsabstieg wegen Insolvenz" : "Forced Relegation due to Insolvency"}>
+                            <i className="fa-solid fa-triangle-exclamation text-[8px] text-rose-400"></i>
+                            {isDe ? 'Zwangsabstieg' : 'Admin Relegation'}
+                          </span>
+                        )}
+                        
+                        {h.pointsDeducted && h.pointsDeducted > 0 ? (
+                          <span
+                            className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 tracking-tight leading-none flex items-center gap-1 shrink-0"
+                            title={
+                              isDe
+                                ? `Punktabzug wegen Finanzen/Schulden: -${h.pointsDeducted} Pkt.`
+                                : `Point deduction due to financial issues/debt: -${h.pointsDeducted} pts`
+                            }
+                          >
+                            <i className="fa-solid fa-minus-circle text-[8px] text-rose-400"></i>
+                            -{h.pointsDeducted} {isDe ? 'Pkt (Finanzabzug)' : 'Pts (Financial)'}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  {h.bankrupt ? (
+                    <div className="shrink-0 flex justify-end items-center">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-rose-300 bg-rose-500/15 px-2.5 py-1 rounded-full border border-rose-500/25 uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                        <i className="fa-solid fa-skull"></i>
+                        <span>{isDe ? 'Insolvent' : 'Bankrupt'}</span>
                       </span>
-                      {outcome === 'C' && (
-                        <span 
-                          className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-400 text-black shrink-0 shadow-sm" 
-                          title={isDe ? "Meister" : "Champion"}
-                        >
-                          C
-                        </span>
-                      )}
-                      {outcome === 'P' && (
-                        <span 
-                          className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-emerald-500 text-white shrink-0 shadow-sm" 
-                          title={isDe ? "Aufstieg" : "Promoted"}
-                        >
-                          P
-                        </span>
-                      )}
-                      {outcome === 'R' && (
-                        <span 
-                          className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-rose-600 text-white shrink-0 shadow-sm" 
-                          title={isDe ? "Abstieg" : "Relegated"}
-                        >
-                          R
-                        </span>
-                      )}
-                      {h.financialRelegation && (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 tracking-tight leading-none flex items-center gap-1 shrink-0" title={isDe ? "Zwangsabstieg wegen Insolvenz" : "Forced Relegation due to Insolvency"}>
-                          <i className="fa-solid fa-triangle-exclamation text-[8px] text-rose-400"></i>
-                          {isDe ? 'Zwangsabstieg' : 'Admin Relegation'}
-                        </span>
-                      )}
-                      
-                      {h.pointsDeducted && h.pointsDeducted > 0 ? (
-                        <span
-                          className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 tracking-tight leading-none flex items-center gap-1 shrink-0"
-                          title={
-                            isDe
-                              ? `Punktabzug wegen Finanzen/Schulden: -${h.pointsDeducted} Pkt.`
-                              : `Point deduction due to financial issues/debt: -${h.pointsDeducted} pts`
-                          }
-                        >
-                          <i className="fa-solid fa-minus-circle text-[8px] text-rose-400"></i>
-                          -{h.pointsDeducted} {isDe ? 'Pkt (Finanzabzug)' : 'Pts (Financial)'}
-                        </span>
-                      ) : null}
-
-
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-end gap-1.5 sm:gap-2 font-medium text-[11px] sm:text-[12px] text-zinc-400 tabular-nums shrink-0">
+                      <div className={`w-6 text-center font-bold ${getOvrColor(h.ovr || 50)}`}>
+                        {h.ovr ?? '—'}
+                      </div>
+                      <div className="w-6 text-center text-white relative">
+                        <span>{h.pos ?? '—'}.</span>
+                        {h.pointsDeducted && h.pointsDeducted > 0 && (
+                          <span
+                            className="text-[9px] font-black text-rose-400 ml-0.5"
+                            title={
+                              isDe
+                                ? `-${h.pointsDeducted} Punkte Abzug wegen Finanzen`
+                                : `-${h.pointsDeducted} pts deduction due to money issues`
+                            }
+                          >
+                            *
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const w = Math.max(0, Number(h.wins) || 0);
+                        const d = h.draws != null
+                          ? Math.max(0, Number(h.draws))
+                          : h.pts != null
+                          ? Math.max(0, Number(h.pts) + (Number(h.pointsDeducted) || 0) - w * 3)
+                          : Math.max(0, Math.min(34 - w, Math.round((34 - w) * 0.35)));
+                        const l = h.losses != null ? Math.max(0, Number(h.losses)) : Math.max(0, 34 - w - d);
+                        return (
+                          <div
+                            className="w-14 sm:w-15 text-center font-mono text-[10px] px-1 py-0.5 rounded bg-slate-900/90 border border-slate-800"
+                            title={`Wins: ${w}, Draws: ${d}, Losses: ${l}`}
+                          >
+                            <span className="text-emerald-400 font-bold">{w}</span>
+                            <span className="text-slate-600">-</span>
+                            <span className="text-slate-300">{d}</span>
+                            <span className="text-slate-600">-</span>
+                            <span className="text-rose-400 font-bold">{l}</span>
+                          </div>
+                        );
+                      })()}
+                      <div className="hidden xl:block w-6 text-center text-emerald-400">{h.gf ?? 0}</div>
+                      <div className="hidden xl:block w-6 text-center text-rose-400">{h.ga ?? 0}</div>
+                      <div 
+                        className="w-11 sm:w-12 text-right cursor-help"
+                        title={isDe 
+                          ? `Durchschnittliche Zuschauer: ${h.att ? h.att.toLocaleString('de-DE') : '—'} pro Heimspiel (${((h.att || 0) * 17).toLocaleString('de-DE')} Gesamtzuschauer)` 
+                          : `Average attendance: ${h.att ? h.att.toLocaleString('en-US') : '—'} per home fixture (${((h.att || 0) * 17).toLocaleString('en-US')} total season crowd)`}
+                      >
+                        {h.att != null ? formatNum(h.att) : '—'}
+                      </div>
+                      <div
+                        className={`w-9 sm:w-10 text-right cursor-help ${
+                          (h.util ?? 0) >= 95
+                            ? 'text-emerald-400 font-semibold'
+                            : h.util != null && h.util < 50
+                            ? 'text-rose-400'
+                            : 'text-zinc-300'
+                        }`}
+                        title={isDe
+                          ? `Stadionauslastung: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} Plätze Kapazität)` : ''}`
+                          : `Stadium utilization: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} seat capacity)` : ''}`}
+                      >
+                        {h.util != null ? `${h.util}%` : '—'}
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {h.bankrupt ? (
-                  <div className="w-[50%] sm:w-[55%] flex justify-end items-center pr-2">
-                    <span className="text-[10px] sm:text-[11px] font-bold text-rose-300 bg-rose-500/15 px-2.5 py-1 rounded-full border border-rose-500/25 uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                      <i className="fa-solid fa-skull"></i>
-                      <span>{isDe ? 'Insolvent' : 'Bankrupt'}</span>
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-end gap-2 sm:gap-3 w-[50%] sm:w-[55%] font-medium text-[11px] sm:text-[12px] text-zinc-400 tabular-nums shrink-0">
-                    <div className={`w-5 sm:w-6 text-center font-bold ${getOvrColor(h.ovr || 50)}`}>
-                      {h.ovr ?? '—'}
-                    </div>
-                    <div className="w-5 sm:w-6 text-center text-white relative">
-                      <span>{h.pos ?? '—'}.</span>
-                      {h.pointsDeducted && h.pointsDeducted > 0 && (
-                        <span
-                          className="text-[9px] font-black text-rose-400 ml-0.5"
-                          title={
-                            isDe
-                              ? `-${h.pointsDeducted} Punkte Abzug wegen Finanzen`
-                              : `-${h.pointsDeducted} pts deduction due to money issues`
-                          }
-                        >
-                          *
-                        </span>
-                      )}
-                    </div>
-                    <div className="hidden sm:block w-6 text-center text-emerald-400">{h.gf ?? 0}</div>
-                    <div className="hidden sm:block w-6 text-center text-rose-400">{h.ga ?? 0}</div>
-                    <div 
-                      className="w-9 sm:w-10 text-right cursor-help"
-                      title={isDe 
-                        ? `Durchschnittliche Zuschauer: ${h.att ? h.att.toLocaleString('de-DE') : '—'} pro Heimspiel (${((h.att || 0) * 17).toLocaleString('de-DE')} Gesamtzuschauer)` 
-                        : `Average attendance: ${h.att ? h.att.toLocaleString('en-US') : '—'} per home fixture (${((h.att || 0) * 17).toLocaleString('en-US')} total season crowd)`}
-                    >
-                      {h.att != null ? formatNum(h.att) : '—'}
-                    </div>
-                    <div
-                      className={`w-7 sm:w-9 text-right cursor-help ${
-                        (h.util ?? 0) >= 95
-                          ? 'text-emerald-400 font-semibold'
-                          : h.util != null && h.util < 50
-                          ? 'text-rose-400'
-                          : 'text-zinc-300'
-                      }`}
-                      title={isDe
-                        ? `Stadionauslastung: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} Plätze Kapazität)` : ''}`
-                        : `Stadium utilization: ${h.util ?? 0}% ${h.stadiumCapacity ? `(${formatNum(h.stadiumCapacity)} seat capacity)` : ''}`}
-                    >
-                      {h.util != null ? `${h.util}%` : '—'}
-                    </div>
+                {h.trophiesThisYear && Object.keys(h.trophiesThisYear).some(k => (h.trophiesThisYear[k] || 0) > 0) && (
+                  <div className="flex items-center gap-1.5 pl-[38px] mt-1.5 pb-0.5 flex-wrap">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mr-1">{isDe ? 'Titel:' : 'Honours:'}</span>
+                    {renderTrophyIcons(h.trophiesThisYear, h.country, h.clubName, h.clubId)}
                   </div>
                 )}
               </div>
-              {h.trophiesThisYear && Object.keys(h.trophiesThisYear).some(k => (h.trophiesThisYear[k] || 0) > 0) && (
-                <div className="flex items-center gap-1.5 pl-[38px] mt-1.5 pb-0.5 flex-wrap">
-                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mr-1">{isDe ? 'Titel:' : 'Honours:'}</span>
-                  {renderTrophyIcons(h.trophiesThisYear, h.country, h.clubName, h.clubId)}
-                </div>
-              )}
-            </div>
             );
           })}
         </div>
@@ -413,11 +427,11 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
         ) && (
           <div
             onClick={onOpenWorldCupHistory}
-            className="flex flex-col py-1.5 px-2 hover:bg-amber-950/25 hover:border-amber-400/50 transition rounded-md border border-amber-500/30 bg-amber-950/15 mt-1.5 cursor-pointer group shadow-sm active:scale-[0.99]"
+            className="flex flex-col py-2 px-3 hover:bg-amber-950/25 hover:border-amber-400/50 transition rounded-xl border border-amber-500/30 bg-amber-950/15 mt-1.5 cursor-pointer group shadow-sm active:scale-[0.99]"
             title="Click to view full World Cup Managerial History Archive"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 w-[50%] sm:w-[45%] overflow-hidden shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2 overflow-hidden">
                 <div className="w-7 h-5 bg-amber-500/25 text-amber-300 border border-amber-400/30 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
                   WC
                 </div>
@@ -441,25 +455,25 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 sm:gap-3 w-[50%] sm:w-[55%] pr-1 text-right">
-                <div className="w-5 sm:w-6 text-center text-xs font-bold text-amber-300 tabular-nums" title={t('Matches', 'Spiele')}>
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 text-right">
+                <div className="w-6 text-center text-xs font-bold text-amber-300 tabular-nums" title={t('Matches', 'Spiele')}>
                   {state.worldCupMatchesPlayed || 0}
                 </div>
-                <div className="w-5 sm:w-6 text-center text-xs font-bold text-emerald-400 tabular-nums" title={t('Wins', 'Siege')}>
+                <div className="w-6 text-center text-xs font-bold text-emerald-400 tabular-nums" title={t('Wins', 'Siege')}>
                   {state.worldCupMatchesWon || 0}W
                 </div>
-                <div className="hidden sm:block w-6 text-center text-xs text-zinc-300 tabular-nums" title={t('Goals For', 'Tore')}>
+                <div className="hidden xl:block w-6 text-center text-xs text-zinc-300 tabular-nums" title={t('Goals For', 'Tore')}>
                   {state.worldCupGoalsFor || 0}
                 </div>
-                <div className="hidden sm:block w-6 text-center text-xs text-zinc-400 tabular-nums" title={t('Goals Against', 'Gegentore')}>
+                <div className="hidden xl:block w-6 text-center text-xs text-zinc-400 tabular-nums" title={t('Goals Against', 'Gegentore')}>
                   {state.worldCupGoalsAgainst || 0}
                 </div>
-                <div className="w-9 sm:w-10 text-right text-xs font-black text-yellow-400" title={t('Trophies', 'Titel')}>
+                <div className="w-11 sm:w-12 text-right text-xs font-black text-yellow-400" title={t('Trophies', 'Titel')}>
                   {(state.worldCupTrophies || state.internationalTrophies || 0) > 0 ? `${state.worldCupTrophies || state.internationalTrophies} 🏆` : '—'}
                 </div>
-                <div className="w-7 sm:w-9 text-right text-[10px] font-bold text-zinc-400" title={t('Tournaments', 'Turniere')}>
+                <div className="w-9 sm:w-10 text-right text-[10px] font-bold text-zinc-400" title={t('Tournaments', 'Turniere')}>
                   {(state.worldCupCampaigns && state.worldCupCampaigns.length > 0)
-                    ? state.worldCupCampaigns.filter(c => (c.year - 2026) % 4 === 0).length
+                    ? state.worldCupCampaigns.filter(c => typeof c.year === 'number' && c.year >= 1950 && c.year % 4 === 2).length
                     : (state.worldCupTournamentsPlayed || state.internationalTournamentsPlayed || 1)} ed.
                 </div>
               </div>

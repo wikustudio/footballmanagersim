@@ -277,7 +277,7 @@ export const ClubIntroModal: React.FC<ClubIntroModalProps> = ({
                 {t('Stadium', 'Stadion')}
               </div>
               <div className="text-xs sm:text-sm font-bold text-white truncate tabular-nums">
-                {club.stadium.toLocaleString()}
+                {(club.stadium || 15000).toLocaleString()}
               </div>
             </div>
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
