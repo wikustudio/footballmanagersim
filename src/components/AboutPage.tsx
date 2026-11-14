@@ -123,11 +123,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({
         {(activeSection === 'all' || activeSection === 'updates') && (
           <div className="bg-gradient-to-br from-[#131724]/90 via-[#10121a]/90 to-[#0e1017]/90 border border-sky-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 sm:gap-3">
                 <span className="shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-1 rounded-xl">
                   v2.6 Spotlight
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
                   Global Champions Almanac, World Cup Lore & Era Realism
                 </h2>
               </div>

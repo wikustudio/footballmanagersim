@@ -996,11 +996,34 @@ export function calculateProbabilisticSeason(
     : 1.01;
   let ga = Math.max(15, Math.min(88, Math.round(rawGa * gaStyleMultiplier)));
 
+  // Dominant title contenders (e.g. 90+ OVR top-flight giants finishing top 2-4) maintain elite defensive numbers
+  if (effectiveOvrForSim >= league.avgOvr + 6) {
+    if (approxPos === 1) {
+      ga = Math.min(ga, 32);
+    } else if (approxPos === 2) {
+      ga = Math.min(ga, 35);
+    } else if (approxPos <= 4) {
+      ga = Math.min(ga, 38);
+    }
+    ga = Math.max(15, totalLosses, ga);
+  }
+
   // Enforce coherent goal difference relative to win/loss record and table position
   if (approxPos <= 4 && totalWins > totalLosses) {
-    const minTopGd = Math.max(8, Math.round((totalWins - totalLosses) * 1.45));
+    const minTopGd =
+      approxPos <= 2 && effectiveOvrForSim >= league.avgOvr + 6
+        ? Math.max(32, Math.round((totalWins - totalLosses) * 1.45))
+        : Math.max(8, Math.round((totalWins - totalLosses) * 1.45));
     if (gf - ga < minTopGd) {
-      ga = Math.max(15, gf - minTopGd);
+      if (effectiveOvrForSim >= league.avgOvr + 6) {
+        const neededGf = Math.min(108, ga + minTopGd);
+        gf = Math.max(gf, neededGf);
+        if (gf - ga < minTopGd) {
+          ga = Math.max(15, totalLosses, gf - minTopGd);
+        }
+      } else {
+        ga = Math.max(15, gf - minTopGd);
+      }
     }
   } else if (approxPos >= 14 && totalLosses > totalWins) {
     const minBottomDeficit = Math.max(6, Math.round((totalLosses - totalWins) * 1.25));
@@ -1011,7 +1034,11 @@ export function calculateProbabilisticSeason(
   const minFeasibleGd = totalWins * 1 - totalLosses * 4;
   const maxFeasibleGd = totalWins * 5 - totalLosses * 1;
   if (gf - ga > maxFeasibleGd) {
-    ga = Math.max(15, gf - maxFeasibleGd);
+    if (approxPos <= 2 && effectiveOvrForSim >= league.avgOvr + 6) {
+      gf = Math.max(totalWins + totalDraws, Math.min(108, ga + maxFeasibleGd));
+    } else {
+      ga = Math.max(15, gf - maxFeasibleGd);
+    }
   } else if (gf - ga < minFeasibleGd) {
     gf = Math.min(108, ga + minFeasibleGd);
   }
@@ -1071,12 +1098,31 @@ export function calculateProbabilisticSeason(
     if (shWins + shDraws > 17) shDraws = Math.max(0, 17 - shWins);
     const shLosses = Math.max(0, 17 - shWins - shDraws);
 
+    const projectedFinalPts = lockedFirstHalf[16].runningPts + shWins * 3 + shDraws;
+
     let shGf = Math.max(shWins + shDraws, Math.round(gf / 2 + rand(-2, 2)));
     let shGa = Math.max(shLosses + Math.floor(shDraws * 0.5), Math.round(ga / 2 + rand(-2, 2)));
+
+    // Keep combined (1st half + 2nd half) defensive & GD numbers realistic for dominant top-2 contenders
     const shMinGd = shWins * 1 - shLosses * 4;
-    const shMaxGd = shWins * 5 - shLosses * 1;
+    const shMaxGd = shWins * 4 - shLosses * 1;
+    if (projectedFinalPts >= 68 && effectiveOvrForSim >= league.avgOvr + 6) {
+      const eliteTotalGaCap = projectedFinalPts >= 76 ? 34 : 37;
+      const maxAllowedShGa = Math.max(shLosses, eliteTotalGaCap - fhGa);
+      shGa = Math.min(shGa, maxAllowedShGa);
+
+      const eliteMinTotalGd = projectedFinalPts >= 76 ? 34 : 30;
+      const neededShGf = (fhGa + shGa + eliteMinTotalGd) - fhGf;
+      shGf = Math.max(shGf, neededShGf);
+      shGf = Math.min(shGf, Math.min(72, shGa + shMaxGd));
+    }
+
     if (shGf - shGa > shMaxGd) {
-      shGa = Math.max(shLosses, shGf - shMaxGd);
+      if (projectedFinalPts >= 68 && effectiveOvrForSim >= league.avgOvr + 6) {
+        shGf = Math.max(shWins + shDraws, shGa + shMaxGd);
+      } else {
+        shGa = Math.max(shLosses, shGf - shMaxGd);
+      }
     } else if (shGf - shGa < shMinGd) {
       shGf = Math.max(shWins, shGa + shMinGd);
     }

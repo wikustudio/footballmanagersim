@@ -75,7 +75,7 @@ import { getCrashReports, subscribeCrashReports, recordCrashReport } from './uti
 import { initGA, trackEvent } from './analytics';
 import { ConsentBanner } from './components/ConsentBanner';
 import { safeSaveGameState, safeSaveClubsDb, cleanupNonEssentialLocalStorage, saveToIndexedDB, loadFromIndexedDB, removeFromIndexedDB, dehydrateClubsDbDelta, rehydrateClubsDbDelta, isNewerSaveOfSameCareer } from './utils/storageManager';
-import { mergeClubsDbSafeguards, autoRepairClubsDb, autoRepairSingleClub } from './utils/modSafeguards';
+import { mergeClubsDbSafeguards, autoRepairClubsDb, autoRepairSingleClub, resolveHistoryClubDisplay } from './utils/modSafeguards';
 import { EventUI } from './components/EventUI';
 import { SeasonHistoryTable } from './components/SeasonHistoryTable';
 import { LeagueTableModal } from './components/LeagueTableModal';
@@ -190,8 +190,30 @@ export const sanitizeGameState = (state: any): GameState | null => {
   }
 
   const isModActive = typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true';
-  let cleanClub = isModActive ? autoRepairSingleClub(state.club, true) : state.club;
-  const cleanRival = (state.currentRival && isModActive) ? autoRepairSingleClub(state.currentRival, true) : state.currentRival;
+  let cleanClub = isModActive
+    ? autoRepairSingleClub(state.club, true)
+    : (() => {
+        const res = resolveHistoryClubDisplay(state.club, false);
+        return {
+          ...state.club,
+          name: res.name || state.club.name,
+          logo: res.logo,
+          fallbackLogo: res.fallbackLogo,
+        };
+      })();
+  const cleanRival = state.currentRival
+    ? (isModActive
+        ? autoRepairSingleClub(state.currentRival, true)
+        : (() => {
+            const res = resolveHistoryClubDisplay(state.currentRival, false);
+            return {
+              ...state.currentRival,
+              name: res.name || state.currentRival.name,
+              logo: res.logo,
+              fallbackLogo: res.fallbackLogo,
+            };
+          })())
+    : state.currentRival;
 
   if (cleanClub) {
     cleanClub.academyLevel = Math.min(5, Math.max(1, cleanClub.academyLevel || 1));
@@ -322,15 +344,36 @@ export const sanitizeGameState = (state: any): GameState | null => {
         h = { ...h, trophiesThisYear: cleanTrophies, trophyIcons: '' };
       }
 
-      if (isModActive && h.clubName) {
-        const dummy = { id: h.clubId, name: h.clubName, logo: h.logo, fallbackLogo: h.fallbackLogo } as Club;
-        const rep = autoRepairSingleClub(dummy, true);
-        h = {
-          ...h,
-          clubName: rep.name,
-          logo: rep.logo,
-          fallbackLogo: rep.fallbackLogo
-        };
+      if (h.clubName) {
+        if (isModActive) {
+          const dummy = { id: h.clubId, name: h.clubName, country: h.country || cleanClub?.country, logo: h.logo, fallbackLogo: h.fallbackLogo } as Club;
+          const rep = autoRepairSingleClub(dummy, true);
+          h = {
+            ...h,
+            clubName: rep.name,
+            logo: rep.logo,
+            fallbackLogo: rep.fallbackLogo
+          };
+        } else {
+          const res = resolveHistoryClubDisplay(
+            {
+              id: h.clubId,
+              name: h.clubName,
+              country: h.country || cleanClub?.country,
+              color: h.color,
+              logo: h.logo,
+              fallbackLogo: h.fallbackLogo,
+            },
+            false
+          );
+          h = {
+            ...h,
+            clubId: res.id ?? h.clubId,
+            clubName: res.name,
+            logo: res.logo,
+            fallbackLogo: res.fallbackLogo,
+          };
+        }
       }
 
       if (isFreibergClub && (h.tier === 4 || !h.tier) && (h.pos === 3 || h.position === 3 || h.points === 67 || h.pts === 67)) {
@@ -1279,7 +1322,7 @@ export default function App() {
     return () => { isMounted = false; };
   }, [isModActive]);
 
-  // Auto-heal active save state on launch or mod toggle: re-sync all clubs to authentic mod names and logos
+  // Auto-heal active save state on launch or mod toggle: re-sync all clubs to authentic mod names/logos or copyright-safe fallbacks
   useEffect(() => {
     if (isModActive) {
       setClubsDb(prev => {
@@ -1305,13 +1348,72 @@ export default function App() {
         const cleanRival = prev.currentRival ? autoRepairSingleClub(prev.currentRival, true) : prev.currentRival;
         const cleanHistory = Array.isArray(prev.history) ? prev.history.map(h => {
           if (!h.clubName) return h;
-          const dummy = { id: h.clubId, name: h.clubName, logo: h.logo, fallbackLogo: h.fallbackLogo } as Club;
+          const dummy = { id: h.clubId, name: h.clubName, country: h.country || cleanClub.country, logo: h.logo, fallbackLogo: h.fallbackLogo } as Club;
           const rep = autoRepairSingleClub(dummy, true);
           return {
             ...h,
             clubName: rep.name,
             logo: rep.logo,
             fallbackLogo: rep.fallbackLogo
+          };
+        }) : prev.history;
+
+        const updated = {
+          ...prev,
+          club: cleanClub,
+          currentRival: cleanRival,
+          history: cleanHistory
+        };
+        safeSaveGameState(LOCAL_STORAGE_KEY, updated);
+        return updated;
+      });
+    } else {
+      setGameState(prev => {
+        if (!prev || !prev.club) return prev;
+        const resolvedClub = resolveHistoryClubDisplay(prev.club, false, undefined, true);
+        const cleanClub = {
+          ...prev.club,
+          id: resolvedClub.id ?? prev.club.id,
+          name: resolvedClub.name || prev.club.name,
+          color: resolvedClub.color || prev.club.color,
+          logo: resolvedClub.logo,
+          fallbackLogo: resolvedClub.fallbackLogo,
+        };
+        const cleanRival = prev.currentRival
+          ? (() => {
+              const resRival = resolveHistoryClubDisplay(prev.currentRival, false, undefined, true);
+              return {
+                ...prev.currentRival,
+                id: resRival.id ?? prev.currentRival.id,
+                name: resRival.name || prev.currentRival.name,
+                color: resRival.color || prev.currentRival.color,
+                logo: resRival.logo,
+                fallbackLogo: resRival.fallbackLogo,
+              };
+            })()
+          : prev.currentRival;
+        const cleanHistory = Array.isArray(prev.history) ? prev.history.map(h => {
+          if (!h.clubName) return h;
+          const resHist = resolveHistoryClubDisplay(
+            {
+              id: h.clubId,
+              name: h.clubName,
+              country: h.country || cleanClub.country,
+              color: h.color,
+              logo: h.logo,
+              fallbackLogo: h.fallbackLogo,
+            },
+            false,
+            undefined,
+            true
+          );
+          return {
+            ...h,
+            clubId: resHist.id ?? h.clubId,
+            clubName: resHist.name,
+            logo: resHist.logo,
+            fallbackLogo: resHist.fallbackLogo,
+            color: resHist.color || h.color,
           };
         }) : prev.history;
 
@@ -2012,49 +2114,54 @@ export default function App() {
     );
 
     const historyNeedsUpdate = (gameState.history || []).some(h => {
-      const match = clubsDb.find(c => 
-        (h.clubId != null && (c.id === h.clubId || String(c.id) === String(h.clubId))) ||
-        c.name === h.clubName || 
-        c.name.toLowerCase() === h.clubName.toLowerCase() ||
-        (h.clubName === gameState.club.name && (c.id === gameState.club.id || String(c.id) === String(gameState.club.id)))
+      const resolvedHist = resolveHistoryClubDisplay(
+        {
+          id: h.clubId ?? (h.clubName === gameState.club.name ? gameState.club.id : undefined),
+          name: h.clubName || gameState.club.name || 'Club',
+          country: h.country || gameState.club.country,
+          color: h.color,
+          logo: h.logo,
+          fallbackLogo: h.fallbackLogo,
+        },
+        isModActive,
+        clubsDb
       );
-      const histModTeam = isModActive ? TEAMS.find(t => 
-        (h.clubId != null && (t.id === h.clubId || String(t.id) === String(h.clubId))) ||
-        t.name === h.clubName || 
-        t.name.toLowerCase() === h.clubName.toLowerCase()
-      ) : undefined;
-      const hLogo = match?.logo || histModTeam?.logo;
-      const targetLogo = isModActive ? hLogo : undefined;
-      const targetFallback = isModActive ? (match?.fallbackLogo || histModTeam?.fallbackLogo) : undefined;
-      return (match || histModTeam) && (h.logo !== targetLogo || h.fallbackLogo !== targetFallback);
+      return (
+        h.clubName !== resolvedHist.name ||
+        h.logo !== resolvedHist.logo ||
+        h.fallbackLogo !== resolvedHist.fallbackLogo ||
+        (resolvedHist.id != null && h.clubId !== resolvedHist.id)
+      );
     });
 
     if (clubNeedsUpdate || historyNeedsUpdate) {
       setGameState(prev => {
         if (!prev) return prev;
         const updatedHistory = (prev.history || []).map(h => {
-          const match = clubsDb.find(c => 
-            (h.clubId != null && (c.id === h.clubId || String(c.id) === String(h.clubId))) ||
-            c.name === h.clubName || 
-            c.name.toLowerCase() === h.clubName.toLowerCase() ||
-            (h.clubName === prev.club.name && (c.id === prev.club.id || String(c.id) === String(prev.club.id)))
+          const resolvedHist = resolveHistoryClubDisplay(
+            {
+              id: h.clubId ?? (h.clubName === prev.club.name ? prev.club.id : undefined),
+              name: h.clubName || prev.club.name || 'Club',
+              country: h.country || prev.club.country,
+              color: h.color,
+              logo: h.logo,
+              fallbackLogo: h.fallbackLogo,
+            },
+            isModActive,
+            clubsDb
           );
-          const histModTeam = isModActive ? TEAMS.find(t => 
-            (h.clubId != null && (t.id === h.clubId || String(t.id) === String(h.clubId))) ||
-            t.name === h.clubName || 
-            t.name.toLowerCase() === h.clubName.toLowerCase()
-          ) : undefined;
-          const hLogo = match?.logo || histModTeam?.logo;
-          const hFallback = match?.fallbackLogo || histModTeam?.fallbackLogo;
+
+          const hLogo = resolvedHist.logo;
+          const hFallback = resolvedHist.fallbackLogo;
 
           return {
             ...h,
-            clubId: match?.id || histModTeam?.id || h.clubId || (h.clubName === prev.club.name ? prev.club.id : undefined),
-            clubName: isModActive && (match?.name || histModTeam?.name) ? (match?.name || histModTeam!.name) : h.clubName,
+            clubId: resolvedHist.id ?? h.clubId ?? (h.clubName === prev.club.name ? prev.club.id : undefined),
+            clubName: resolvedHist.name,
             // Preserve user-uploaded logos in history
             logo: (h.logo?.startsWith('data:image/') || h.logo?.startsWith('blob:')) ? h.logo : (isModActive ? hLogo : undefined),
             fallbackLogo: (h.fallbackLogo?.startsWith('data:image/') || h.fallbackLogo?.startsWith('blob:')) ? h.fallbackLogo : (isModActive ? hFallback : undefined),
-            color: match?.color || histModTeam?.color || h.color
+            color: resolvedHist.color || h.color
           };
         });
         return {
@@ -15363,24 +15470,67 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 (gameState.club.id != null && (c.id === gameState.club.id || String(c.id) === String(gameState.club.id))) ||
                 (gameState.club.name && c.name.toLowerCase().trim() === gameState.club.name.toLowerCase().trim())
               );
-              if (matching) {
-                setGameState(prev => prev ? {
+              setGameState(prev => {
+                if (!prev) return prev;
+                const nextHistory = Array.isArray(prev.history) ? prev.history.map(h => {
+                  const resHist = resolveHistoryClubDisplay(
+                    {
+                      id: h.clubId ?? (h.clubName === prev.club.name ? prev.club.id : undefined),
+                      name: h.clubName || prev.club.name || 'Club',
+                      country: h.country || prev.club.country,
+                      color: h.color,
+                      logo: h.logo,
+                      fallbackLogo: h.fallbackLogo,
+                    },
+                    active,
+                    safeguarded,
+                    !active
+                  );
+                  return {
+                    ...h,
+                    clubId: resHist.id ?? h.clubId,
+                    clubName: resHist.name,
+                    logo: resHist.logo,
+                    fallbackLogo: resHist.fallbackLogo,
+                    color: resHist.color || h.color,
+                  };
+                }) : prev.history;
+
+                const nextRival = prev.currentRival
+                  ? (() => {
+                      const resRival = resolveHistoryClubDisplay(prev.currentRival, active, safeguarded, !active);
+                      return {
+                        ...prev.currentRival,
+                        id: resRival.id ?? prev.currentRival.id,
+                        name: resRival.name || prev.currentRival.name,
+                        color: resRival.color || prev.currentRival.color,
+                        logo: resRival.logo,
+                        fallbackLogo: resRival.fallbackLogo,
+                      };
+                    })()
+                  : prev.currentRival;
+
+                return {
                   ...prev,
-                  club: {
-                    ...prev.club,
-                    name: matching.name,
-                    logo: active ? (matching.logo || prev.club.logo) : undefined,
-                    fallbackLogo: active ? (matching.fallbackLogo || prev.club.fallbackLogo) : undefined,
-                    color: matching.color || prev.club.color,
-                    country: matching.country || prev.club.country,
-                    stadium: Math.max(prev.club.stadium || 0, matching.stadium || 0),
-                    academyLevel: Math.max(prev.club.academyLevel || 1, matching.academyLevel || 1),
-                    medicalLevel: Math.max(prev.club.medicalLevel || 1, matching.medicalLevel || 1),
-                    narrative: active ? matching.narrative : undefined,
-                    historicContext: active ? matching.historicContext : undefined,
-                  }
-                } : prev);
-              }
+                  currentRival: nextRival,
+                  history: nextHistory,
+                  ...(matching ? {
+                    club: {
+                      ...prev.club,
+                      name: matching.name,
+                      logo: active ? (matching.logo || prev.club.logo) : undefined,
+                      fallbackLogo: active ? (matching.fallbackLogo || prev.club.fallbackLogo) : undefined,
+                      color: matching.color || prev.club.color,
+                      country: matching.country || prev.club.country,
+                      stadium: Math.max(prev.club.stadium || 0, matching.stadium || 0),
+                      academyLevel: Math.max(prev.club.academyLevel || 1, matching.academyLevel || 1),
+                      medicalLevel: Math.max(prev.club.medicalLevel || 1, matching.medicalLevel || 1),
+                      narrative: active ? matching.narrative : undefined,
+                      historicContext: active ? matching.historicContext : undefined,
+                    }
+                  } : {})
+                };
+              });
             }
           }}
           showToast={showToast}
@@ -15395,6 +15545,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           key={`ManagerProfileModal-${gameState?.year || Date.now()}`}
           state={gameState}
           lang={lang}
+          isModActive={isModActive}
           onClose={() => setShowProfileModal(false)}
         />
       )}

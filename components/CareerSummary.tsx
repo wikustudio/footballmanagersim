@@ -33,6 +33,7 @@ import {
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
 import { t as tr } from '../data/translations';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 ChartJS.register(
   CategoryScale,
@@ -73,6 +74,32 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
   onOpenWorldCupHistory,
 }) => {
   const t = (en: string, de?: string, _ignoredEs?: string) => tr(lang, en, de);
+  const effectiveModActive = isModActive !== undefined
+    ? isModActive
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
+  const resolveCareerClub = (h: { clubId?: number; clubName?: string; country?: string; color?: string; logo?: string; fallbackLogo?: string }) =>
+    resolveHistoryClubDisplay(
+      {
+        id: h.clubId,
+        name: h.clubName || state.club.name || 'Club',
+        country: h.country || state.club?.country,
+        color: h.color,
+        logo: h.logo,
+        fallbackLogo: h.fallbackLogo,
+      },
+      effectiveModActive
+    );
+  const resolvedCurrentClub = resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: state.club.name,
+      country: state.club.country,
+      color: state.club.color,
+      logo: state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    effectiveModActive
+  );
   const [activeTab, setActiveTab] = useState<SummaryTab>('card');
   const [isDownloading, setIsDownloading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -113,8 +140,8 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
     let isMounted = true;
     const fetchSummary = async () => {
       const resolvedManagerName = state.managerName || (lang === 'de' ? 'Der Manager' : 'The Manager');
-      const uniqueHistoryClubs = Array.from(new Set((state.history?.map(h => h.clubName) || []).filter(Boolean)));
-      const safeManagedClubs = uniqueHistoryClubs.length > 0 ? uniqueHistoryClubs : [state.club.name];
+      const uniqueHistoryClubs = Array.from(new Set((state.history?.map(h => resolveCareerClub(h).name) || []).filter(Boolean)));
+      const safeManagedClubs = uniqueHistoryClubs.length > 0 ? uniqueHistoryClubs : [resolvedCurrentClub.name];
       try {
         const response = await fetch('/api/generate-career-summary', {
           method: 'POST',
@@ -122,7 +149,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
           body: JSON.stringify({
             managerName: resolvedManagerName,
             directorName: resolvedManagerName,
-            clubName: state.club.name,
+            clubName: resolvedCurrentClub.name,
             managedClubs: safeManagedClubs,
             seasons: state.history?.length || 0,
             matches: state.totals?.matches || 0,
@@ -254,11 +281,14 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
       totalTrophyCounts.wc += h.trophiesThisYear.wc || 0;
     }
 
-    if (!clubStats[h.clubName]) {
-      clubStats[h.clubName] = {
-        name: h.clubName,
-        color: h.color,
-        logo: h.logo,
+    const resolvedClub = resolveCareerClub(h);
+    const resolvedClubName = resolvedClub.name || h.clubName;
+
+    if (!clubStats[resolvedClubName]) {
+      clubStats[resolvedClubName] = {
+        name: resolvedClubName,
+        color: resolvedClub.color || h.color,
+        logo: resolvedClub.logo,
         country: h.country,
         seasons: 0,
         matches: 0,
@@ -266,7 +296,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
         trophyCounts: { cl: 0, el: 0, ecl: 0, cwc: 0, bl: 0, lower: 0, dfb: 0, reg: 0 },
       };
     }
-    const club = clubStats[h.clubName];
+    const club = clubStats[resolvedClubName];
     club.seasons += 1;
     if (!h.bankrupt) {
       club.matches += 34;
@@ -519,7 +549,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
         callbacks: {
           title: (items: any) => {
             const h = history[items[0].dataIndex];
-            return h ? `${h.year} Season · ${h.clubName}` : '';
+            return h ? `${h.year} Season · ${resolveCareerClub(h).name}` : '';
           },
           label: (context: any) => {
             const h = history[context.dataIndex];
@@ -793,18 +823,18 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                 <div className="flex flex-col items-center z-10 my-3 w-full">
                   <div className="relative mb-2">
                     <ClubLogo
-                      name={state.club.name}
+                      name={resolvedCurrentClub.name}
                       id={state.club.id}
-                      color={state.club.color}
-                      logo={state.club.logo}
-                      fallbackLogo={state.club.fallbackLogo}
-                      isModActive={isModActive}
+                      color={resolvedCurrentClub.color || state.club.color}
+                      logo={resolvedCurrentClub.logo}
+                      fallbackLogo={resolvedCurrentClub.fallbackLogo}
+                      isModActive={effectiveModActive}
                       className="w-16 h-16 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]"
                       fallbackClassName="w-16 h-16 text-2xl rounded-2xl shadow-lg border border-white/10 flex items-center justify-center font-bold text-white shrink-0"
                     />
                   </div>
                   <div className="text-sm font-bold text-white tracking-wide mb-2.5 text-center">
-                    {state.club.name}
+                    {resolvedCurrentClub.name}
                   </div>
 
                   {/* Refined Stat Chips */}
@@ -1176,7 +1206,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                   {bestFinish ? `${bestFinish.pos}. Place` : 'N/A'}
                 </div>
                 <div className="text-xs text-sky-300 font-medium truncate mt-0.5">
-                  {bestFinish ? `${bestFinish.clubName} (${bestFinish.year})` : ''}
+                  {bestFinish ? `${resolveCareerClub(bestFinish).name} (${bestFinish.year})` : ''}
                 </div>
               </div>
 
@@ -1243,7 +1273,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                       {formatNum(stadiumMetrics.peakAtt)}
                     </div>
                     <div className="text-[10px] text-zinc-400 mt-0.5 truncate">
-                      {stadiumMetrics.peakAttSeason ? `${stadiumMetrics.peakAttSeason.clubName} ('${String(stadiumMetrics.peakAttSeason.year).slice(-2)})` : '—'}
+                      {stadiumMetrics.peakAttSeason ? `${resolveCareerClub(stadiumMetrics.peakAttSeason).name} ('${String(stadiumMetrics.peakAttSeason.year).slice(-2)})` : '—'}
                     </div>
                   </div>
 
@@ -1324,7 +1354,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                         </span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-bold text-white truncate">
-                            {h.clubName}
+                            {resolveCareerClub(h).name}
                           </div>
                           <div className="text-[10px] text-zinc-400 flex items-center gap-1.5 flex-wrap">
                             <span className={tier === 1 ? 'text-sky-300 font-semibold' : tier === 2 ? 'text-emerald-300 font-semibold' : 'text-purple-300 font-semibold'}>

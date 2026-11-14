@@ -7,6 +7,7 @@ import {
   getOvrColor,
 } from '../data/gameConstants';
 import { ClubLogo } from './ClubLogo';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface SeasonHistoryTableProps {
   state: GameState;
@@ -184,13 +185,45 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
             const isLast = originalIndex === historyLength - 1;
             const rowAnim = state.isNewSeasonRender && isLast ? 'bg-sky-500/[0.08] border-sky-400/20' : '';
 
+            const safeClubName = h.clubName || state.club.name || 'Club';
+            const histCountry = h.country || state.club.country || 'GER';
+            const currentClubResolved = resolveHistoryClubDisplay(
+              {
+                id: state.club.id,
+                name: state.club.name,
+                country: state.club.country,
+                color: state.club.color,
+                logo: state.club.logo,
+                fallbackLogo: state.club.fallbackLogo,
+              },
+              isModActive,
+              clubsDb
+            );
+            const resolvedDisplay = resolveHistoryClubDisplay(
+              {
+                id: h.clubId ?? (safeClubName === state.club.name ? state.club.id : undefined),
+                name: safeClubName,
+                country: histCountry,
+                color: h.color,
+                logo: h.logo || (safeClubName === state.club.name ? state.club.logo : undefined),
+                fallbackLogo: h.fallbackLogo || (safeClubName === state.club.name ? state.club.fallbackLogo : undefined),
+              },
+              isModActive,
+              clubsDb
+            );
+            const displayName = resolvedDisplay.name || safeClubName;
+            const rowId = resolvedDisplay.id ?? (safeClubName === state.club.name ? state.club.id : h.clubId);
+            const rowColor = resolvedDisplay.color || h.color;
+
             // Promotion / Relegation Logic
             let nextTier = h.tier;
             let sameClubNextSeason = false;
             
             if (isLast) {
               sameClubNextSeason = Boolean(
+                (rowId != null && currentClubResolved.id != null && String(currentClubResolved.id) === String(rowId)) ||
                 (h.clubId != null && state.club.id != null && String(state.club.id) === String(h.clubId)) ||
+                (currentClubResolved.name && displayName && currentClubResolved.name.toLowerCase().trim() === displayName.toLowerCase().trim()) ||
                 (state.club.name && h.clubName && state.club.name.toLowerCase().trim() === h.clubName.toLowerCase().trim())
               );
               if (sameClubNextSeason) {
@@ -198,8 +231,19 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
               }
             } else {
               const nextHistoryItem = state.history![originalIndex + 1];
+              const nextResolved = resolveHistoryClubDisplay(
+                {
+                  id: nextHistoryItem.clubId,
+                  name: nextHistoryItem.clubName || state.club.name || 'Club',
+                  country: nextHistoryItem.country || state.club.country,
+                },
+                isModActive,
+                clubsDb
+              );
               sameClubNextSeason = Boolean(
+                (rowId != null && nextResolved.id != null && String(nextResolved.id) === String(rowId)) ||
                 (h.clubId != null && nextHistoryItem.clubId != null && String(nextHistoryItem.clubId) === String(h.clubId)) ||
+                (nextResolved.name && displayName && nextResolved.name.toLowerCase().trim() === displayName.toLowerCase().trim()) ||
                 (nextHistoryItem.clubName && h.clubName && nextHistoryItem.clubName.toLowerCase().trim() === h.clubName.toLowerCase().trim())
               );
               if (sameClubNextSeason) {
@@ -207,14 +251,15 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
               }
             }
 
-            const histCountry = h.country || state.club.country || 'GER';
             const maxTier = getMaxTier(histCountry, clubsDb);
             const isTier1Only = maxTier <= 1;
             const isBottomTier = h.tier >= maxTier;
 
             const archivedRow = state.seasonStandingsArchive?.[h.year]?.[h.tier]?.find((r: any) =>
               r.isUser ||
+              (rowId != null && r.id != null && String(r.id) === String(rowId)) ||
               (h.clubId != null && r.id != null && String(r.id) === String(h.clubId)) ||
+              (r.name && displayName && r.name.toLowerCase().trim() === displayName.toLowerCase().trim()) ||
               (r.name && h.clubName && r.name.toLowerCase().trim() === h.clubName.toLowerCase().trim())
             );
             const normalizedStatus: 'C' | 'P' | 'R' | undefined =
@@ -230,32 +275,22 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
             );
             const outcome: 'C' | 'P' | 'R' | undefined = (rawOutcome === 'R' && (isTier1Only || isBottomTier || h.survived)) ? undefined : rawOutcome;
 
-            const safeClubName = h.clubName || state.club.name || 'Club';
-            const matchingDbClub = clubsDb?.find(
-              c => (h.clubId != null && (c.id === h.clubId || String(c.id) === String(h.clubId))) ||
-                   c.name === safeClubName || 
-                   c.name.toLowerCase() === safeClubName.toLowerCase() ||
-                   (safeClubName === state.club.name && (c.id === state.club.id || String(c.id) === String(state.club.id)))
-            );
-            const cleanParentName = safeClubName
+            const cleanParentName = displayName
               .replace(/\s+II$/, '')
               .replace(/\s+\(?B\)?$/, '')
               .replace(/\s+Castilla$/, '')
               .replace(/\s+B$/, '')
               .replace(/\s+2$/, '')
               .trim();
-            const parentDbClub = !matchingDbClub?.logo && cleanParentName !== safeClubName
+            const parentDbClub = isModActive && !resolvedDisplay.logo && cleanParentName !== displayName
               ? clubsDb?.find(c => c.name === cleanParentName || c.name.toLowerCase() === cleanParentName.toLowerCase())
               : null;
             const rowLogo = isModActive 
-              ? (h.logo || (safeClubName === state.club.name ? state.club.logo : undefined) || matchingDbClub?.logo || parentDbClub?.logo)
-              : undefined;
+              ? (resolvedDisplay.logo || parentDbClub?.logo)
+              : resolvedDisplay.logo;
             const rowFallbackLogo = isModActive
-              ? (h.fallbackLogo || (safeClubName === state.club.name ? state.club.fallbackLogo : undefined) || matchingDbClub?.fallbackLogo || parentDbClub?.fallbackLogo)
-              : undefined;
-            const rowId = matchingDbClub?.id || (safeClubName === state.club.name ? state.club.id : h.clubId);
-            const rowColor = matchingDbClub?.color || h.color;
-            const displayName = isModActive && matchingDbClub ? matchingDbClub.name : safeClubName;
+              ? (resolvedDisplay.fallbackLogo || parentDbClub?.fallbackLogo)
+              : resolvedDisplay.fallbackLogo;
 
             return (
               <div key={`${h.year}-${safeClubName}-${originalIndex}`} className={`flex flex-col py-2 px-3 hover:bg-white/[0.04] transition-all rounded-xl border border-white/[0.05] bg-white/[0.015] ${rowAnim}`}>
@@ -408,7 +443,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                 {h.trophiesThisYear && Object.keys(h.trophiesThisYear).some(k => (h.trophiesThisYear[k] || 0) > 0) && (
                   <div className="flex items-center gap-1.5 pl-[38px] mt-1.5 pb-0.5 flex-wrap">
                     <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mr-1">{isDe ? 'Titel:' : 'Honours:'}</span>
-                    {renderTrophyIcons(h.trophiesThisYear, h.country, h.clubName, h.clubId)}
+                    {renderTrophyIcons(h.trophiesThisYear, h.country, displayName, rowId)}
                   </div>
                 )}
               </div>

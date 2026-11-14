@@ -2,19 +2,25 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { GameState } from '../types';
 import { calculateClubReputation, getManagerStandingTier, getManagerStandingShortTitle } from '../data/gameConstants';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface ManagerProfileModalProps {
   state: GameState;
   lang?: string;
+  isModActive?: boolean;
   onClose: () => void;
 }
 
 export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
   state,
   lang = 'en',
+  isModActive: isModActiveProp,
   onClose,
 }) => {
   const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+  const effectiveModActive = isModActiveProp !== undefined
+    ? isModActiveProp
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
 
   const rep = state.reputation ?? 50;
   const isDe = lang === 'de';
@@ -34,10 +40,21 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
     const currentYear = state.year || 2026;
 
     if (history.length === 0) {
+      const currentResolved = resolveHistoryClubDisplay(
+        {
+          id: state.club.id,
+          name: state.club.name || 'Club',
+          country: state.club.country,
+          color: state.club.color,
+          logo: state.club.logo,
+          fallbackLogo: state.club.fallbackLogo,
+        },
+        effectiveModActive
+      );
       return [
         {
           year: currentYear,
-          clubName: state.club.name || 'Club',
+          clubName: currentResolved.name || state.club.name || 'Club',
           leagueTag: `T${state.club.tier || 1}`,
           rep: currentRep,
           tier: state.club.tier || 1,
@@ -90,9 +107,21 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
       const safeTier = Math.max(1, Number(h.tier) || state.club.tier || 1);
       const safeTag = h.leagueTag || `T${safeTier}`;
 
+      const resolvedHist = resolveHistoryClubDisplay(
+        {
+          id: h.clubId,
+          name: h.clubName || state.club.name || 'Club',
+          country: h.country || state.club.country,
+          color: h.color,
+          logo: h.logo,
+          fallbackLogo: h.fallbackLogo,
+        },
+        effectiveModActive
+      );
+
       return {
         year: h.year || currentYear,
-        clubName: h.clubName || state.club.name || 'Club',
+        clubName: resolvedHist.name || h.clubName || state.club.name || 'Club',
         leagueTag: safeTag,
         rep: idx === history.length - 1 ? currentRep : runningRep,
         tier: safeTier,
@@ -108,7 +137,7 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
     }
 
     return points;
-  }, [state.history, state.reputation, state.year, state.club, state.trophies]);
+  }, [state.history, state.reputation, state.year, state.club, state.trophies, effectiveModActive]);
 
   const activePoint = selectedPointIndex !== null && timelineData[selectedPointIndex]
     ? timelineData[selectedPointIndex]

@@ -128,7 +128,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     const effectiveName = clubName;
 
     (state.history || []).forEach((h) => {
-      if (h.clubName === currentName || h.clubName === effectiveName) {
+      if (
+        (h.clubId != null && state.club.id != null && String(h.clubId) === String(state.club.id)) ||
+        h.clubName === currentName ||
+        h.clubName === effectiveName
+      ) {
         if (h.trophiesThisYear) {
           counts.cl += h.trophiesThisYear.cl || 0;
           counts.cwc += (h.trophiesThisYear as any).cwc || 0;
@@ -160,7 +164,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     }
 
     return counts;
-  }, [state.history, state.trophyHistory, clubName, state.club.name]);
+  }, [state.history, state.trophyHistory, clubName, state.club.name, state.club.id]);
 
   const totalClubSilverware = (Object.values(clubTrophyCounts) as number[]).reduce((a, b) => a + b, 0);
   const { cl: clTitle, el: elTitle, ecl: eclTitle } = getContinentalCupNames(clubCountry);
@@ -192,7 +196,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           onClick={onOpenClubProfile}
           className="col-span-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-2xl p-5 sm:p-6 border border-white/[0.06] backdrop-blur-md transition-all duration-300 relative group cursor-pointer overflow-hidden flex flex-col justify-between min-h-[140px]"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <button

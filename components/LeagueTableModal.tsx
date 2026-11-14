@@ -4,7 +4,7 @@ import { getLeagueInfo, isReserveClub, getMinAllowedTierForReserve, getMaxTier, 
 import { getContinentalCupNames, getRegion, getRegionalQualificationLegend } from '../utils/regionHelpers';
 import { ClubLogo } from './ClubLogo';
 import { REAL_CLUB_ALIASES, simplifyClubName } from '../engine/moddingEngine';
-import { autoRepairClubsDb, autoRepairSingleClub } from '../utils/modSafeguards';
+import { autoRepairClubsDb, autoRepairSingleClub, resolveHistoryClubDisplay } from '../utils/modSafeguards';
 import { t as tr } from '../data/translations';
 import { getAllUniverseMovements, isMajorUniverseHeadline, getHeadlineCategory } from '../utils/universeMovements';
 import { getParentClub } from '../engine/simulateAiLeagues';
@@ -88,7 +88,19 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   const t = (en: string, _de?: string) => en;
 
   const sanitizedClubsDb = useMemo(() => autoRepairClubsDb(clubsDb, Boolean(isModActive), state), [clubsDb, isModActive, state]);
-  const effectiveUserClub = useMemo(() => autoRepairSingleClub(state.club, Boolean(isModActive)), [state.club, isModActive]);
+  const effectiveUserClub = useMemo(() => {
+    const repaired = autoRepairSingleClub(state.club, Boolean(isModActive));
+    if (isModActive) return repaired;
+    const res = resolveHistoryClubDisplay(repaired, false, sanitizedClubsDb);
+    return {
+      ...repaired,
+      id: res.id ?? repaired.id,
+      name: res.name || repaired.name,
+      color: res.color || repaired.color,
+      logo: res.logo,
+      fallbackLogo: res.fallbackLogo,
+    };
+  }, [state.club, isModActive, sanitizedClubsDb]);
 
   // Primary Tab: 'standings' (The Local Table), 'universe' (Champions Almanac), or 'leaders' (Top 5 Trophy Leaders Bar Chart)
   const [activeTab, setActiveTab] = useState<'standings' | 'universe' | 'leaders'>('standings');
@@ -653,8 +665,20 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
     const archivedTierRows = state.seasonStandingsArchive?.[inspectedHist.year]?.[effectiveSelectedTier];
     if (archivedTierRows && archivedTierRows.length > 0) {
       archivedTierRows.slice(0, targetTotalClubs).forEach((r, idx) => {
+        const resolvedArch = resolveHistoryClubDisplay(
+          {
+            id: typeof r.id === 'number' ? r.id : undefined,
+            name: r.name,
+            country: currentCountry,
+            color: r.color,
+            logo: r.logo,
+          },
+          Boolean(isModActive),
+          sanitizedClubsDb
+        );
         const matchesHistClub =
           (inspectedHist.clubId != null && r.id === inspectedHist.clubId) ||
+          (resolvedArch.id != null && inspectedHist.clubId != null && resolvedArch.id === inspectedHist.clubId) ||
           (inspectedHist.clubName && r.name?.toLowerCase().trim() === inspectedHist.clubName.toLowerCase().trim());
         const isArchivedUser = Boolean(matchesHistClub || (inspectedHist.clubId == null && !inspectedHist.clubName && r.isUser));
         const isArchivedRival = !isArchivedUser && Boolean(
@@ -664,6 +688,10 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         );
         tableData.push({
           ...r,
+          id: resolvedArch.id ?? r.id,
+          name: resolvedArch.name || r.name,
+          color: resolvedArch.color || r.color,
+          logo: isModActive ? (resolvedArch.logo || r.logo) : resolvedArch.logo,
           pos: idx + 1,
           isUser: isArchivedUser,
           isRival: isArchivedRival,
@@ -687,8 +715,8 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         m => (Number(m.year) || 2024) === inspectedHist.year && (m.country || 'GER') === currentCountry
       );
 
-      const inspectedUserClubId = inspectedHist.clubId ?? state.club.id;
-      const inspectedUserClubName = (inspectedHist.clubName || state.club.name || '').toLowerCase().trim();
+      const inspectedUserClubId = inspectedHist.clubId ?? effectiveUserClub.id;
+      const inspectedUserClubName = (inspectedHist.clubName || effectiveUserClub.name || '').toLowerCase().trim();
       const isInspectedUserClub = (cid?: number | string, cname?: string) => {
         if (!isUserInInspectedTier) return false;
         if (cid != null && inspectedUserClubId != null && String(cid) === String(inspectedUserClubId)) return true;
@@ -700,14 +728,19 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
       const movedFromThisTier = seasonMoves
         .filter(m => m.fromTier === effectiveSelectedTier && !isInspectedUserClub(m.clubId, m.clubName))
         .map(m => {
-          const matched = sanitizedClubsDb.find(c => c.id === m.clubId || (m.clubName && c.name.toLowerCase().trim() === m.clubName.toLowerCase().trim()));
+          const resolvedMove = resolveHistoryClubDisplay(
+            { id: m.clubId, name: m.clubName, country: m.country || currentCountry, color: m.clubColor },
+            Boolean(isModActive),
+            sanitizedClubsDb
+          );
+          const matched = sanitizedClubsDb.find(c => c.id === (resolvedMove.id ?? m.clubId) || (resolvedMove.name && c.name.toLowerCase().trim() === resolvedMove.name.toLowerCase().trim()));
           return {
             club: matched || {
-              id: m.clubId,
-              name: m.clubName,
+              id: resolvedMove.id ?? m.clubId,
+              name: resolvedMove.name || m.clubName,
               tier: effectiveSelectedTier,
               baseOvr: 70,
-              color: m.clubColor || '#0284c7',
+              color: resolvedMove.color || m.clubColor || '#0284c7',
               stadium: 20000,
               country: currentCountry
             },
@@ -1110,75 +1143,86 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         {/* ──────────────────────────────────────────────────────────
             1. Clean Header with Dual Window Tab Switcher
             ────────────────────────────────────────────────────────── */}
-        <div className="p-2 sm:p-5 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between gap-2 sm:gap-4 shrink-0 relative z-10">
-          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
-            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-1 sm:p-2 shadow-inner shrink-0">
-              {activeTab === 'standings' && currentLeagueInfo?.logo ? (
-                <img
-                  src={currentLeagueInfo.logo}
-                  alt={`${currentLeagueInfo.name} logo`}
-                  referrerPolicy="no-referrer"
-                  onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                  className="w-5 h-5 sm:w-7 sm:h-7 object-contain drop-shadow"
-                />
-              ) : (
-                <i
-                  className={`fas ${
-                    activeTab === 'standings'
-                      ? 'fa-list-ol text-sky-400'
-                      : activeTab === 'universe'
-                      ? 'fa-trophy text-amber-400'
-                      : 'fa-chart-simple text-emerald-400'
-                  } text-sm sm:text-base`}
-                ></i>
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={`text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-md tracking-wider shrink-0 border ${
-                    activeTab === 'standings'
-                      ? 'text-sky-400 bg-sky-500/10 border-sky-400/20'
-                      : activeTab === 'universe'
-                      ? 'text-amber-400 bg-amber-500/10 border-amber-400/20'
-                      : 'text-emerald-400 bg-emerald-500/10 border-emerald-400/20'
-                  }`}
-                >
-                  {activeTab === 'standings'
-                    ? leagueTag
-                    : activeTab === 'universe'
-                    ? 'HALL OF CHAMPIONS'
-                    : 'TROPHY LEADERBOARD'}
-                </span>
-                <span className="text-[11px] sm:text-xs text-zinc-400 font-medium truncate hidden sm:inline">
-                  {activeTab === 'standings'
-                    ? currentLeagueInfo.name
-                    : `${COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.flag || ''} ${
-                        COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.name || almanacCountry
-                      } & Global Archive`}
-                </span>
+        <div className="p-3 sm:p-5 border-b border-white/[0.06] bg-white/[0.02] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4 shrink-0 relative z-10">
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+              <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-1 sm:p-2 shadow-inner shrink-0">
+                {activeTab === 'standings' && currentLeagueInfo?.logo ? (
+                  <img
+                    src={currentLeagueInfo.logo}
+                    alt={`${currentLeagueInfo.name} logo`}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                    className="w-5 h-5 sm:w-7 sm:h-7 object-contain drop-shadow"
+                  />
+                ) : (
+                  <i
+                    className={`fas ${
+                      activeTab === 'standings'
+                        ? 'fa-list-ol text-sky-400'
+                        : activeTab === 'universe'
+                        ? 'fa-trophy text-amber-400'
+                        : 'fa-chart-simple text-emerald-400'
+                    } text-sm sm:text-base`}
+                  ></i>
+                )}
               </div>
-              <h2 className="text-xs sm:text-xl font-black text-white tracking-tight mt-0.5 truncate py-0.5 leading-normal">
-                {activeTab === 'standings'
-                  ? (isCurrentView 
-                      ? (state.seasonPhase === 'mid' 
-                          ? `${yearTag} Mid-Season Standings` 
-                          : `${yearTag} Pre-Season`)
-                      : `${yearTag} Final Standings`)
-                  : activeTab === 'universe'
-                  ? 'Champions Almanac'
-                  : 'Top 5 Trophy Leaders'}
-              </h2>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-md tracking-wider shrink-0 border ${
+                      activeTab === 'standings'
+                        ? 'text-sky-400 bg-sky-500/10 border-sky-400/20'
+                        : activeTab === 'universe'
+                        ? 'text-amber-400 bg-amber-500/10 border-amber-400/20'
+                        : 'text-emerald-400 bg-emerald-500/10 border-emerald-400/20'
+                    }`}
+                  >
+                    {activeTab === 'standings'
+                      ? leagueTag
+                      : activeTab === 'universe'
+                      ? 'HALL OF CHAMPIONS'
+                      : 'TROPHY LEADERBOARD'}
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-zinc-400 font-medium truncate hidden sm:inline">
+                    {activeTab === 'standings'
+                      ? currentLeagueInfo.name
+                      : `${COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.flag || ''} ${
+                          COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.name || almanacCountry
+                        } & Global Archive`}
+                  </span>
+                </div>
+                <h2 className="text-sm sm:text-xl font-black text-white tracking-tight mt-0.5 truncate py-0.5 leading-normal">
+                  {activeTab === 'standings'
+                    ? (isCurrentView 
+                        ? (state.seasonPhase === 'mid' 
+                            ? `${yearTag} Mid-Season Standings` 
+                            : `${yearTag} Pre-Season`)
+                        : `${yearTag} Final Standings`)
+                    : activeTab === 'universe'
+                    ? 'Champions Almanac'
+                    : 'Top 5 Trophy Leaders'}
+                </h2>
+              </div>
             </div>
+
+            {/* Mobile Close button */}
+            <button
+              onClick={onClose}
+              className="sm:hidden w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              aria-label="Close"
+            >
+              <i className="fas fa-times text-xs"></i>
+            </button>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 w-full sm:w-auto">
             {/* Primary Tab Switcher: Standings vs Champions Almanac vs Trophy Leaders */}
-            <div className="bg-black/40 border border-white/[0.08] rounded-xl p-0.5 sm:p-1 flex items-center gap-0.5 sm:gap-1 shadow-inner">
+            <div className="bg-black/40 border border-white/[0.08] rounded-xl p-0.5 sm:p-1 grid grid-cols-3 sm:flex items-center gap-0.5 sm:gap-1 shadow-inner w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('standings')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'standings'
                     ? 'bg-sky-500 text-white shadow-sm'
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
@@ -1191,7 +1235,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('universe')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                   activeTab === 'universe'
                     ? 'bg-amber-500 text-slate-950 shadow-sm'
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
@@ -1204,7 +1248,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('leaders')}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                   activeTab === 'leaders'
                     ? 'bg-emerald-500 text-slate-950 shadow-sm'
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
@@ -1216,10 +1260,10 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
               </button>
             </div>
 
-            {/* Close button */}
+            {/* Desktop Close button */}
             <button
               onClick={onClose}
-              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              className="hidden sm:flex w-9 h-9 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-zinc-300 hover:text-white items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
               aria-label="Close"
             >
               <i className="fas fa-times text-xs"></i>

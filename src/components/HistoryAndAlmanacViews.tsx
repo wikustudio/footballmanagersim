@@ -523,11 +523,11 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-800/80 bg-[#181c29] text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                  <th className="py-3.5 px-5 w-24">YEAR</th>
-                  <th className="py-3.5 px-5">{championColumnTitle}</th>
-                  <th className="py-3.5 px-5">COMPETITION</th>
-                  <th className="py-3.5 px-5 text-right text-slate-100">POINTS</th>
+                <tr className="border-b border-slate-800/80 bg-[#181c29] text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                  <th className="py-3 sm:py-3.5 px-3 sm:px-5 w-14 sm:w-24">YEAR</th>
+                  <th className="py-3 sm:py-3.5 px-2.5 sm:px-5">{championColumnTitle}</th>
+                  <th className="py-3 sm:py-3.5 px-2.5 sm:px-5">COMPETITION</th>
+                  <th className="py-3 sm:py-3.5 px-3 sm:px-5 text-right text-slate-100">POINTS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -546,18 +546,18 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                       }`}
                     >
                       {/* YEAR */}
-                      <td className="py-4 px-5 whitespace-nowrap">
-                        <span className="text-[#eab308] font-bold text-sm sm:text-base tabular-nums">
+                      <td className="py-3 sm:py-4 px-3 sm:px-5 whitespace-nowrap">
+                        <span className="text-[#eab308] font-bold text-xs sm:text-base tabular-nums">
                           {row.year}
                         </span>
                       </td>
 
                       {/* CHAMPION (Club Crest / National Flag + Bold Name + Coach Subtitle) */}
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-3.5 min-w-0">
+                      <td className="py-3 sm:py-4 px-2.5 sm:px-5">
+                        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
                           {w.isNationalTeam ? (
                             <div
-                              className="w-8 h-8 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-base shrink-0 shadow-sm"
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-sm sm:text-base shrink-0 shadow-sm"
                               title={w.clubName}
                             >
                               {w.flag || '🌍'}
@@ -569,13 +569,13 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                               logo={w.clubLogo}
                               color={w.clubColor}
                               isModActive={isModActive}
-                              className="w-8 h-8 object-contain shrink-0"
-                              fallbackClassName="w-8 h-8 rounded-full text-xs flex items-center justify-center font-bold text-white shrink-0"
+                              className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
+                              fallbackClassName="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs flex items-center justify-center font-bold text-white shrink-0"
                             />
                           )}
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm sm:text-base font-bold text-white leading-snug">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                              <span className="text-xs sm:text-base font-bold text-white leading-snug">
                                 {w.clubName}
                               </span>
                               {w.isUserClub && (
@@ -589,7 +589,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400 mt-0.5">
+                            <div className="text-[11px] sm:text-xs text-slate-400 mt-0.5 leading-snug">
                               <span className="text-slate-500">Coach:</span> {coachName}
                             </div>
                           </div>
@@ -597,7 +597,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                       </td>
 
                       {/* COMPETITION (Gold middle column) */}
-                      <td className="py-4 px-5 whitespace-nowrap">
+                      <td className="py-3 sm:py-4 px-2.5 sm:px-5 sm:whitespace-nowrap">
                         <div className="text-[#eab308] font-semibold text-xs sm:text-sm">
                           {w.competitionName}
                         </div>
@@ -607,7 +607,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                             {row.isHistoricalLore ? ' • Lore' : ' • Live'}
                           </div>
                         ) : w.isNationalTeam ? (
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-slate-400 leading-snug break-words">
                             {w.hostFlag ? `${w.hostFlag} ` : ''}
                             {w.hostCountry ? `Host: ${w.hostCountry}` : 'National Teams'}
                             {w.finalScore && w.runnerUp ? ` • ${w.finalScore} vs ${w.runnerUp}` : ''}
@@ -617,7 +617,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
 
                       {/* POINTS (League Points; — for Knockout Cups) */}
                       <td
-                        className="py-4 px-5 text-right whitespace-nowrap tabular-nums"
+                        className="py-3 sm:py-4 px-3 sm:px-5 text-right whitespace-nowrap tabular-nums"
                         title={
                           w.category === 'league'
                             ? `${pts} pts${

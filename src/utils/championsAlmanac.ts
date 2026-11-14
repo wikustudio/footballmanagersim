@@ -1363,6 +1363,171 @@ function resolveNationalTeamMeta(teamNameOrCode: string): {
  * Generates the complete Global & Regional Champions Almanac for a country
  * from 1950 through the latest completed simulated season (respecting historical startYear).
  */
+// Module-level cached static club lookup tables & indexed datasets (lazy-initialized)
+let _staticIndexesInitialized = false;
+const DEFAULT_CLUB_BY_ID = new Map<number, Club>();
+const MOD_CLUB_BY_ID = new Map<number, any>();
+const RESERVE_BY_ID = new Map<number, boolean>();
+const TEAMS_AS_CLUBS_MOD: Club[] = [];
+const TEAMS_AS_CLUBS_FALLBACK: Club[] = [];
+
+function ensureStaticClubIndexes() {
+  if (_staticIndexesInitialized) return;
+  _staticIndexesInitialized = true;
+  for (let i = 0; i < ALL_CLUBS.length; i++) {
+    const c = ALL_CLUBS[i];
+    if (c.id != null) {
+      DEFAULT_CLUB_BY_ID.set(c.id, c);
+      if (c.isReserve || (c.name && isReserveClub(c.name))) {
+        RESERVE_BY_ID.set(c.id, true);
+      }
+    }
+  }
+  for (let i = 0; i < TEAMS.length; i++) {
+    const t: any = TEAMS[i];
+    if (t.id != null) {
+      MOD_CLUB_BY_ID.set(t.id, t);
+      if (t.isReserve || (t.name && isReserveClub(t.name))) {
+        RESERVE_BY_ID.set(t.id, true);
+      }
+      const normCountry = normalizeCountryCode(t.country || 'GER');
+      const baseFields = {
+        id: t.id,
+        name: t.name,
+        tier: Number(t.tier) || 1,
+        baseOvr: Number(t.baseOvr) || 72,
+        color: t.color || '#38bdf8',
+        stadium: t.stadium || 'National Stadium',
+        country: normCountry,
+        rep: Number(t.rep) || 60,
+        fanBase: Number(t.fanBase) || 15000,
+        currentBudget: 15000,
+        isReserve: Boolean(t.isReserve),
+      };
+      TEAMS_AS_CLUBS_MOD.push({ ...baseFields, logo: t.logo, fallbackLogo: t.fallbackLogo });
+      TEAMS_AS_CLUBS_FALLBACK.push({ ...baseFields, logo: undefined, fallbackLogo: undefined });
+    }
+  }
+}
+
+interface AlmanacDbIndex {
+  clubById: Map<number, Club>;
+  clubByName: Map<string, Club>;
+  clubsByCountry: Map<string, { all: Club[]; senior: Club[] }>;
+  uefaTopClubs: Club[];
+  conmebolTopClubs: Club[];
+  concacafTopClubs: Club[];
+  afcTopClubs: Club[];
+  isReserveFast: (cId?: number, cName?: string, cObj?: Partial<Club>) => boolean;
+}
+
+const UEFA_SET = new Set(UEFA_COUNTRIES);
+const CONMEBOL_SET = new Set(CONMEBOL_COUNTRIES);
+const CONCACAF_SET = new Set(CONCACAF_COUNTRIES);
+const AFC_SET = new Set(AFC_COUNTRIES);
+const STATIC_DB_INDEX_CACHE = new Map<string, AlmanacDbIndex>();
+
+function buildDbIndex(rawSourceClubs: Club[], effectiveModActive: boolean): AlmanacDbIndex {
+  ensureStaticClubIndexes();
+  const isCanonicalAll = rawSourceClubs === ALL_CLUBS;
+  const isCanonicalTeams = rawSourceClubs === (TEAMS as any);
+  const cacheKey = isCanonicalAll
+    ? `ALL_CLUBS:${effectiveModActive ? '1' : '0'}`
+    : isCanonicalTeams
+    ? `TEAMS:${effectiveModActive ? '1' : '0'}`
+    : '';
+  if (cacheKey && STATIC_DB_INDEX_CACHE.has(cacheKey)) {
+    return STATIC_DB_INDEX_CACHE.get(cacheKey)!;
+  }
+
+  const clubById = new Map<number, Club>();
+  const clubByName = new Map<string, Club>();
+  for (let i = 0; i < rawSourceClubs.length; i++) {
+    const c = rawSourceClubs[i];
+    if (c.id != null) clubById.set(c.id, c);
+    if (c.name) clubByName.set(c.name.toLowerCase().trim(), c);
+  }
+
+  const combinedClubs: Club[] = [...rawSourceClubs];
+  const staticTeamList = effectiveModActive ? TEAMS_AS_CLUBS_MOD : TEAMS_AS_CLUBS_FALLBACK;
+  for (let i = 0; i < staticTeamList.length; i++) {
+    const asClub = staticTeamList[i];
+    if (!clubById.has(asClub.id)) {
+      clubById.set(asClub.id, asClub);
+      if (asClub.name) clubByName.set(asClub.name.toLowerCase().trim(), asClub);
+      combinedClubs.push(asClub);
+    }
+  }
+
+  const reserveNameCache = new Map<string, boolean>();
+  const isReserveFast = (cId?: number, cName?: string, cObj?: Partial<Club>): boolean => {
+    if (cObj?.isReserve) return true;
+    if (cId != null) {
+      const numId = Number(cId);
+      if (RESERVE_BY_ID.get(numId)) return true;
+      const dbClub = clubById.get(numId);
+      if (dbClub?.isReserve) return true;
+    }
+    if (cName) {
+      let cached = reserveNameCache.get(cName);
+      if (cached === undefined) {
+        cached = isReserveClub(cName);
+        reserveNameCache.set(cName, cached);
+      }
+      if (cached) return true;
+    }
+    return false;
+  };
+
+  const clubsByCountry = new Map<string, { all: Club[]; senior: Club[] }>();
+  const uefaTopClubs: Club[] = [];
+  const conmebolTopClubs: Club[] = [];
+  const concacafTopClubs: Club[] = [];
+  const afcTopClubs: Club[] = [];
+
+  for (let i = 0; i < combinedClubs.length; i++) {
+    const c = combinedClubs[i];
+    const normCountry = normalizeCountryCode(c.country || 'GER');
+    let bucket = clubsByCountry.get(normCountry);
+    if (!bucket) {
+      bucket = { all: [], senior: [] };
+      clubsByCountry.set(normCountry, bucket);
+    }
+    bucket.all.push(c);
+    const isRes = isReserveFast(c.id, c.name, c);
+    if (!isRes) {
+      bucket.senior.push(c);
+      if (c.tier === 1) {
+        if (UEFA_SET.has(normCountry)) uefaTopClubs.push(c);
+        if (CONMEBOL_SET.has(normCountry)) conmebolTopClubs.push(c);
+        if (CONCACAF_SET.has(normCountry)) concacafTopClubs.push(c);
+        if (AFC_SET.has(normCountry)) afcTopClubs.push(c);
+      }
+    }
+  }
+
+  const byOvrDesc = (a: Club, b: Club) => (b.baseOvr || 0) - (a.baseOvr || 0);
+  uefaTopClubs.sort(byOvrDesc);
+  conmebolTopClubs.sort(byOvrDesc);
+  concacafTopClubs.sort(byOvrDesc);
+  afcTopClubs.sort(byOvrDesc);
+
+  const built: AlmanacDbIndex = {
+    clubById,
+    clubByName,
+    clubsByCountry,
+    uefaTopClubs,
+    conmebolTopClubs,
+    concacafTopClubs,
+    afcTopClubs,
+    isReserveFast,
+  };
+  if (cacheKey) {
+    STATIC_DB_INDEX_CACHE.set(cacheKey, built);
+  }
+  return built;
+}
+
 export function buildChampionsAlmanac(
   state: GameState,
   countryInput: string = 'GER',
@@ -1380,49 +1545,11 @@ export function buildChampionsAlmanac(
       ? localStorage.getItem('fms_real_mod_active') === 'true'
       : false;
 
-  // Build fast lookup maps for club resolution, merging TEAMS for countries/tiers not in clubsDb
-  // (e.g. DEN, SWE, NOR, IDN, IND, SVK, PER, KOR, BOL, PAR, CHI, CRO, GRE, and POL lower tiers)
-  const clubById = new Map<number, Club>();
-  const clubByName = new Map<string, Club>();
   const rawSourceClubs = Array.isArray(clubsDb) && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
-
-  rawSourceClubs.forEach(c => {
-    if (c.id != null) clubById.set(c.id, c);
-    if (c.name) clubByName.set(c.name.toLowerCase().trim(), c);
-  });
-
-  const defaultClubById = new Map<number, Club>();
-  ALL_CLUBS.forEach(c => {
-    if (c.id != null) defaultClubById.set(c.id, c);
-  });
-
-  const modClubById = new Map<number, any>();
-  const combinedClubs: Club[] = [...rawSourceClubs];
-  TEAMS.forEach((t: any) => {
-    if (t.id != null) modClubById.set(t.id, t);
-    if (t.id != null && !clubById.has(t.id)) {
-      const asClub: Club = {
-        id: t.id,
-        name: t.name,
-        tier: Number(t.tier) || 1,
-        baseOvr: Number(t.baseOvr) || 72,
-        color: t.color || '#38bdf8',
-        stadium: t.stadium || 'National Stadium',
-        country: normalizeCountryCode(t.country || 'GER'),
-        rep: Number(t.rep) || 60,
-        fanBase: Number(t.fanBase) || 15000,
-        currentBudget: 15000,
-        logo: effectiveModActive ? t.logo : undefined,
-        fallbackLogo: effectiveModActive ? t.fallbackLogo : undefined,
-        isReserve: Boolean(t.isReserve),
-      };
-      clubById.set(t.id, asClub);
-      if (t.name) clubByName.set(t.name.toLowerCase().trim(), asClub);
-      combinedClubs.push(asClub);
-    }
-  });
-
-  const sourceClubs = combinedClubs;
+  const dbIndex = buildDbIndex(rawSourceClubs, effectiveModActive);
+  const { clubById, clubByName, uefaTopClubs, conmebolTopClubs, concacafTopClubs, afcTopClubs } = dbIndex;
+  const defaultClubById = DEFAULT_CLUB_BY_ID;
+  const modClubById = MOD_CLUB_BY_ID;
 
   const resolveClubDisplay = (id?: number, fallbackName?: string, fallbackColor?: string, fallbackLogo?: string) => {
     const dbClub =
@@ -1511,28 +1638,13 @@ export function buildChampionsAlmanac(
     return { isUserClub: isUser, isPastManagerClub: isPast };
   };
 
-  // Helper to strictly detect reserve / B / II / U21 / U23 teams across active, default, and modded club datasets
-  const isReserveTeamForAlmanac = (cId?: number, cName?: string, cObj?: Partial<Club>): boolean => {
-    if (cObj?.isReserve) return true;
-    if (cName && isReserveClub(cName)) return true;
-    if (cId != null) {
-      const numId = Number(cId);
-      const dbClub = clubById.get(numId);
-      const defEntry = defaultClubById.get(numId);
-      const modEntry = modClubById.get(numId);
-      if (dbClub?.isReserve || defEntry?.isReserve || modEntry?.isReserve) return true;
-      if (dbClub?.name && isReserveClub(dbClub.name)) return true;
-      if (defEntry?.name && isReserveClub(defEntry.name)) return true;
-      if (modEntry?.name && isReserveClub(modEntry.name)) return true;
-    }
-    return false;
-  };
+  // Fast reserve / B / II / U21 / U23 team detection using cached index
+  const isReserveTeamForAlmanac = dbIndex.isReserveFast;
 
   // Organize country clubs by tier for deterministic lore and fallback selection
-  const countryClubs = sourceClubs.filter(
-    c => normalizeCountryCode(c.country || 'GER') === country
-  );
-  const seniorCountryClubs = countryClubs.filter(c => !isReserveTeamForAlmanac(c.id, c.name, c));
+  const countryBucket = dbIndex.clubsByCountry.get(country);
+  const countryClubs = countryBucket ? countryBucket.all : [];
+  const seniorCountryClubs = countryBucket ? countryBucket.senior : [];
   const effectiveCountryPool = seniorCountryClubs.length > 0 ? seniorCountryClubs : countryClubs;
 
   const clubsByNativeTier = new Map<number, Club[]>();
@@ -1561,20 +1673,6 @@ export function buildChampionsAlmanac(
       clubsByNativeTier.set(t, lowerHalf.length > 0 ? lowerHalf : sortedCountryBottomUp);
     }
   }
-
-  // Regional pools for Continental & Global Cups (reserve teams are strictly ineligible)
-  const uefaTopClubs = sourceClubs
-    .filter(c => c.tier === 1 && !isReserveTeamForAlmanac(c.id, c.name, c) && UEFA_COUNTRIES.includes(normalizeCountryCode(c.country || 'GER')))
-    .sort((a, b) => (b.baseOvr || 0) - (a.baseOvr || 0));
-  const conmebolTopClubs = sourceClubs
-    .filter(c => c.tier === 1 && !isReserveTeamForAlmanac(c.id, c.name, c) && CONMEBOL_COUNTRIES.includes(normalizeCountryCode(c.country || 'BRA')))
-    .sort((a, b) => (b.baseOvr || 0) - (a.baseOvr || 0));
-  const concacafTopClubs = sourceClubs
-    .filter(c => c.tier === 1 && !isReserveTeamForAlmanac(c.id, c.name, c) && CONCACAF_COUNTRIES.includes(normalizeCountryCode(c.country || 'USA')))
-    .sort((a, b) => (b.baseOvr || 0) - (a.baseOvr || 0));
-  const afcTopClubs = sourceClubs
-    .filter(c => c.tier === 1 && !isReserveTeamForAlmanac(c.id, c.name, c) && AFC_COUNTRIES.includes(normalizeCountryCode(c.country || 'JPN')))
-    .sort((a, b) => (b.baseOvr || 0) - (a.baseOvr || 0));
 
   // Determine career start year & lore cutoff so historical-era careers (1954/1974/1990/2010)
   // never spoil future years and surface pre-2026 simulated seasons as Live Simulated records

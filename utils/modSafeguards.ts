@@ -1,7 +1,34 @@
 import { Club, GameState } from '../types';
+import { ALL_CLUBS } from '../data/clubsData';
 import { isReserveClub, getLeagueInfo, getMinAllowedTierForReserve, normalizeCountryCode } from '../data/gameConstants';
 import { REAL_CLUB_ALIASES, simplifyClubName } from '../engine/moddingEngine';
 import { TEAMS } from '../mod-data/teams';
+
+// Pre-index ALL_CLUBS by ID, country+name, country+simplified name, and global fallbacks for O(1) fallback resolution
+const defaultClubsById = new Map<number, Club>();
+const defaultClubsByCountryAndName = new Map<string, Club>();
+const defaultClubsByCountryAndSimp = new Map<string, Club>();
+const defaultClubsByName = new Map<string, Club>();
+const defaultClubsBySimp = new Map<string, Club>();
+for (let i = 0; i < ALL_CLUBS.length; i++) {
+  const c = ALL_CLUBS[i];
+  const cCountry = normalizeCountryCode(c.country || 'GER');
+  if (c.id != null && !defaultClubsById.has(c.id)) {
+    defaultClubsById.set(c.id, c);
+  }
+  if (c.name) {
+    const lower = c.name.toLowerCase().trim();
+    const countryNameKey = `${cCountry}_${lower}`;
+    if (!defaultClubsByCountryAndName.has(countryNameKey)) defaultClubsByCountryAndName.set(countryNameKey, c);
+    if (!defaultClubsByName.has(lower)) defaultClubsByName.set(lower, c);
+    const simp = simplifyClubName(c.name);
+    if (simp) {
+      const countrySimpKey = `${cCountry}_${simp}`;
+      if (!defaultClubsByCountryAndSimp.has(countrySimpKey)) defaultClubsByCountryAndSimp.set(countrySimpKey, c);
+      if (!defaultClubsBySimp.has(simp)) defaultClubsBySimp.set(simp, c);
+    }
+  }
+}
 
 // Pre-index TEAMS by ID, country+name, country+simplified name, and global fallbacks for O(1) auto-repair lookups
 const teamsById = new Map<number, typeof TEAMS[0]>();
@@ -44,13 +71,260 @@ for (const [alias, clubId] of Object.entries(REAL_CLUB_ALIASES)) {
   const team = TEAMS.find(t => 
     t.name.toLowerCase().trim() === lowerAlias ||
     simplifyClubName(t.name) === simplifyClubName(alias)
-  ) || TEAMS.find(t =>
+  ) || TEAMS.find(t => 
     t.name.toLowerCase().trim() === cleanAlias ||
     simplifyClubName(t.name) === simplifyClubName(cleanAlias)
   );
   if (team && !canonicalIdToModTeam.has(clubId)) {
     canonicalIdToModTeam.set(clubId, team);
   }
+}
+
+export interface HistoryClubRef {
+  id?: number;
+  name: string;
+  country?: string;
+  color?: string;
+  logo?: string;
+  fallbackLogo?: string;
+}
+
+export interface ResolvedHistoryClubDisplay {
+  id?: number;
+  name: string;
+  color?: string;
+  logo?: string;
+  fallbackLogo?: string;
+}
+
+/**
+ * Resolves the canonical copyright-safe base club from ALL_CLUBS given an ID, name (fallback or real), and optional country.
+ */
+export function findCanonicalDefaultClub(
+  clubId?: number,
+  clubName?: string,
+  country?: string
+): Club | undefined {
+  const normCountry = country ? normalizeCountryCode(country) : undefined;
+  const isSameCountry = (cand?: { country?: string }) =>
+    !normCountry || !cand?.country || normalizeCountryCode(cand.country) === normCountry;
+
+  // 1. Canonical ID match
+  if (clubId != null && Number.isFinite(Number(clubId))) {
+    const byId = defaultClubsById.get(Number(clubId));
+    if (byId && isSameCountry(byId)) return byId;
+    if (byId && !normCountry) return byId;
+  }
+
+  const trimmed = (clubName || '').trim();
+  if (!trimmed) return undefined;
+  const lower = trimmed.toLowerCase();
+  const lowerNoRes = lower.replace(/\s+res\.?$/i, '').replace(/\s+reserve$/i, '').trim();
+  const entryIsReserve = isReserveClub(trimmed);
+
+  // 2. Direct lookup in ALL_CLUBS by country + name or global name
+  if (normCountry) {
+    const byCountryName = defaultClubsByCountryAndName.get(`${normCountry}_${lower}`);
+    if (byCountryName) return byCountryName;
+  }
+  const byDefaultName = defaultClubsByName.get(lower);
+  if (byDefaultName && isSameCountry(byDefaultName)) return byDefaultName;
+
+  // 3. Real-world alias dictionary -> canonical ID -> ALL_CLUBS
+  const aliasId = REAL_CLUB_ALIASES[lower] ?? REAL_CLUB_ALIASES[lowerNoRes];
+  if (aliasId != null) {
+    const cand = defaultClubsById.get(aliasId);
+    if (cand && isSameCountry(cand) && isReserveClub(cand.name) === entryIsReserve) return cand;
+  }
+
+  // 4. TEAMS exact name -> canonical ID -> ALL_CLUBS
+  const teamByCountry = normCountry ? teamsByCountryAndName.get(`${normCountry}_${lower}`) : undefined;
+  const teamMatch = teamByCountry || teamsByName.get(lower);
+  if (teamMatch && isSameCountry(teamMatch)) {
+    const cand = defaultClubsById.get(teamMatch.id);
+    if (cand && isSameCountry(cand)) return cand;
+  }
+
+  // 5. Simplified name lookup (preserving reserve vs first-team distinction)
+  const simp = simplifyClubName(trimmed);
+  if (simp) {
+    const simpTeam = (normCountry ? teamsByCountryAndSimp.get(`${normCountry}_${simp}`) : undefined) || teamsBySimp.get(simp);
+    if (simpTeam && isSameCountry(simpTeam) && isReserveClub(simpTeam.name) === entryIsReserve) {
+      const cand = defaultClubsById.get(simpTeam.id);
+      if (cand && isSameCountry(cand)) return cand;
+    }
+    const simpDefault = (normCountry ? defaultClubsByCountryAndSimp.get(`${normCountry}_${simp}`) : undefined) || defaultClubsBySimp.get(simp);
+    if (simpDefault && isSameCountry(simpDefault) && isReserveClub(simpDefault.name) === entryIsReserve) {
+      return simpDefault;
+    }
+  }
+
+  // 6. Reserve club fallback (e.g. "FC Bayern München II" -> "Bavaria München II" without clubId)
+  if (entryIsReserve) {
+    const cleanParent = trimmed
+      .replace(/\s+Res\.?$/i, '')
+      .replace(/\s+Reserve$/i, '')
+      .replace(/\s+II$/, '')
+      .replace(/\s+\(?B\)?$/, '')
+      .replace(/\s+Castilla$/, '')
+      .replace(/\s+B$/, '')
+      .replace(/\s+2$/, '')
+      .trim()
+      .toLowerCase();
+    const parentTeam = (normCountry ? teamsByCountryAndName.get(`${normCountry}_${cleanParent}`) : undefined) || teamsByName.get(cleanParent);
+    const parentId = REAL_CLUB_ALIASES[cleanParent] ?? parentTeam?.id;
+    if (parentId != null) {
+      const parentDefault = defaultClubsById.get(parentId);
+      if (parentDefault && isSameCountry(parentDefault)) {
+        const parentDefaultSimp = simplifyClubName(parentDefault.name);
+        const reserveMatch = ALL_CLUBS.find(c =>
+          isReserveClub(c.name) &&
+          normalizeCountryCode(c.country || 'GER') === normalizeCountryCode(parentDefault.country || 'GER') &&
+          simplifyClubName(
+            c.name
+              .replace(/\s+Res\.?$/i, '')
+              .replace(/\s+Reserve$/i, '')
+              .replace(/\s+II$/, '')
+              .replace(/\s+\(?B\)?$/, '')
+              .replace(/\s+Castilla$/, '')
+              .replace(/\s+B$/, '')
+              .replace(/\s+2$/, '')
+              .trim()
+          ) === parentDefaultSimp
+        );
+        if (reserveMatch) return reserveMatch;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function isKnownModOrAliasName(name: string, country?: string): boolean {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  const lowerNoRes = lower.replace(/\s+res\.?$/i, '').replace(/\s+reserve$/i, '').trim();
+  const normCountry = country ? normalizeCountryCode(country) : undefined;
+  const isSameCountry = (cand?: { country?: string }) =>
+    !normCountry || !cand?.country || normalizeCountryCode(cand.country) === normCountry;
+
+  if (normCountry && teamsByCountryAndName.has(`${normCountry}_${lower}`)) return true;
+  const globalTeam = teamsByName.get(lower);
+  if (globalTeam && isSameCountry(globalTeam)) return true;
+
+  if (REAL_CLUB_ALIASES[lower] != null || REAL_CLUB_ALIASES[lowerNoRes] != null) return true;
+
+  const entryIsReserve = isReserveClub(trimmed);
+  const simp = simplifyClubName(trimmed);
+  if (simp) {
+    const simpTeam = (normCountry ? teamsByCountryAndSimp.get(`${normCountry}_${simp}`) : undefined) || teamsBySimp.get(simp);
+    if (simpTeam && isSameCountry(simpTeam) && isReserveClub(simpTeam.name) === entryIsReserve) return true;
+  }
+
+  if (entryIsReserve) {
+    const cleanParent = trimmed
+      .replace(/\s+Res\.?$/i, '')
+      .replace(/\s+Reserve$/i, '')
+      .replace(/\s+II$/, '')
+      .replace(/\s+\(?B\)?$/, '')
+      .replace(/\s+Castilla$/, '')
+      .replace(/\s+B$/, '')
+      .replace(/\s+2$/, '')
+      .trim()
+      .toLowerCase();
+    const parentTeam = (normCountry ? teamsByCountryAndName.get(`${normCountry}_${cleanParent}`) : undefined) || teamsByName.get(cleanParent);
+    if ((parentTeam && isSameCountry(parentTeam)) || REAL_CLUB_ALIASES[cleanParent] != null) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the display club name, ID, color, and crest URLs for a season history entry or historical club reference
+ * respecting whether the Real Name Mod (or custom mod DB) is currently active.
+ */
+export function resolveHistoryClubDisplay(
+  entry: HistoryClubRef,
+  isModActive: boolean,
+  clubsDb?: Club[],
+  forceFallback = false
+): ResolvedHistoryClubDisplay {
+  const safeName = entry.name || 'Club';
+  const lower = safeName.toLowerCase().trim();
+  const entryCountry = entry.country ? normalizeCountryCode(entry.country) : undefined;
+  const isSameCountry = (cand?: { country?: string }) =>
+    !entryCountry || !cand?.country || normalizeCountryCode(cand.country) === entryCountry;
+
+  const isCustomLogo = typeof entry.logo === 'string' && (entry.logo.startsWith('data:image/') || entry.logo.startsWith('blob:'));
+  const isCustomFallback = typeof entry.fallbackLogo === 'string' && (entry.fallbackLogo.startsWith('data:image/') || entry.fallbackLogo.startsWith('blob:'));
+  const hasModUrlLogo = Boolean(
+    (typeof entry.logo === 'string' && entry.logo.trim().length > 0 && !isCustomLogo) ||
+    (typeof entry.fallbackLogo === 'string' && entry.fallbackLogo.trim().length > 0 && !isCustomFallback)
+  );
+
+  // Resolve canonical default club even when entry holds a mod name or lacks clubId
+  const defaultClub = findCanonicalDefaultClub(entry.id, safeName, entry.country);
+  const resolvedCanonicalId = entry.id ?? defaultClub?.id;
+
+  const matchingDbClub = clubsDb?.find(c =>
+    (resolvedCanonicalId != null && (c.id === resolvedCanonicalId || String(c.id) === String(resolvedCanonicalId))) ||
+    c.name === safeName ||
+    (c.name.toLowerCase().trim() === lower && isSameCountry(c))
+  );
+
+  if (!isModActive) {
+    const isModEntry =
+      forceFallback ||
+      hasModUrlLogo ||
+      isKnownModOrAliasName(safeName, entry.country) ||
+      Boolean(defaultClub && defaultClub.name.toLowerCase().trim() === lower);
+
+    const dbNameIsModName = matchingDbClub ? isKnownModOrAliasName(matchingDbClub.name, matchingDbClub.country || entry.country) : false;
+    const fallbackName = isModEntry
+      ? (defaultClub?.name || (matchingDbClub && !dbNameIsModName ? matchingDbClub.name : undefined) || safeName)
+      : safeName;
+
+    return {
+      id: defaultClub?.id ?? matchingDbClub?.id ?? entry.id,
+      name: fallbackName,
+      color: (isModEntry ? defaultClub?.color : undefined) || entry.color || matchingDbClub?.color || defaultClub?.color,
+      logo: isCustomLogo ? entry.logo : undefined,
+      fallbackLogo: isCustomFallback ? entry.fallbackLogo : undefined,
+    };
+  }
+
+  const repaired = autoRepairSingleClub(
+    {
+      id: (matchingDbClub?.id ?? resolvedCanonicalId ?? 0) as number,
+      name: matchingDbClub?.name || safeName,
+      tier: matchingDbClub?.tier || 1,
+      baseOvr: matchingDbClub?.baseOvr || 70,
+      color: matchingDbClub?.color || entry.color || defaultClub?.color || '1d4ed8',
+      stadium: matchingDbClub?.stadium || 20000,
+      country: entry.country || matchingDbClub?.country || defaultClub?.country,
+      logo: isCustomLogo ? entry.logo : (entry.logo || matchingDbClub?.logo),
+      fallbackLogo: isCustomFallback ? entry.fallbackLogo : (entry.fallbackLogo || matchingDbClub?.fallbackLogo),
+    } as Club,
+    true
+  );
+
+  const finalId = matchingDbClub?.id ?? (repaired.id && repaired.id > 0 ? repaired.id : resolvedCanonicalId);
+  const hasCustomDbName = Boolean(
+    matchingDbClub &&
+    !defaultClubsByName.has(matchingDbClub.name.toLowerCase().trim()) &&
+    !teamsByName.has(matchingDbClub.name.toLowerCase().trim())
+  );
+
+  return {
+    id: finalId,
+    name: hasCustomDbName ? matchingDbClub!.name : (repaired.name || matchingDbClub?.name || safeName),
+    color: repaired.color || matchingDbClub?.color || entry.color,
+    logo: isCustomLogo ? entry.logo : (matchingDbClub?.logo || repaired.logo || entry.logo),
+    fallbackLogo: isCustomFallback ? entry.fallbackLogo : (matchingDbClub?.fallbackLogo || repaired.fallbackLogo || entry.fallbackLogo),
+  };
 }
 
 /**

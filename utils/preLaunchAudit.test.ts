@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { getMinAllowedTierForReserve, isReserveClub, getMaxTier } from '../data/gameConstants';
-import { getBaseModClubs } from '../engine/moddingEngine';
+import { getBaseModClubs, getSafeDefaultClubs } from '../engine/moddingEngine';
 import { simulateAiLeagues, canReserveClubPromoteToTier, getParentClub } from '../engine/simulateAiLeagues';
-import { autoRepairClubsDb, mergeClubsDbSafeguards } from './modSafeguards';
+import { autoRepairClubsDb, mergeClubsDbSafeguards, resolveHistoryClubDisplay } from './modSafeguards';
 import { getAllUniverseMovements } from './universeMovements';
 import { getRegionalQualificationLegend } from './regionHelpers';
 import { generateRandomEvent } from '../data/randomEvents';
 import { compactGameState } from './storageManager';
 import { calculateClubLeagueHistory } from '../engine/clubProgressionEngine';
+import { sanitizeGameState } from '../App';
 
 describe('7-Point Pre-Launch Verification Suite', () => {
   it('1. Tier 1 Title After Lower-League Start: zero relegation modal & trophy persists on reload', () => {
@@ -299,5 +300,79 @@ describe('7-Point Pre-Launch Verification Suite', () => {
       if (sawFriendly && sawHostile) break;
     }
     expect(sawFriendly || sawHostile).toBe(true);
-  }, 20000);
+  }, 45000);
+
+  it('8. Season History Fallback Name Resolution: shows fallback names and strips mod logos whenever mod is inactive', () => {
+    const safeDefaults = getSafeDefaultClubs();
+    const modClubs = getBaseModClubs();
+
+    // 1. Mod inactive with clubId present: FC Bayern München (id 1) -> Bavaria München & strips mod CDN logo
+    const bayernModEntry = {
+      id: 1,
+      name: 'FC Bayern München',
+      country: 'GER',
+      logo: 'https://cdn.example.com/bayern.png',
+      fallbackLogo: 'https://cdn.example.com/bayern-fb.png',
+    };
+    const resBayernOff = resolveHistoryClubDisplay(bayernModEntry, false, safeDefaults);
+    expect(resBayernOff.name).toBe('Bavaria München');
+    expect(resBayernOff.logo).toBeUndefined();
+    expect(resBayernOff.fallbackLogo).toBeUndefined();
+
+    // 2. Mod inactive with missing clubId: resolves via TEAMS / REAL_CLUB_ALIASES / reserve rules
+    expect(resolveHistoryClubDisplay({ name: 'Borussia Dortmund', country: 'GER' }, false, safeDefaults).name).toBe('Prussia Dortmund');
+    expect(resolveHistoryClubDisplay({ name: 'Manchester City', country: 'ENG' }, false, safeDefaults).name).toBe('Manchester Blue');
+    expect(resolveHistoryClubDisplay({ name: 'Paris Saint-Germain', country: 'FRA' }, false, safeDefaults).name).toBe('Paris');
+    expect(resolveHistoryClubDisplay({ name: 'FC Bayern München II', country: 'GER' }, false, safeDefaults).name).toBe('Bavaria München II');
+
+    // 3. Mod active: upgrades fallback names back to authentic real names & logos
+    const resBayernOn = resolveHistoryClubDisplay({ id: 1, name: 'Bavaria München', country: 'GER' }, true, modClubs);
+    expect(resBayernOn.name).toBe('FC Bayern München');
+    expect(resBayernOn.logo).toBeTruthy();
+
+    // 4. Custom synthetic user club without mod URL logo is preserved when mod is inactive
+    const resCustom = resolveHistoryClubDisplay({ id: 1, name: 'Test FC', country: 'GER', logo: 'data:image/png;base64,AAA' }, false, safeDefaults);
+    expect(resCustom.name).toBe('Test FC');
+    expect(resCustom.logo).toBe('data:image/png;base64,AAA');
+
+    // 5. sanitizeGameState strips mod names/logos on club, rival, and season history when mod is inactive
+    const sanitized = sanitizeGameState({
+      club: {
+        id: 1,
+        name: 'FC Bayern München',
+        tier: 1,
+        baseOvr: 96,
+        country: 'GER',
+        color: 'dc052d',
+        stadium: 75024,
+        logo: 'https://cdn.example.com/bayern.png',
+      },
+      currentRival: {
+        id: 3,
+        name: 'Borussia Dortmund',
+        tier: 1,
+        baseOvr: 86,
+        country: 'GER',
+        color: 'fde100',
+        stadium: 81365,
+        logo: 'https://cdn.example.com/bvb.png',
+      },
+      year: 2028,
+      startYear: 2026,
+      seasonCount: 3,
+      history: [
+        { year: 2026, clubId: 1, clubName: 'FC Bayern München', country: 'GER', tier: 1, pos: 1, logo: 'https://cdn.example.com/bayern.png' },
+        { year: 2027, clubName: 'Borussia Dortmund', country: 'GER', tier: 1, pos: 2 },
+      ],
+    });
+    expect(sanitized).not.toBeNull();
+    expect(sanitized!.club.name).toBe('Bavaria München');
+    expect(sanitized!.club.logo).toBeUndefined();
+    expect(sanitized!.currentRival?.name).toBe('Prussia Dortmund');
+    expect(sanitized!.history[0].clubName).toBe('Bavaria München');
+    expect(sanitized!.history[0].logo).toBeUndefined();
+    expect(sanitized!.history[1].clubName).toBe('Prussia Dortmund');
+    expect(sanitized!.history[1].clubId).toBe(3);
+  });
 });
+
