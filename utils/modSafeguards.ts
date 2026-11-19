@@ -10,6 +10,7 @@ const defaultClubsByCountryAndName = new Map<string, Club>();
 const defaultClubsByCountryAndSimp = new Map<string, Club>();
 const defaultClubsByName = new Map<string, Club>();
 const defaultClubsBySimp = new Map<string, Club>();
+const defaultReserveByParentSimp = new Map<string, Club>();
 for (let i = 0; i < ALL_CLUBS.length; i++) {
   const c = ALL_CLUBS[i];
   const cCountry = normalizeCountryCode(c.country || 'GER');
@@ -26,6 +27,25 @@ for (let i = 0; i < ALL_CLUBS.length; i++) {
       const countrySimpKey = `${cCountry}_${simp}`;
       if (!defaultClubsByCountryAndSimp.has(countrySimpKey)) defaultClubsByCountryAndSimp.set(countrySimpKey, c);
       if (!defaultClubsBySimp.has(simp)) defaultClubsBySimp.set(simp, c);
+    }
+    if (isReserveClub(c.name)) {
+      const parentSimp = simplifyClubName(
+        c.name
+          .replace(/\s+Res\.?$/i, '')
+          .replace(/\s+Reserve$/i, '')
+          .replace(/\s+II$/, '')
+          .replace(/\s+\(?B\)?$/, '')
+          .replace(/\s+Castilla$/, '')
+          .replace(/\s+B$/, '')
+          .replace(/\s+2$/, '')
+          .trim()
+      );
+      if (parentSimp) {
+        const resKey = `${cCountry}_${parentSimp}`;
+        if (!defaultReserveByParentSimp.has(resKey)) {
+          defaultReserveByParentSimp.set(resKey, c);
+        }
+      }
     }
   }
 }
@@ -177,22 +197,11 @@ export function findCanonicalDefaultClub(
       const parentDefault = defaultClubsById.get(parentId);
       if (parentDefault && isSameCountry(parentDefault)) {
         const parentDefaultSimp = simplifyClubName(parentDefault.name);
-        const reserveMatch = ALL_CLUBS.find(c =>
-          isReserveClub(c.name) &&
-          normalizeCountryCode(c.country || 'GER') === normalizeCountryCode(parentDefault.country || 'GER') &&
-          simplifyClubName(
-            c.name
-              .replace(/\s+Res\.?$/i, '')
-              .replace(/\s+Reserve$/i, '')
-              .replace(/\s+II$/, '')
-              .replace(/\s+\(?B\)?$/, '')
-              .replace(/\s+Castilla$/, '')
-              .replace(/\s+B$/, '')
-              .replace(/\s+2$/, '')
-              .trim()
-          ) === parentDefaultSimp
-        );
-        if (reserveMatch) return reserveMatch;
+        if (parentDefaultSimp) {
+          const parentCountry = normalizeCountryCode(parentDefault.country || 'GER');
+          const reserveMatch = defaultReserveByParentSimp.get(`${parentCountry}_${parentDefaultSimp}`);
+          if (reserveMatch) return reserveMatch;
+        }
       }
     }
   }
@@ -242,6 +251,61 @@ function isKnownModOrAliasName(name: string, country?: string): boolean {
   return false;
 }
 
+const clubsDbIndexCache = new WeakMap<Club[], {
+  byId: Map<string, Club>;
+  byExactName: Map<string, Club>;
+  byCountryLowerName: Map<string, Club>;
+  byLowerName: Map<string, Club>;
+}>();
+
+function findInClubsDbFast(
+  clubsDb: Club[] | undefined,
+  resolvedCanonicalId: number | string | undefined,
+  safeName: string,
+  lower: string,
+  entryCountry: string | undefined
+): Club | undefined {
+  if (!clubsDb || clubsDb.length === 0) return undefined;
+  let idx = clubsDbIndexCache.get(clubsDb);
+  if (!idx) {
+    const byId = new Map<string, Club>();
+    const byExactName = new Map<string, Club>();
+    const byCountryLowerName = new Map<string, Club>();
+    const byLowerName = new Map<string, Club>();
+    for (let i = 0; i < clubsDb.length; i++) {
+      const c = clubsDb[i];
+      if (c.id != null) {
+        const idStr = String(c.id);
+        if (!byId.has(idStr)) byId.set(idStr, c);
+      }
+      if (c.name) {
+        if (!byExactName.has(c.name)) byExactName.set(c.name, c);
+        const cLower = c.name.toLowerCase().trim();
+        if (!byLowerName.has(cLower)) byLowerName.set(cLower, c);
+        const cCountry = normalizeCountryCode(c.country || 'GER');
+        const ck = `${cCountry}_${cLower}`;
+        if (!byCountryLowerName.has(ck)) byCountryLowerName.set(ck, c);
+      }
+    }
+    idx = { byId, byExactName, byCountryLowerName, byLowerName };
+    clubsDbIndexCache.set(clubsDb, idx);
+  }
+  if (resolvedCanonicalId != null) {
+    const byId = idx.byId.get(String(resolvedCanonicalId));
+    if (byId) return byId;
+  }
+  const byExact = idx.byExactName.get(safeName);
+  if (byExact) return byExact;
+  if (entryCountry) {
+    const byCountry = idx.byCountryLowerName.get(`${entryCountry}_${lower}`);
+    if (byCountry) return byCountry;
+  } else {
+    const byAny = idx.byLowerName.get(lower);
+    if (byAny) return byAny;
+  }
+  return undefined;
+}
+
 /**
  * Resolves the display club name, ID, color, and crest URLs for a season history entry or historical club reference
  * respecting whether the Real Name Mod (or custom mod DB) is currently active.
@@ -269,11 +333,7 @@ export function resolveHistoryClubDisplay(
   const defaultClub = findCanonicalDefaultClub(entry.id, safeName, entry.country);
   const resolvedCanonicalId = entry.id ?? defaultClub?.id;
 
-  const matchingDbClub = clubsDb?.find(c =>
-    (resolvedCanonicalId != null && (c.id === resolvedCanonicalId || String(c.id) === String(resolvedCanonicalId))) ||
-    c.name === safeName ||
-    (c.name.toLowerCase().trim() === lower && isSameCountry(c))
-  );
+  const matchingDbClub = findInClubsDbFast(clubsDb, resolvedCanonicalId, safeName, lower, entryCountry);
 
   if (!isModActive) {
     const isModEntry =

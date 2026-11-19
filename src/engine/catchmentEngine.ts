@@ -1,5 +1,4 @@
 import { Club, GameState } from '../types';
-import { REAL_CLUB_ALIASES } from './moddingEngine';
 
 /**
  * Authentic Metropolitan & Urban Catchment Populations for football club regions.
@@ -221,7 +220,7 @@ export const METRO_POPULATIONS: Record<string, { city: string; population: numbe
   'cagliari': { city: 'Cagliari', population: 430000, regionName: 'Cagliari Metropolitan' },
   'lecce': { city: 'Lecce', population: 100000, regionName: 'Salento' },
   'como': { city: 'Como', population: 90000, regionName: 'Lake Como Region' },
-  'venezia': { city: 'Venice', population: 26000, regionName: 'Venice Metropolitan' },
+  'venezia': { city: 'Venice', population: 260000, regionName: 'Venice Metropolitan' },
   'venice': { city: 'Venice', population: 260000, regionName: 'Venice Metropolitan' },
   'parma': { city: 'Parma', population: 200000, regionName: 'Emilia-Romagna Parma' },
   'salerno': { city: 'Salerno', population: 130000, regionName: 'Salerno Coast' },
@@ -974,17 +973,74 @@ export interface CatchmentAnalysis {
   adviceDe: string;
 }
 
+const METRO_POPULATION_ENTRIES = Object.entries(METRO_POPULATIONS);
+const METRO_EXACT_TOKEN_MAP = new Map<string, { city: string; population: number; regionName: string }>();
+for (let i = 0; i < METRO_POPULATION_ENTRIES.length; i++) {
+  const [key, data] = METRO_POPULATION_ENTRIES[i];
+  if (!key.includes(' ') && !METRO_EXACT_TOKEN_MAP.has(key)) {
+    METRO_EXACT_TOKEN_MAP.set(key, data);
+  }
+}
+const METRO_MULTIWORD_ENTRIES = METRO_POPULATION_ENTRIES.filter(([key]) => key.includes(' '));
+const METRO_SINGLEWORD_KEYS_BY_FIRST_CHAR = new Map<string, Array<[string, { city: string; population: number; regionName: string }]>>();
+for (let i = 0; i < METRO_POPULATION_ENTRIES.length; i++) {
+  const entry = METRO_POPULATION_ENTRIES[i];
+  if (!entry[0].includes(' ')) {
+    const ch = entry[0][0];
+    let bucket = METRO_SINGLEWORD_KEYS_BY_FIRST_CHAR.get(ch);
+    if (!bucket) {
+      bucket = [];
+      METRO_SINGLEWORD_KEYS_BY_FIRST_CHAR.set(ch, bucket);
+    }
+    bucket.push(entry);
+  }
+}
+const clubCatchmentCache = new Map<string, { city: string; population: number; regionName: string }>();
+
 /**
  * Resolves metropolitan catchment population for any club across both Mod and Original databases.
  */
 export function getClubCatchment(club: Partial<Club>): { city: string; population: number; regionName: string } {
   const name = (club.name || '').toLowerCase().trim();
   const country = club.country || 'GER';
+  const tier = club.tier || 1;
+  const cacheKey = `${club.id ?? ''}|${name}|${country}|${tier}`;
+  const cached = clubCatchmentCache.get(cacheKey);
+  if (cached) return cached;
 
-  // Direct match in table
-  for (const [key, data] of Object.entries(METRO_POPULATIONS)) {
+  // Fast O(1) word-token lookup first (matches ~90% of real & modded club names)
+  const words = name.split(/[\s\-./()]+/);
+  for (let w = 0; w < words.length; w++) {
+    const word = words[w];
+    if (word.length < 3) continue;
+    const hit = METRO_EXACT_TOKEN_MAP.get(word);
+    if (hit) {
+      clubCatchmentCache.set(cacheKey, hit);
+      return hit;
+    }
+  }
+
+  // Fast multi-word check (~40 entries)
+  for (let i = 0; i < METRO_MULTIWORD_ENTRIES.length; i++) {
+    const [key, data] = METRO_MULTIWORD_ENTRIES[i];
     if (name.includes(key)) {
+      clubCatchmentCache.set(cacheKey, data);
       return data;
+    }
+  }
+
+  // Fallback substring check only against keys sharing a starting char with any word in name
+  for (let w = 0; w < words.length; w++) {
+    const word = words[w];
+    if (word.length < 4) continue;
+    const bucket = METRO_SINGLEWORD_KEYS_BY_FIRST_CHAR.get(word[0]);
+    if (!bucket) continue;
+    for (let i = 0; i < bucket.length; i++) {
+      const [key, data] = bucket[i];
+      if (word.includes(key)) {
+        clubCatchmentCache.set(cacheKey, data);
+        return data;
+      }
     }
   }
 
@@ -1018,7 +1074,6 @@ export function getClubCatchment(club: Partial<Club>): { city: string; populatio
   }
 
   // Country defaults scaled by tier (Deterministic per club so UI & financials never jitter across renders)
-  const tier = club.tier || 1;
   const defaultCity = country === 'GER' ? 'Regional District' : country === 'ENG' ? 'County Metro' : 'Municipal District';
   const seedStr = `${club.id ?? ''}_${name}_${country}`;
   let hash = 0;
@@ -1033,12 +1088,16 @@ export function getClubCatchment(club: Partial<Club>): { city: string; populatio
   else if (tier === 3) defaultPop = 80000 + Math.floor(unitRoll * 40000); // 80k - 120k
   else defaultPop = 25000 + Math.floor(unitRoll * 25000); // 25k - 50k
 
-  return {
+  const result = {
     city: club.name || defaultCity,
     population: defaultPop,
     regionName: `${country} Urban Catchment`
   };
+  clubCatchmentCache.set(cacheKey, result);
+  return result;
 }
+
+export type CatchmentClubInput = Pick<Club, 'name' | 'stadium'> & Partial<Omit<Club, 'name' | 'stadium' | 'id'>> & { id?: string | number };
 
 /**
  * Calculates the Hoffenheim Soft-Ceiling capacity and expansion risk.
@@ -1046,11 +1105,11 @@ export function getClubCatchment(club: Partial<Club>): { city: string; populatio
  * Expanding beyond this ceiling without elite continental reputation causes empty seats & financial drag.
  */
 export function analyzeCatchment(
-  club: Club,
+  club: CatchmentClubInput,
   proposedSeats?: number
 ): CatchmentAnalysis {
   const currentSeats = proposedSeats ?? club.stadium;
-  const catchment = getClubCatchment(club);
+  const catchment = getClubCatchment(club as Partial<Club>);
   const rep = club.rep || 50;
   const tier = club.tier || 1;
 
@@ -1105,7 +1164,7 @@ export function analyzeCatchment(
  * Calculates demographic attendance modifier under the Hoffenheim soft ceiling.
  * If stadium exceeds catchment ceiling and club is not an elite giant, dampens matchday fill rate.
  */
-export function getCatchmentAttendanceModifier(club: Club): number {
+export function getCatchmentAttendanceModifier(club: CatchmentClubInput): number {
   const analysis = analyzeCatchment(club);
   if (!analysis.isExceedingCatchment) return 1.0;
 

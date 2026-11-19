@@ -68,7 +68,7 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
       exit={{ opacity: 0 }} 
       transition={{ duration: 0.1, ease: 'linear' }}
       onClick={onClose}
-      className="fixed inset-0 bg-black/75 backdrop-blur-2xl flex flex-col items-center justify-center p-2.5 sm:p-5 z-50 cursor-pointer overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/45 backdrop-blur-sm flex flex-col items-center justify-center p-2.5 sm:p-5 z-50 cursor-pointer overflow-y-auto overscroll-contain"
     >
       <motion.div 
         initial={{ scale: 0.98, opacity: 0 }} 
@@ -76,22 +76,19 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
         exit={{ scale: 0.98, opacity: 0 }} 
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#12141c]/90 text-white w-full max-w-4xl rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] border border-white/[0.08] backdrop-blur-3xl relative cursor-default max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto flex flex-col overflow-hidden text-left shrink-0"
+        className="bg-white text-[#18191F] w-full max-w-4xl rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.18)] border border-[#E6E3DC] relative cursor-default max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto flex flex-col overflow-hidden text-left shrink-0"
       >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] shrink-0 relative z-10">
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] shrink-0 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-center text-sky-400 text-base shadow-inner shrink-0">
+            <div className="w-11 h-11 bg-sky-50 border border-sky-200 rounded-2xl flex items-center justify-center text-sky-700 text-base shrink-0">
               <i className="fa-solid fa-briefcase"></i>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90 mb-0.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-700 mb-0.5">
                 {t('Career Inquiries · Headhunter Desk', 'Karriere-Anfragen · Headhunter-Desk')}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
                 {t('Director Job Market', 'Sportdirektor Arbeitsmarkt')}
               </h2>
             </div>
@@ -100,14 +97,14 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
           <button 
             aria-label="Close modal"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center transition cursor-pointer border border-white/[0.08] shrink-0"
+            className="w-8 h-8 rounded-full bg-white hover:bg-[#EFECE4] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition cursor-pointer border border-[#E6E3DC] shrink-0"
           >
             <i className="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
 
         {/* Progressive Disclosure Filter Bar */}
-        <div className="px-5 sm:px-6 pt-4 pb-2.5 shrink-0 border-b border-white/[0.04] flex items-center justify-between gap-3 relative z-10">
+        <div className="px-5 sm:px-6 pt-3.5 pb-3 shrink-0 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between gap-3 relative z-10">
           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
             <button
               type="button"
@@ -117,12 +114,12 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 selectedRegion === 'all'
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-400/30 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white border border-[#18191F]'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <span>{t('All Opportunities', 'Alle Angebote')}</span>
-              <span className="text-[10px] tabular-nums font-medium opacity-70">({offers.length})</span>
+              <span className="text-[10px] tabular-nums font-medium opacity-75">({offers.length})</span>
             </button>
             <button
               type="button"
@@ -132,13 +129,13 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 selectedRegion === 'domestic'
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-400/30 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white border border-[#18191F]'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-house-chimney text-[10px]"></i>
               <span>{t('Domestic', 'Inland')}</span>
-              <span className="text-[10px] tabular-nums font-medium opacity-70">({domesticOffers.length})</span>
+              <span className="text-[10px] tabular-nums font-medium opacity-75">({domesticOffers.length})</span>
             </button>
             <button
               type="button"
@@ -148,13 +145,13 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 selectedRegion === 'international'
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-400/30 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white border border-[#18191F]'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-globe text-[10px]"></i>
               <span>{t('Continental', 'International')}</span>
-              <span className="text-[10px] tabular-nums font-medium opacity-70">({intlOffers.length})</span>
+              <span className="text-[10px] tabular-nums font-medium opacity-75">({intlOffers.length})</span>
             </button>
             <button
               type="button"
@@ -164,23 +161,23 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 selectedRegion === 'fallen'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-amber-300 hover:bg-amber-500/10 border border-transparent'
+                  ? 'bg-amber-600 text-white border border-amber-600'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
               }`}
             >
-              <i className="fa-solid fa-fire-flame-curved text-[10px] text-amber-400"></i>
+              <i className={`fa-solid fa-fire-flame-curved text-[10px] ${selectedRegion === 'fallen' ? 'text-white' : 'text-amber-600'}`}></i>
               <span>{t('Fallen Giants', 'Gefallene Giganten')}</span>
-              <span className="text-[10px] tabular-nums font-medium opacity-70">({fallenOffers.length})</span>
+              <span className="text-[10px] tabular-nums font-medium opacity-80">({fallenOffers.length})</span>
             </button>
           </div>
 
-          <div className="text-[11px] text-zinc-400 font-normal hidden sm:block">
-            {t('Director Rep:', 'Direktor-Ansehen:')} <span className="font-bold text-sky-300 tabular-nums">{state.reputation || 50}</span>
+          <div className="text-[11px] text-[#6B7280] font-normal hidden sm:block shrink-0">
+            {t('Director Rep:', 'Direktor-Ansehen:')} <span className="font-bold text-[#18191F] tabular-nums">{state.reputation || 50}</span>
           </div>
         </div>
 
         {/* Content Body */}
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 custom-scrollbar relative z-10">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 custom-scrollbar relative z-10 bg-white">
           {displayedOffers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {displayedOffers.map((club) => {
@@ -199,14 +196,14 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
               })}
             </div>
           ) : (
-            <div className="text-center py-16 bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mb-3">
+            <div className="text-center py-16 bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-6 flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center text-[#9A9890] mb-3">
                 <i className="fa-solid fa-folder-open text-xl"></i>
               </div>
-              <div className="text-white font-bold text-sm mb-1">
+              <div className="text-[#18191F] font-bold text-sm mb-1">
                 {t('No Inquiries in this Category', 'Keine Anfragen in dieser Kategorie')}
               </div>
-              <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+              <p className="text-xs text-[#6B7280] max-w-sm mx-auto">
                 {t('Switch filters to view other club opportunities or continue with your current mandate.', 'Wähle einen anderen Filter oder führe deine aktuelle Amtszeit fort.')}
               </p>
             </div>
@@ -214,10 +211,10 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-white/[0.06] bg-white/[0.02] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 relative z-10">
-          <div className="text-xs text-zinc-400 text-center sm:text-left">
-            <span className="text-amber-400/90 font-medium">
-              <i className="fa-solid fa-triangle-exclamation mr-1.5 text-[10px]"></i>
+        <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 relative z-10">
+          <div className="text-xs text-[#6B7280] text-center sm:text-left">
+            <span className="text-amber-800 font-medium">
+              <i className="fa-solid fa-triangle-exclamation mr-1.5 text-[10px] text-amber-600"></i>
               {t(
                 'Accepting a proposal immediately terminates your current club contract.',
                 'Die Annahme eines Angebots beendet deine aktuelle Amtszeit sofort.'
@@ -228,7 +225,7 @@ export const JobMarketModal: React.FC<JobMarketModalProps> = ({
           <button 
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white font-semibold text-xs transition border border-white/[0.08] cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-[#EFECE4] text-[#18191F] font-semibold text-xs transition border border-[#E6E3DC] cursor-pointer"
           >
             {t('Decline & Stay', 'Ablehnen & Verbleiben')}
           </button>
@@ -256,11 +253,11 @@ const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept,
     : getStartingBudget(club.tier, club.country || 'GER');
 
   return (
-    <div className="bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-sky-400/30 rounded-2xl sm:rounded-3xl p-5 transition-all duration-200 flex flex-col justify-between shadow-sm relative group">
+    <div className="bg-[#FAF9F6] hover:bg-[#F5F4F0] border border-[#E6E3DC] hover:border-[#18191F]/30 rounded-2xl sm:rounded-3xl p-5 transition-all duration-200 flex flex-col justify-between relative group">
       <div>
         {/* Header row with club logo & metadata */}
         <div className="flex items-start gap-3.5 mb-3.5">
-          <div className="w-12 h-12 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-center p-2 shrink-0 shadow-sm">
+          <div className="w-12 h-12 bg-white border border-[#E6E3DC] rounded-2xl flex items-center justify-center p-2 shrink-0">
             <ClubLogo 
               name={club.name} 
               id={club.id} 
@@ -268,27 +265,27 @@ const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept,
               logo={club.logo} 
               fallbackLogo={club.fallbackLogo} 
               isModActive={isModActive} 
-              className="w-full h-full object-contain drop-shadow" 
+              className="w-full h-full object-contain drop-shadow-sm" 
             />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-0.5">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] uppercase font-semibold text-[#6B7280] tracking-wider mb-0.5">
               <span className="shrink-0">{isDomestic ? t('Domestic', 'Inland') : t('International', 'Ausland')}</span>
-              <span className="text-zinc-600">·</span>
-              <span className="text-sky-400/90 break-words">{league?.name}</span>
+              <span className="text-[#C7C4BC]">·</span>
+              <span className="text-sky-700 break-words">{league?.name}</span>
               {club.isInsolventGiant ? (
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-400/30 text-amber-300 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
-                  <i className="fa-solid fa-fire-flame-curved text-[9px] text-amber-400"></i>
+                <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
+                  <i className="fa-solid fa-fire-flame-curved text-[9px] text-amber-600"></i>
                   <span>{t('Fallen Giant · Recovery Mandate', 'Gefallener Gigant · Sanierungsmandat')}</span>
                 </span>
               ) : (club.tier === 1 && club.baseOvr >= 83) ? (
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
-                  <i className="fa-solid fa-crown text-[9px] text-emerald-400"></i>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[9px] font-bold tracking-wider inline-flex items-center gap-1">
+                  <i className="fa-solid fa-crown text-[9px] text-emerald-600"></i>
                   <span>{t('Premium Club · Executive Offer', 'Top-Klub · Direktoren-Angebot')}</span>
                 </span>
               ) : null}
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-white break-words tracking-tight group-hover:text-sky-300 transition-colors">
+            <h3 className="text-base sm:text-lg font-bold text-[#18191F] break-words tracking-tight transition-colors">
               {club.name}
             </h3>
           </div>
@@ -296,10 +293,10 @@ const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept,
 
         {/* Narrative / Context if present */}
         {club.narrative && (
-          <div className={`mb-3.5 text-xs text-zinc-200 italic leading-relaxed p-3 rounded-xl border-l-2 ${
+          <div className={`mb-3.5 text-xs italic leading-relaxed p-3 rounded-xl border-l-2 ${
             club.isInsolventGiant
-              ? 'bg-amber-500/[0.06] border-amber-400/70 text-amber-100/90'
-              : 'bg-white/[0.02] border-sky-400/50 text-zinc-300'
+              ? 'bg-amber-50/80 border-amber-500 text-amber-900'
+              : 'bg-white border-sky-500 text-[#4B5563]'
           }`}>
             "{club.narrative}"
           </div>
@@ -307,38 +304,38 @@ const OfferCard: React.FC<OfferCardProps> = ({ club, lang, isDomestic, onAccept,
 
         {/* Bento stats row */}
         <div className="grid grid-cols-2 gap-2.5 my-2">
-          <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-            <div className="text-[9px] uppercase font-semibold text-zinc-400 tracking-wider">
+          <div className="p-2.5 rounded-xl bg-white border border-[#E6E3DC]">
+            <div className="text-[9px] uppercase font-semibold text-[#6B7280] tracking-wider">
               {t('Squad OVR', 'Kader-Stärke')}
             </div>
             <div className={`text-base font-bold tabular-nums mt-0.5 ${getOvrColor(club.baseOvr)}`}>
-              {club.baseOvr} <span className="text-[10px] text-zinc-500 font-normal">OVR</span>
+              {club.baseOvr} <span className="text-[10px] text-[#6B7280] font-normal">OVR</span>
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-            <div className="text-[9px] uppercase font-semibold text-zinc-400 tracking-wider">
+          <div className="p-2.5 rounded-xl bg-white border border-[#E6E3DC]">
+            <div className="text-[9px] uppercase font-semibold text-[#6B7280] tracking-wider">
               {t('Transfer Budget', 'Transferbudget')}
             </div>
-            <div className={`text-base font-bold tabular-nums mt-0.5 ${startingBudget < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className={`text-base font-bold tabular-nums mt-0.5 ${startingBudget < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
               {formatMoney(startingBudget)}
             </div>
           </div>
         </div>
 
         {club.stadium && (
-          <div className="text-[11px] text-zinc-400 mt-1 flex items-center justify-between px-1">
+          <div className="text-[11px] text-[#6B7280] mt-1 flex items-center justify-between px-1">
             <span>{t('Venue Capacity:', 'Stadionkapazität:')}</span>
-            <span className="font-semibold text-white tabular-nums">{formatNum(club.stadium)} seats</span>
+            <span className="font-semibold text-[#18191F] tabular-nums">{formatNum(club.stadium)} seats</span>
           </div>
         )}
       </div>
 
       {/* Contract Action Button */}
-      <div className="mt-4 pt-3 border-t border-white/[0.05]">
+      <div className="mt-4 pt-3 border-t border-[#E6E3DC]">
         <button
           onClick={onAccept}
-          className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold tracking-wide transition cursor-pointer flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] text-white shadow-sm"
+          className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold tracking-wide transition cursor-pointer flex items-center justify-center gap-2 bg-[#18191F] hover:bg-[#2A2C35] active:scale-[0.98] text-white"
         >
           <i className="fa-solid fa-file-signature text-xs"></i>
           <span>{t('Sign Management Contract', 'Vertrag unterschreiben')}</span>

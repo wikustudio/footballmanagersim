@@ -835,7 +835,7 @@ export const PORTUGAL_CLUBS: Club[] = [
   {id: 230, name: "Matosinhos", tier: 2, baseOvr: 67, color: "dc2626", stadium: 9730, country: "POR", rep: 66, fanBase: 881023, currentBudget: 12634992},
   {id: 231, name: "Alverca", tier: 2, baseOvr: 67, color: "2563eb", stadium: 7705, country: "POR", rep: 66, fanBase: 735223, currentBudget: 12634992},
   {id: 229, name: "Penafiel", tier: 2, baseOvr: 67, color: "dc2626", stadium: 5230, country: "POR", rep: 66, fanBase: 557023, currentBudget: 12634992},
-  {id: 236, name: "Belém OS", tier: 2, baseOvr: 67, color: "008057", stadium: 3000, country: "POR", rep: 66, fanBase: 396463, currentBudget: 12634992},
+  {id: 236, name: "Belém OS", tier: 2, baseOvr: 67, color: "0054a6", stadium: 19856, country: "POR", rep: 66, fanBase: 956631, currentBudget: 12634992},
   {id: 232, name: "Felgueiras", tier: 2, baseOvr: 66, color: "15803d", stadium: 7000, country: "POR", rep: 65, fanBase: 676483, currentBudget: 12079680},
   {id: 233, name: "Oliveira de Azeméis", tier: 2, baseOvr: 66, color: "dc2626", stadium: 4000, country: "POR", rep: 65, fanBase: 460483, currentBudget: 12079680},
 
@@ -843,7 +843,7 @@ export const PORTUGAL_CLUBS: Club[] = [
   // TIER 3 (18 Clubs)
   // ==========================================
   {id: 238, name: "Coimbra", tier: 3, baseOvr: 65, color: "000000", stadium: 29622, country: "POR", rep: 62, fanBase: 1378531, currentBudget: 4035903},
-  {id: 237, name: "Lisboa Verde B", tier: 3, baseOvr: 65, color: "0054a6", stadium: 19856, country: "POR", rep: 62, fanBase: 956631, currentBudget: 4035903},
+  {id: 237, name: "Lisboa Verde B", tier: 3, baseOvr: 65, color: "008057", stadium: 3000, country: "POR", rep: 62, fanBase: 396463, currentBudget: 4035903},
   {id: 239, name: "Póvoa de Varzim", tier: 3, baseOvr: 64, color: "000000", stadium: 7280, country: "POR", rep: 61, fanBase: 408870, currentBudget: 3852038},
   {id: 241, name: "Lourosa", tier: 3, baseOvr: 63, color: "f2a900", stadium: 8000, country: "POR", rep: 60, fanBase: 435759, currentBudget: 3673752},
   {id: 240, name: "Covilhã", tier: 3, baseOvr: 63, color: "15803d", stadium: 3000, country: "POR", rep: 60, fanBase: 219759, currentBudget: 3673752},

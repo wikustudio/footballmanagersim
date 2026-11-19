@@ -9,6 +9,11 @@ import { BroadcastBadge } from './BroadcastBadge';
 import { TEAMS } from '../mod-data/teams';
 import { ALL_CLUBS as CLUBS } from '../data/clubsData';
 import { getLeagueInfo } from '../data/gameConstants';
+import {
+  getDecisionDayStakesSummary,
+  isDirectHeadToHeadMatch,
+  resolveDecisionDayOutcome,
+} from '../engine/decisionDayEngine';
 
 interface DecisionDayModalProps {
   resolve: (result: {
@@ -205,6 +210,13 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     return m?.name || c?.name;
   }
 
+  const isDirectHeadToHead = isDirectHeadToHeadMatch(
+    ddType,
+    isCrossTierPlayoff,
+    rivalName,
+    oppClub.name
+  );
+
 
 
   // Match Stakes Consequence Matrix panel dynamically framing the 90 or 180 minute stakes
@@ -223,7 +235,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     let drawDesc = '';
     let lossTitle = '';
     let lossDesc = '';
-    let lossBadgeColor = 'border-rose-500/30 bg-rose-500/10 text-rose-300';
+    let lossBadgeColor = 'border-rose-200 bg-rose-50 text-rose-800';
 
     if (ddType === 'title') {
       const isTopFlight = gameState.club.tier === 1;
@@ -246,7 +258,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       lossDesc = isTopFlight
         ? `${rivalName} claims the title. You finish as official League Runner-Up.`
         : `Finish 2nd behind ${rivalName} · Automatic promotion to ${higherLeague?.name || 'higher division'} guaranteed!`;
-      lossBadgeColor = isTopFlight ? 'border-sky-500/30 bg-sky-500/10 text-sky-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+      lossBadgeColor = isTopFlight ? 'border-sky-200 bg-sky-50 text-sky-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900';
     } else if (isPlayoff) {
       stakesHeader = isTwoLegged ? 'Two-Legged Promotion Playoff Stakes' : 'Promotion Playoff Final Stakes';
       stakesSubtitle = `Winner takes the promotion ticket to ${higherLeague?.name || 'higher division'}. Loser remains in ${currentLeague?.name || 'current league'}.`;
@@ -259,7 +271,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       lossTitle = 'Playoff Finalist';
       lossDesc = `Remain in ${currentLeague?.name || 'current tier'} as playoff finalist for the upcoming campaign.`;
-      lossBadgeColor = 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300';
+      lossBadgeColor = 'border-[#E6E3DC] bg-[#F6F5F1] text-[#18191F]';
     } else if (isRelegation) {
       if (isBottomTier) {
         stakesHeader = 'Pyramid Floor Sporting Survival Stakes';
@@ -273,7 +285,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
         lossTitle = 'Sacking Risk · Board Dismissal';
         lossDesc = `Finish in the bottom dismissal zone · The Board will immediately terminate your managerial contract for sporting failure.`;
-        lossBadgeColor = 'border-rose-500/40 bg-rose-500/15 text-rose-300';
+        lossBadgeColor = 'border-rose-200 bg-rose-50 text-rose-900';
       } else if (isCrossTierPlayoff) {
         stakesHeader = isPlayoff ? 'Cross-Tier Promotion Playoff Stakes' : 'Cross-Tier Promotion Playoff · Relegation Decider Stakes';
         stakesSubtitle = isPlayoff
@@ -292,7 +304,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         lossDesc = isPlayoff
           ? `Playoff defeat as Challenger · Remain in ${currentLeague?.name || 'current tier'}.`
           : `Playoff defeat as Defender · Drop below the line into ${lowerLeague?.name || `Tier ${gameState.club.tier + 1}`}.`;
-        lossBadgeColor = isPlayoff ? 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300' : 'border-rose-500/40 bg-rose-500/15 text-rose-300';
+        lossBadgeColor = isPlayoff ? 'border-[#E6E3DC] bg-[#F6F5F1] text-[#18191F]' : 'border-rose-200 bg-rose-50 text-rose-900';
       } else {
         stakesHeader = 'Matchday 34 Survival Stakes';
         stakesSubtitle = `Direct duel against ${oppClub.name} with ${rivalName} battling simultaneously in the survival scrap.`;
@@ -305,7 +317,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
         lossTitle = `Relegated to ${lowerLeague?.name || 'Lower Tier'}`;
         lossDesc = `Drop into the relegation zone · Relegated to ${lowerLeague?.name || `Tier ${gameState.club.tier + 1}`}.`;
-        lossBadgeColor = 'border-rose-500/40 bg-rose-500/15 text-rose-300';
+        lossBadgeColor = 'border-rose-200 bg-rose-50 text-rose-900';
       }
     }
 
@@ -318,30 +330,30 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     }
 
     return (
-      <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 w-full">
+      <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 w-full">
         {/* Header with Icon and Badge */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+        <div className="flex items-center justify-between border-b border-[#E6E3DC] pb-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/25 flex items-center justify-center text-sky-400 text-xs shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xs shrink-0">
               <i className="fa-solid fa-scale-balanced" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest leading-none">
+              <div className="text-[10px] font-bold text-sky-700 uppercase tracking-widest leading-none">
                 Match Stakes · Direct Duel Matrix
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-white mt-0.5 leading-snug truncate">
+              <h3 className="text-xs sm:text-sm font-bold text-[#18191F] mt-0.5 leading-snug truncate">
                 {stakesHeader}
               </h3>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {isLive ? (
-              <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
                 <span>As It Stands ({matchMinute}')</span>
               </span>
             ) : (
-              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 bg-white/[0.04] border border-white/[0.08] px-2.5 py-0.5 rounded-full hidden sm:inline">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-[#6B7280] bg-white border border-[#E6E3DC] px-2.5 py-0.5 rounded-full hidden sm:inline">
                 {isTwoLegged ? '180 Minutes' : '90 Minutes'}
               </span>
             )}
@@ -349,7 +361,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         </div>
 
         {/* Subtitle / Framing */}
-        <p className="text-[11px] sm:text-xs text-zinc-300 font-normal leading-relaxed">
+        <p className="text-[11px] sm:text-xs text-[#4B5563] font-normal leading-relaxed">
           {stakesSubtitle}
         </p>
 
@@ -359,22 +371,22 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
           <div
             className={`rounded-xl p-3 flex flex-col justify-between transition-all duration-300 ${
               isLive && activeCard === 'win'
-                ? 'bg-emerald-500/20 border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
-                : 'bg-emerald-500/[0.08] border border-emerald-500/25'
+                ? 'bg-emerald-50 border-2 border-emerald-500 shadow-sm'
+                : 'bg-emerald-50/70 border border-emerald-200'
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-800 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
                   Victory
                 </span>
-                <i className="fa-solid fa-trophy text-[11px] text-emerald-400" />
+                <i className="fa-solid fa-trophy text-[11px] text-emerald-700" />
               </div>
-              <div className="text-xs font-bold text-emerald-200 leading-snug">
+              <div className="text-xs font-bold text-emerald-950 leading-snug">
                 {winTitle}
               </div>
             </div>
-            <p className="text-[10px] text-emerald-300/80 mt-1.5 leading-normal font-normal">
+            <p className="text-[10px] text-emerald-800 mt-1.5 leading-normal font-normal">
               {winDesc}
             </p>
           </div>
@@ -383,22 +395,22 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
           <div
             className={`rounded-xl p-3 flex flex-col justify-between transition-all duration-300 ${
               isLive && activeCard === 'draw'
-                ? 'bg-sky-500/20 border-2 border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.25)]'
-                : 'bg-white/[0.03] border border-white/[0.06]'
+                ? 'bg-sky-50 border-2 border-sky-500 shadow-sm'
+                : 'bg-white border border-[#E6E3DC]'
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider text-sky-200 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-400/30">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
                   Draw
                 </span>
-                <i className="fa-solid fa-handshake text-[11px] text-sky-400" />
+                <i className="fa-solid fa-handshake text-[11px] text-sky-700" />
               </div>
-              <div className="text-xs font-bold text-zinc-200 leading-snug">
+              <div className="text-xs font-bold text-[#18191F] leading-snug">
                 {drawTitle}
               </div>
             </div>
-            <p className="text-[10px] text-zinc-400 mt-1.5 leading-normal font-normal">
+            <p className="text-[10px] text-[#4B5563] mt-1.5 leading-normal font-normal">
               {drawDesc}
             </p>
           </div>
@@ -407,22 +419,22 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
           <div
             className={`rounded-xl p-3 flex flex-col justify-between transition-all duration-300 ${
               isLive && activeCard === 'loss'
-                ? 'bg-rose-500/25 border-2 border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.25)]'
+                ? 'bg-rose-50 border-2 border-rose-500 shadow-sm'
                 : `border ${lossBadgeColor}`
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/40 border border-white/10 text-rose-200">
+                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white border border-[#E6E3DC] text-rose-800">
                   Defeat
                 </span>
-                <i className="fa-solid fa-arrow-trend-down text-[11px] text-rose-400" />
+                <i className="fa-solid fa-arrow-trend-down text-[11px] text-rose-700" />
               </div>
-              <div className="text-xs font-bold leading-snug text-white">
+              <div className="text-xs font-bold leading-snug text-[#18191F]">
                 {lossTitle}
               </div>
             </div>
-            <p className="text-[10px] text-zinc-300 opacity-90 mt-1.5 leading-normal font-normal">
+            <p className="text-[10px] text-[#4B5563] mt-1.5 leading-normal font-normal">
               {lossDesc}
             </p>
           </div>
@@ -595,19 +607,21 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       currentMin += 1;
       setMatchMinute(currentMin);
 
-      // Simulate simultaneous rival match updates
-      if (currentMin === 24) {
-        setSimultaneousRivalScore('0-1');
-        setRecentEvent(`24' - Simultaneous Rival: ${rivalName} trail 0-1!`);
-      }
-      if (currentMin === 52) {
-        setSimultaneousRivalScore('1-1');
-        setRecentEvent(`52' - Simultaneous Rival: ${rivalName} level at 1-1!`);
-      }
-      if (currentMin === 78) {
-        const rivalFinal = isWin ? '1-2' : (isDraw ? '1-1' : '2-1');
-        setSimultaneousRivalScore(rivalFinal);
-        setRecentEvent(`78' - Simultaneous Rival: Late goal in ${rivalName} match (${rivalFinal})!`);
+      // Simulate simultaneous rival match updates only in parallel regular-season deciders
+      if (!isTwoLegged && !isDirectHeadToHead) {
+        if (currentMin === 24) {
+          setSimultaneousRivalScore('0-1');
+          setRecentEvent(`24' - Simultaneous Rival: ${rivalName} trail 0-1!`);
+        }
+        if (currentMin === 52) {
+          setSimultaneousRivalScore('1-1');
+          setRecentEvent(`52' - Simultaneous Rival: ${rivalName} level at 1-1!`);
+        }
+        if (currentMin === 78) {
+          const rivalFinal = isWin ? '1-2' : (isDraw ? '1-1' : '2-1');
+          setSimultaneousRivalScore(rivalFinal);
+          setRecentEvent(`78' - Simultaneous Rival: Late goal in ${rivalName} match (${rivalFinal})!`);
+        }
       }
 
       const eventsThisMin = eventTimeline.filter(e => e.min === currentMin);
@@ -844,11 +858,11 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
   };
 
   const getRpsColor = (choice: string) => {
-    if (!canSeeOdds) return 'text-zinc-500';
+    if (!canSeeOdds) return 'text-[#6B7280]';
     const prob = getRpsWinProb(choice);
-    if (prob >= 60) return 'text-emerald-400';
-    if (prob <= 40) return 'text-rose-400';
-    return 'text-sky-400';
+    if (prob >= 60) return 'text-emerald-700';
+    if (prob <= 40) return 'text-rose-700';
+    return 'text-sky-700';
   };
 
   const handleProceedToLeg2 = () => {
@@ -1038,13 +1052,43 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     executeMatch(myEffectiveOvr, flatWinProb, dirName, resultDesc);
   };
 
-  // Determine whether the user won the overall Season Finale duel (accounting for pre-match points/GD lead on a Matchday 34 draw)
-  const didWinDuel = isTwoLegged
-    ? Boolean(matchResult?.won)
-    : Boolean(
-        matchResult?.won ||
-        (matchResult?.draw && (userPts > rivalPts || (userPts === rivalPts && userGd >= rivalGd)))
-      );
+  // Single source of truth for resolving Decision Day outcomes (shared with App.tsx)
+  const resolvedOutcome = useMemo(() => {
+    if (!matchResult) return null;
+    const isShootout = Boolean(matchResult.score && matchResult.score.includes('pens'));
+    return resolveDecisionDayOutcome({
+      ddType,
+      isCrossTierPlayoff,
+      isBottomTier,
+      userPreGamePts: userPts,
+      userPreGameGd: userGd,
+      rivalPreGamePts: rivalPts,
+      rivalPreGameGd: rivalGd,
+      rivalName,
+      opponentName: oppClub.name,
+      wonMatch: Boolean(matchResult.won),
+      drawMatch: Boolean(matchResult.draw),
+      userGoals: liveScore.me,
+      oppGoals: liveScore.opp,
+      isShootout,
+      regularSeasonPos: userPos,
+    });
+  }, [
+    matchResult,
+    ddType,
+    isCrossTierPlayoff,
+    isBottomTier,
+    userPts,
+    userGd,
+    rivalPts,
+    rivalGd,
+    rivalName,
+    oppClub.name,
+    liveScore.me,
+    liveScore.opp,
+    userPos,
+  ]);
+  const didWinDuel = Boolean(resolvedOutcome?.userWonDuel);
 
 
   return (
@@ -1053,18 +1097,18 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-50 flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-[#12141c]/95 backdrop-blur-xl w-full max-w-2xl rounded-[24px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] relative flex flex-col h-[90vh] sm:h-auto max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden text-left shrink-0"
+        className="bg-white w-full max-w-2xl rounded-[24px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_70px_rgba(24,25,31,0.18)] relative flex flex-col h-[90vh] sm:h-auto max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden text-left shrink-0"
       >
-        {/* Subtle Ambient Background Glow with Prestige Accent */}
-        <div 
-          className="absolute -top-28 -right-28 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
+        {/* Subtle Ambient Background Tint with Prestige Accent */}
+        <div
+          className="absolute -top-28 -right-28 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-15"
           style={{ background: theme.accentHex }}
         />
 
@@ -1074,7 +1118,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         {stage === 'choice' && (
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Header: Event Trophy & Decision Day Stakes (Pinned on mobile & desktop) */}
-            <div className="shrink-0 relative z-20 border-b border-white/[0.08] bg-[#12141c]/90 backdrop-blur-md px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-3 text-left">
+            <div className="shrink-0 relative z-20 border-b border-[#E6E3DC] bg-white px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-3 text-left">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 {/* Prestige Trophy / Upward Arrow Emblem / Survival Shield */}
                 <div className="relative shrink-0">
@@ -1082,14 +1126,14 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <PrestigeTrophy
                       type={ddType}
                       size={Math.min(theme.trophyHeight, 46)}
-                      className="drop-shadow-lg"
+                      className="drop-shadow-sm"
                     />
                   ) : isPlayoff ? (
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-emerald-500/25 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-xl shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xl shadow-sm">
                       <i className="fa-solid fa-arrow-trend-up"></i>
                     </div>
                   ) : (
-                    <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 text-xl">
+                    <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700 text-xl">
                       <i className="fa-solid fa-shield-halved"></i>
                     </div>
                   )}
@@ -1099,14 +1143,18 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <span className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full ${theme.tagPillBg}`}>
                       {theme.badgeLabel.en}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-sky-300 bg-sky-500/10 border border-sky-400/20 px-2 sm:px-2.5 py-0.5 rounded-full">
+                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-sky-800 bg-sky-50 border border-sky-200 px-2 sm:px-2.5 py-0.5 rounded-full">
                       {isTwoLegged ? (currentLeg === 1 ? 'Playoff · Leg 1 of 2 (Away)' : 'Playoff · Leg 2 of 2 (Home Decider)') : (isPlayoff ? 'Post-Season Knockout Tie' : 'Matchday 34 · Final')}
                     </span>
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
-                  <h2 className="text-base sm:text-2xl font-bold text-white tracking-tight leading-tight">
+                  <h2 className="text-base sm:text-2xl font-bold text-[#18191F] tracking-tight leading-tight">
                     {isTwoLegged
-                      ? (currentLeg === 1 ? 'Promotion Playoff · First Leg' : 'Promotion Playoff · Second Leg Decider')
+                      ? (ddType === 'relegation'
+                          ? (currentLeg === 1 ? 'Relegation Playoff · First Leg' : 'Relegation Playoff · Second Leg Decider')
+                          : (currentLeg === 1 ? 'Promotion Playoff · First Leg' : 'Promotion Playoff · Second Leg Decider'))
                       : isPlayoff
                       ? 'Promotion Playoff Final'
                       : ddType === 'relegation'
@@ -1117,7 +1165,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           : 'Board Survival Battle')
                       : 'Championship Decider'}
                   </h2>
-                  <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5 font-normal truncate sm:whitespace-normal">
+                  <p className="text-[11px] sm:text-xs text-[#6B7280] mt-0.5 font-normal truncate sm:whitespace-normal">
                     {isTwoLegged
                       ? (currentLeg === 1
                           ? `First leg away at ${oppClub.name}. Set your gameplan to secure a strong road result before returning home.`
@@ -1136,12 +1184,12 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
               </div>
 
               {/* Head Coach Pill */}
-              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-right shrink-0">
-                <div className="text-[9px] sm:text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Head Coach</div>
-                <div className="text-xs sm:text-xs font-bold text-white truncate max-w-[85px] sm:max-w-[140px] mt-0.5">
+              <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-xl sm:rounded-2xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-right shrink-0">
+                <div className="text-[9px] sm:text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold">Head Coach</div>
+                <div className="text-xs sm:text-xs font-bold text-[#18191F] truncate max-w-[85px] sm:max-w-[140px] mt-0.5">
                   {gameState.currentCoach?.name || 'Head Coach'}
                 </div>
-                <div className="text-[10px] text-zinc-400 truncate max-w-[140px] hidden sm:block">
+                <div className="text-[10px] text-[#6B7280] truncate max-w-[140px] hidden sm:block">
                   {gameState.currentCoach?.role || 'Tactical Lead'}
                 </div>
               </div>
@@ -1151,23 +1199,23 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar relative z-10 text-left">
               {/* First Leg Aggregate Status Banner for Leg 2 */}
               {isTwoLegged && currentLeg === 2 && leg1Result && (
-                <div className="bg-gradient-to-r from-sky-500/15 via-emerald-500/10 to-sky-500/15 border border-sky-400/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300 font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-sky-200 flex items-center justify-center text-sky-700 font-bold text-sm shrink-0">
                       Leg 2
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white uppercase tracking-wider">
+                      <div className="text-xs font-bold text-[#18191F] uppercase tracking-wider">
                         Second Leg (Home Decider)
                       </div>
-                      <div className="text-[11px] text-zinc-300 mt-0.5">
-                        First Leg: <strong className="text-white">{oppClub.name} {leg1Result.opp} – {leg1Result.me} {userClub.name}</strong>
+                      <div className="text-[11px] text-[#4B5563] mt-0.5">
+                        First Leg: <strong className="text-[#18191F]">{oppClub.name} {leg1Result.opp} – {leg1Result.me} {userClub.name}</strong>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Aggregate:</span>
-                    <span className="text-sm font-black text-amber-300 font-mono bg-black/40 px-3 py-1 rounded-xl border border-white/10">
+                    <span className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider">Aggregate:</span>
+                    <span className="text-sm font-black text-amber-800 font-mono tabular-nums bg-white px-3 py-1 rounded-xl border border-amber-200">
                       {userClub.name} {leg1Result.me} – {leg1Result.opp} {oppClub.name}
                     </span>
                   </div>
@@ -1175,14 +1223,16 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
               )}
 
               {/* Matchup Header */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
                 {isModActive && (
-                  <div className="flex items-center justify-between border-b border-white/[0.05] pb-2 text-[10px]">
-                    <span className="text-zinc-400 font-semibold tracking-wider uppercase flex items-center gap-1.5">
-                      <i className="fa-solid fa-satellite-dish text-sky-400 text-xs" />
+                  <div className="flex items-center justify-between border-b border-[#E6E3DC] pb-2 text-[10px]">
+                    <span className="text-[#4B5563] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+                      <i className="fa-solid fa-satellite-dish text-sky-600 text-xs" />
                       <span>Official Matchday Broadcast</span>
                     </span>
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
                 )}
                 <div className="grid grid-cols-7 items-center">
@@ -1197,12 +1247,12 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       className="w-14 h-14 object-contain mb-1.5 drop-shadow-sm"
                       fallbackClassName="w-14 h-14 text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5"
                     />
-                    <div className="text-xl sm:text-2xl font-bold text-white tabular-nums">{playerOvr} OVR</div>
-                    <div className="text-xs sm:text-sm font-bold text-zinc-200 truncate max-w-[130px] mt-0.5 py-0.5 leading-normal">{userClub.name}</div>
+                    <div className="text-xl sm:text-2xl font-bold text-emerald-700 tabular-nums">{playerOvr} OVR</div>
+                    <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[130px] mt-0.5 py-0.5 leading-normal">{userClub.name}</div>
                   </div>
 
                   <div className="col-span-1 flex flex-col items-center justify-center">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">VS</span>
+                    <span className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">VS</span>
                   </div>
 
                   <div className="col-span-3 flex flex-col items-center text-center">
@@ -1216,70 +1266,69 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       className="w-14 h-14 object-contain mb-1.5 drop-shadow-sm"
                       fallbackClassName="w-14 h-14 text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5"
                     />
-                    <div className="text-xl sm:text-2xl font-bold text-zinc-400 tabular-nums">{localOpponentOvr} OVR</div>
-                    <div className="text-xs sm:text-sm font-bold text-zinc-200 truncate max-w-[130px] mt-0.5 py-0.5 leading-normal">{oppClub.name}</div>
+                    <div className="text-xl sm:text-2xl font-bold text-[#4B5563] tabular-nums">{localOpponentOvr} OVR</div>
+                    <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[130px] mt-0.5 py-0.5 leading-normal">{oppClub.name}</div>
                   </div>
                 </div>
 
                 {/* Sleek 1-Line Stakes Banner inside Matchup Card */}
-                <div className="mt-2 pt-2.5 border-t border-white/[0.06] flex items-center justify-center text-center">
-                  <div className="text-[11px] sm:text-xs font-semibold text-amber-300 flex items-center gap-1.5 px-3 py-1 bg-amber-400/10 border border-amber-400/20 rounded-xl">
+                <div className="mt-2 pt-2.5 border-t border-[#E6E3DC] flex items-center justify-center text-center">
+                  <div className="text-[11px] sm:text-xs font-semibold text-amber-900 flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-xl">
                     <span>{ddType === 'title' ? '🏆' : ddType === 'promotion_playoff' ? '⚡' : '🛡️'}</span>
                     <span>
-                      {ddType === 'title'
-                        ? (gameState.club.tier === 1
-                            ? 'Stakes: Win = League Champions • Draw/Loss = Runner-Up'
-                            : 'Stakes: Win = Champions Trophy & Promotion • 2nd = Direct Promotion')
-                        : ddType === 'promotion_playoff'
-                        ? 'Stakes: Win = Promoted to Higher Division • Defeat = Remain in Tier'
-                        : isBottomTier
-                        ? 'Stakes: Win/Draw = Sporting Survival • Loss = Board Termination Risk'
-                        : 'Stakes: Win = Sporting Survival • Loss = Relegated to Lower Tier'}
+                      {getDecisionDayStakesSummary({
+                        ddType,
+                        tier: gameState.club.tier,
+                        isBottomTier,
+                        isCrossTierPlayoff,
+                        userPts,
+                        userGd,
+                        rivalPts,
+                        rivalGd,
+                      })}
                     </span>
                   </div>
                 </div>
               </div>
 
-
-
               {/* Tactical Directives / Recommendation Choice */}
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between text-xs px-1">
-                  <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
-                    <i className="fa-solid fa-clipboard-check text-sky-400 text-xs" />
+                  <span className="font-semibold text-[#18191F] flex items-center gap-1.5">
+                    <i className="fa-solid fa-clipboard-check text-sky-600 text-xs" />
                     <span>Tactical Recommendation for Head Coach</span>
                   </span>
-                  <span className="text-zinc-500 text-[11px] font-medium">
+                  <span className="text-[#6B7280] text-[11px] font-medium">
                     {isTacticalDuel ? 'Counter System' : 'Strategic Directive'}
                   </span>
                 </div>
 
                 {/* Scout Insight & Identity Alignment Bar */}
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-3.5 py-2.5 text-xs flex flex-col gap-1.5">
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl px-3.5 py-2.5 text-xs flex flex-col gap-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-zinc-400 flex items-center gap-1.5">
-                      <i className="fa-solid fa-compass text-sky-400 text-[11px]" />
-                      <span>Philosophy: <strong className="text-white font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
-                      <span className="text-zinc-600">·</span>
-                      <span>Coach: <strong className="text-sky-300 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
+                    <span className="text-[#4B5563] flex items-center gap-1.5">
+                      <i className="fa-solid fa-compass text-sky-600 text-[11px]" />
+                      <span>Philosophy: <strong className="text-[#18191F] font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
+                      <span className="text-[#D1CEC7]">·</span>
+                      <span>Coach: <strong className="text-sky-700 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
                     </span>
                     {hasTacticalGeniusPerk ? (
-                      <span className="font-semibold text-white">
-                        <i className="fa-solid fa-chess-knight text-amber-400 text-[10px] mr-1" />
-                        Tactical Genius: Opponent plays <strong className="text-amber-300 font-semibold">{oppTacticInfo.en}</strong>
+                      <span className="font-semibold text-[#18191F]">
+                        <i className="fa-solid fa-chess-knight text-amber-600 text-[10px] mr-1" />
+                        Tactical Genius: Opponent plays <strong className="text-amber-700 font-semibold">{oppTacticInfo.en}</strong>
                       </span>
                     ) : coachUnderstandsOpponent ? (
-                      <span className="font-semibold text-sky-200">
-                        <i className="fa-solid fa-chess text-sky-400 text-[10px] mr-1" />
-                        Tactical Master Coach decoded <strong className="text-amber-300 font-semibold">{oppTacticInfo.en}</strong>
+                      <span className="font-semibold text-sky-800">
+                        <i className="fa-solid fa-chess text-sky-600 text-[10px] mr-1" />
+                        Tactical Master Coach decoded <strong className="text-amber-700 font-semibold">{oppTacticInfo.en}</strong>
                       </span>
                     ) : isTacticalMasterCoach ? (
-                      <span className="text-zinc-500 italic text-[11px]">
+                      <span className="text-[#6B7280] italic text-[11px]">
                         <i className="fa-solid fa-lock text-[10px] mr-1" />
                         Coach couldn't decode {oppClub.name} · Activate 'Tactical Genius' perk for all odds
                       </span>
                     ) : (
-                      <span className="text-zinc-500 italic text-[11px]">
+                      <span className="text-[#6B7280] italic text-[11px]">
                         <i className="fa-solid fa-lock text-[10px] mr-1" />
                         Activate 'Tactical Genius' manager perk to reveal opponent system &amp; odds
                       </span>
@@ -1293,75 +1342,75 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <>
                       <button
                         onClick={() => handleTacticalDuelChoice('Gegenpressing')}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                          <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                             ⚡ Gegenpressing
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Beats Tiki-Taka · Vulnerable to Counter</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Tiki-Taka · Vulnerable to Counter</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Gegenpressing')}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Gegenpressing')}`}>
                           {canSeeOdds ? `${getRpsWinProb('Gegenpressing')}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleTacticalDuelChoice('Direct Counter')}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                          <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                             🎯 Direct Counter
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Direct Counter')}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Direct Counter')}`}>
                           {canSeeOdds ? `${getRpsWinProb('Direct Counter')}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleTacticalDuelChoice('Catenaccio')}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                          <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                             🛡️ Catenaccio (Park the Bus)
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Catenaccio')}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Catenaccio')}`}>
                           {canSeeOdds ? `${getRpsWinProb('Catenaccio')}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleTacticalDuelChoice('Tiki-Taka')}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                          <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                             🧠 Tiki-Taka
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
                           {canSeeOdds ? `${getRpsWinProb('Tiki-Taka')}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleTacticalDuelChoice('Total Football')}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs group-hover:text-sky-300 transition-colors">
+                          <div className="font-semibold text-[#18191F] text-xs group-hover:text-sky-700 transition-colors">
                             ⚖️ Total Football
                           </div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Total Football')}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Total Football')}`}>
                           {canSeeOdds ? `${getRpsWinProb('Total Football')}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
@@ -1370,65 +1419,65 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <>
                       <button
                         onClick={() => handleChoice(1)}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs">Trust the Routine (Ancelotti · {gameState.tactic || 'Club Identity'})</div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Rely on your established club philosophy &amp; coach synergy</div>
+                          <div className="font-semibold text-[#18191F] text-xs">Trust the Routine (Ancelotti · {gameState.tactic || 'Club Identity'})</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Rely on your established club philosophy &amp; coach synergy</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-emerald-700' : 'text-[#6B7280]'}`}>
                           {canSeeOdds ? `${netSafe}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleChoice(2)}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs">Emotional War Cry (Klopp · Gegenpressing)</div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Maximum pressing intensity · Clashes with Low Block philosophy</div>
+                          <div className="font-semibold text-[#18191F] text-xs">Emotional War Cry (Klopp · Gegenpressing)</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Maximum pressing intensity · Clashes with Low Block philosophy</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-amber-700' : 'text-[#6B7280]'}`}>
                           {canSeeOdds ? `${netEmo}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleChoice(3)}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs">Last-Minute System Overhaul (Pep · Tiki-Taka)</div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Intricate possession overload · Clashes with Direct Counter &amp; Low Block</div>
+                          <div className="font-semibold text-[#18191F] text-xs">Last-Minute System Overhaul (Pep · Tiki-Taka)</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Intricate possession overload · Clashes with Direct Counter &amp; Low Block</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-amber-700' : 'text-[#6B7280]'}`}>
                           {canSeeOdds ? `${netTac}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleChoice(4)}
-                        className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-white text-xs">Press Conference Mind Games (Mourinho · Low Block)</div>
-                          <div className="text-[11px] text-zinc-400 mt-0.5">Pragmatic defensive siege · Clashes with Gegenpressing &amp; Tiki-Taka</div>
+                          <div className="font-semibold text-[#18191F] text-xs">Press Conference Mind Games (Mourinho · Low Block)</div>
+                          <div className="text-[11px] text-[#6B7280] mt-0.5">Pragmatic defensive siege · Clashes with Gegenpressing &amp; Tiki-Taka</div>
                         </div>
-                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-sky-400' : 'text-zinc-500'}`}>
+                        <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-sky-700' : 'text-[#6B7280]'}`}>
                           {canSeeOdds ? `${netRattle}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
 
                       <button
                         onClick={() => handleChoice(5)}
-                        className="w-full bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                        className="w-full bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                       >
                         <div>
-                          <div className="font-semibold text-emerald-300 text-xs">Set-Pieces &amp; Marginal Gains</div>
-                          <div className="text-[11px] text-emerald-200/70 mt-0.5">Risk everything on dead-ball efficiency</div>
+                          <div className="font-semibold text-emerald-900 text-xs">Set-Pieces &amp; Marginal Gains</div>
+                          <div className="text-[11px] text-emerald-700 mt-0.5">Risk everything on dead-ball efficiency</div>
                         </div>
-                        <div className="text-xs tabular-nums font-semibold text-emerald-300 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 shrink-0">
+                        <div className="text-xs tabular-nums font-semibold text-emerald-800 px-2.5 py-1 rounded-xl bg-white border border-emerald-200 shrink-0">
                           {canSeeOdds ? '33% Fixed Prob' : '???% Odds'}
                         </div>
                       </button>
@@ -1436,16 +1485,16 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       <button
                         onClick={() => handleChoice(6)}
                         disabled={(gameState.skillPoints || 0) < 5}
-                        className={`w-full ${(gameState.skillPoints || 0) >= 5 ? 'bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 cursor-pointer' : 'bg-white/[0.02] border border-white/[0.05] opacity-40 cursor-not-allowed'} p-3 rounded-2xl text-left transition-all flex items-center justify-between gap-3 active:scale-[0.99]`}
+                        className={`w-full ${(gameState.skillPoints || 0) >= 5 ? 'bg-amber-50 hover:bg-amber-100/70 border border-amber-200 cursor-pointer' : 'bg-[#FAF9F6] border border-[#E6E3DC] opacity-50 cursor-not-allowed'} p-3 rounded-2xl text-left transition-all flex items-center justify-between gap-3 active:scale-[0.99]`}
                       >
                         <div className="min-w-0">
-                          <div className="font-semibold text-amber-300 text-xs flex items-center gap-1.5">
+                          <div className="font-semibold text-amber-900 text-xs flex items-center gap-1.5">
                             <span className="truncate">Masterclass Directive</span>
-                            <span className="text-[11px] font-bold bg-amber-500/25 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-500/40 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
+                            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
                           </div>
-                          <div className="text-[11px] text-amber-200/70 mt-0.5">+12 OVR decisive tactical blueprint</div>
+                          <div className="text-[11px] text-amber-800 mt-0.5">+12 OVR decisive tactical blueprint</div>
                         </div>
-                        <div className="text-xs tabular-nums font-semibold text-amber-300 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 whitespace-nowrap shrink-0">
+                        <div className="text-xs tabular-nums font-semibold text-amber-900 px-2.5 py-1 rounded-xl bg-white border border-amber-200 whitespace-nowrap shrink-0">
                           {canSeeOdds ? `${calcProb(12)}% Win Prob` : '???% Odds'}
                         </div>
                       </button>
@@ -1463,21 +1512,21 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         {stage === 'match' && (
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Pinned Stage 2 Header */}
-            <div className="shrink-0 relative z-20 border-b border-white/[0.08] bg-[#12141c]/90 backdrop-blur-md px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3 text-left">
+            <div className="shrink-0 relative z-20 border-b border-[#E6E3DC] bg-white px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3 text-left">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div className="relative shrink-0">
                   {ddType === 'title' ? (
                     <PrestigeTrophy
                       type={ddType}
                       size={38}
-                      className="drop-shadow-lg"
+                      className="drop-shadow-sm"
                     />
                   ) : isPlayoff ? (
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/25 to-emerald-500/25 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-lg shadow-sm">
                       <i className="fa-solid fa-arrow-trend-up"></i>
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 text-lg">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700 text-lg">
                       <i className="fa-solid fa-shield-halved"></i>
                     </div>
                   )}
@@ -1487,15 +1536,19 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <span className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full ${theme.tagPillBg}`}>
                       {theme.badgeLabel.en}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-400/20 px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
                       {isTwoLegged ? `Live · Leg ${currentLeg} of 2` : (isPlayoff ? 'Live · Playoff Tie' : 'Live · Matchday 34')}
                     </span>
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
-                  <h2 className="text-sm sm:text-xl font-bold text-white tracking-tight leading-tight">
+                  <h2 className="text-sm sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
                     {isTwoLegged
-                      ? (currentLeg === 1 ? 'Promotion Playoff · First Leg' : 'Promotion Playoff · Second Leg Decider')
+                      ? (ddType === 'relegation'
+                          ? (currentLeg === 1 ? 'Relegation Playoff · First Leg' : 'Relegation Playoff · Second Leg Decider')
+                          : (currentLeg === 1 ? 'Promotion Playoff · First Leg' : 'Promotion Playoff · Second Leg Decider'))
                       : isPlayoff
                       ? 'Promotion Playoff Final'
                       : ddType === 'relegation'
@@ -1510,67 +1563,69 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
               </div>
 
               {/* Match Minute Clock & Rival Status */}
-              <div className="bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-center shrink-0">
-                <div className="text-[9px] sm:text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Match Clock</div>
-                <div className="text-sm sm:text-base font-bold text-emerald-400 font-mono tabular-nums">{matchMinute}'</div>
+              <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-center shrink-0">
+                <div className="text-[9px] sm:text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold">Match Clock</div>
+                <div className="text-sm sm:text-base font-bold text-emerald-700 font-mono tabular-nums">{matchMinute}'</div>
               </div>
             </div>
 
             {/* Scrollable Stage 2 Body */}
             <div ref={matchScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 custom-scrollbar relative z-10 flex flex-col items-center justify-start">
-              <div className="w-full max-w-md my-2 sm:my-auto rounded-[24px] border border-white/[0.08] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-[#12141c]/95">
+              <div className="w-full max-w-md my-2 sm:my-auto rounded-[24px] border border-[#E6E3DC] overflow-hidden shadow-[0_12px_32px_rgba(24,25,31,0.08)] bg-white">
                 {/* Scoreboard Header */}
-                <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02] gap-2">
+                <div className="px-4 py-2.5 border-b border-[#E6E3DC] flex items-center justify-between bg-[#FAF9F6] gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <i className={`fas ${theme.iconClass} text-xs ${theme.bannerAccentText} shrink-0`} />
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-white truncate">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#18191F] truncate">
                       {isTwoLegged ? `Playoff Tie · Leg ${currentLeg} of 2` : `${theme.badgeLabel.en} · Matchday 34`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {!isTwoLegged && (
-                      <div className="flex items-center gap-1 text-[10px] text-zinc-400 tabular-nums hidden sm:flex">
-                        <span>Rival {rivalName}: <strong className="text-white">{simultaneousRivalScore}</strong></span>
+                    {!isTwoLegged && !isDirectHeadToHead && (
+                      <div className="flex items-center gap-1 text-[10px] text-[#6B7280] tabular-nums hidden sm:flex">
+                        <span>Rival {rivalName}: <strong className="text-[#18191F]">{simultaneousRivalScore}</strong></span>
                       </div>
                     )}
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
                 </div>
 
                 {/* Simulating 90 Minutes Suspense Banner */}
-                <div className="bg-gradient-to-r from-amber-500/15 via-sky-500/15 to-emerald-500/15 border-b border-white/[0.08] px-4 py-2 flex items-center justify-between text-xs">
+                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
-                    <span className="font-bold uppercase tracking-wider text-amber-300 text-[10px] sm:text-xs">
+                    <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping shrink-0" />
+                    <span className="font-bold uppercase tracking-wider text-amber-900 text-[10px] sm:text-xs">
                       Simulating 90 Minutes...
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-300 tabular-nums">
+                  <span className="text-[10px] font-mono text-[#4B5563] tabular-nums">
                     {Math.round((matchMinute / 90) * 100)}%
                   </span>
                 </div>
 
                 {/* Match Progress Bar */}
-                <div className="w-full h-1 bg-white/[0.06] overflow-hidden">
+                <div className="w-full h-1.5 bg-[#EAE7E0] overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-amber-400 via-sky-400 to-emerald-400 transition-all duration-75"
+                    className="h-full bg-gradient-to-r from-amber-500 via-sky-500 to-emerald-500 transition-all duration-75"
                     style={{ width: `${Math.min(100, (matchMinute / 90) * 100)}%` }}
                   />
                 </div>
 
                 {/* Ticking Clock & Directive Bar */}
-                <div className="px-6 pt-4 pb-2 flex items-center justify-between border-b border-white/[0.05]">
+                <div className="px-6 pt-4 pb-2 flex items-center justify-between border-b border-[#E6E3DC]">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
                     </span>
-                    <span className="text-2xl font-bold tabular-nums tracking-wider text-white">
+                    <span className="text-2xl font-bold tabular-nums tracking-wider text-[#18191F]">
                       {matchMinute}'
                     </span>
                   </div>
                   {appliedDirective && (
-                    <div className="text-[10px] font-medium text-zinc-300 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 rounded-full truncate max-w-[190px]">
+                    <div className="text-[10px] font-medium text-[#4B5563] bg-[#F6F5F1] border border-[#E6E3DC] px-2.5 py-1 rounded-full truncate max-w-[190px]">
                       {appliedDirective}
                     </div>
                   )}
@@ -1589,13 +1644,13 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-1.5 sm:mb-2 drop-shadow-sm"
                       fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm sm:text-base rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5 sm:mb-2"
                     />
-                    <div className="text-xs font-bold text-white truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{userClub.name}</div>
-                    <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">OVR {playerOvr}</div>
+                    <div className="text-xs font-bold text-[#18191F] truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{userClub.name}</div>
+                    <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">OVR {playerOvr}</div>
                   </div>
 
                   {/* Score */}
                   <div className="shrink-0 px-1 sm:px-3 flex flex-col items-center justify-center min-w-[80px] sm:min-w-[110px]">
-                    <div className="bg-black/50 border border-white/10 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-center gap-1 sm:gap-2 shadow-inner">
+                    <div className="bg-[#10131C] border border-[#232736] rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-center gap-1 sm:gap-2 shadow-sm">
                       <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight min-w-[16px] sm:min-w-[22px] text-center ${theme.scoreboardScoreColor}`}>
                         {liveScore.me}
                       </span>
@@ -1605,7 +1660,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       </span>
                     </div>
                     {isTwoLegged && currentLeg === 2 && leg1Result && (
-                      <div className="mt-1 text-[10px] font-bold text-sky-300 bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 rounded-md text-center whitespace-nowrap">
+                      <div className="mt-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md text-center whitespace-nowrap">
                         Agg: {(leg1Result?.me || 0) + liveScore.me} – {(leg1Result?.opp || 0) + liveScore.opp}
                       </div>
                     )}
@@ -1622,15 +1677,15 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-1.5 sm:mb-2 drop-shadow-sm"
                       fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm sm:text-base rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5 sm:mb-2"
                     />
-                    <div className="text-xs font-bold text-white truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{oppClub.name}</div>
-                    <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">OVR {localOpponentOvr}</div>
+                    <div className="text-xs font-bold text-[#18191F] truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{oppClub.name}</div>
+                    <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">OVR {localOpponentOvr}</div>
                   </div>
                 </div>
 
                 {/* Live Match Ticker / Event */}
                 {recentEvent && (
-                  <div className="bg-white/[0.02] border-t border-white/[0.06] px-4 py-2.5 text-center text-xs font-medium text-zinc-300">
-                    <i className="fa-regular fa-futbol text-sky-400 mr-1.5" />
+                  <div className="bg-[#FAF9F6] border-t border-[#E6E3DC] px-4 py-2.5 text-center text-xs font-medium text-[#18191F]">
+                    <i className="fa-regular fa-futbol text-sky-600 mr-1.5" />
                     {recentEvent}
                   </div>
                 )}
@@ -1638,23 +1693,35 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
               {/* Match Stakes Panel: On Mobile, streamlined 1-line live status pill; on desktop, full matrix */}
               <div className="mt-3 sm:mt-4 w-full max-w-md">
-                <div className="sm:hidden px-3.5 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-center shadow-sm">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="sm:hidden px-3.5 py-2.5 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] text-center shadow-sm">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                     <span>
-                      {ddType === 'title' ? (
-                        liveScore.me > liveScore.opp ? 'LIVE STANDING: #1 (CHAMPIONS 🏆)' :
-                        liveScore.me === liveScore.opp ? 'LIVE STANDING: LEVEL / TITLE ON GD' :
-                        'LIVE STANDING: #2 (RUNNER-UP)'
-                      ) : isPlayoff ? (
-                        (isTwoLegged && currentLeg === 2 ? ((leg1Result?.me || 0) + liveScore.me > (leg1Result?.opp || 0) + liveScore.opp) : liveScore.me > liveScore.opp) ? 'LIVE STATUS: PROMOTED (AGGREGATE LEAD)' :
-                        (isTwoLegged && currentLeg === 2 ? ((leg1Result?.me || 0) + liveScore.me === (leg1Result?.opp || 0) + liveScore.opp) : liveScore.me === liveScore.opp) ? 'LIVE STATUS: LEVEL ON AGGREGATE' :
-                        'LIVE STATUS: TRAILING ON AGGREGATE'
-                      ) : (
-                        (isTwoLegged && currentLeg === 2 ? ((leg1Result?.me || 0) + liveScore.me > (leg1Result?.opp || 0) + liveScore.opp) : liveScore.me > liveScore.opp) ? 'LIVE STATUS: SURVIVAL SECURED (SAFE)' :
-                        (isTwoLegged && currentLeg === 2 ? ((leg1Result?.me || 0) + liveScore.me === (leg1Result?.opp || 0) + liveScore.opp) : liveScore.me === liveScore.opp) ? 'LIVE STATUS: SURVIVAL ON THE WIRE' :
-                        'LIVE STATUS: RELEGATION DANGER ZONE'
-                      )}
+                      {(() => {
+                        const aggMe = isTwoLegged && currentLeg === 2 ? (leg1Result?.me || 0) + liveScore.me : liveScore.me;
+                        const aggOpp = isTwoLegged && currentLeg === 2 ? (leg1Result?.opp || 0) + liveScore.opp : liveScore.opp;
+                        const drawWins = userPts > rivalPts || (userPts === rivalPts && userGd >= rivalGd);
+                        if (ddType === 'title') {
+                          if (liveScore.me > liveScore.opp) return 'LIVE STANDING: #1 (CHAMPIONS 🏆)';
+                          if (liveScore.me === liveScore.opp) return drawWins ? 'LIVE STANDING: #1 ON TIEBREAK 🏆' : 'LIVE STANDING: #2 (NEED GOAL)';
+                          return 'LIVE STANDING: #2 (RUNNER-UP)';
+                        }
+                        if (isPlayoff) {
+                          if (aggMe > aggOpp) return 'LIVE STATUS: PROMOTED (AGGREGATE LEAD)';
+                          if (aggMe === aggOpp) return 'LIVE STATUS: LEVEL ON AGGREGATE';
+                          return 'LIVE STATUS: TRAILING ON AGGREGATE';
+                        }
+                        if (isTwoLegged) {
+                          if (aggMe > aggOpp) return 'LIVE STATUS: SURVIVAL DEFENDED (AGG LEAD)';
+                          if (aggMe === aggOpp) return 'LIVE STATUS: LEVEL ON AGGREGATE';
+                          return 'LIVE STATUS: TRAILING ON AGGREGATE';
+                        }
+                        if (liveScore.me > liveScore.opp || (liveScore.me === liveScore.opp && drawWins)) {
+                          return 'LIVE STATUS: SURVIVAL SECURED (SAFE)';
+                        }
+                        if (liveScore.me === liveScore.opp) return 'LIVE STATUS: SURVIVAL ON THE WIRE';
+                        return 'LIVE STATUS: RELEGATION DANGER ZONE';
+                      })()}
                     </span>
                   </div>
                 </div>
@@ -1672,36 +1739,38 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         {stage === 'leg1_summary' && leg1Result && (
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Header */}
-            <div className="shrink-0 relative z-20 border-b border-white/[0.08] bg-[#12141c]/90 backdrop-blur-md px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-3 text-left">
+            <div className="shrink-0 relative z-20 border-b border-[#E6E3DC] bg-white px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-3 text-left">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-emerald-500/25 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] shrink-0">
+                <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xl shadow-sm shrink-0">
                   <i className="fa-solid fa-arrow-trend-up"></i>
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
-                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-sky-300 bg-sky-500/10 border border-sky-400/20 px-2 sm:px-2.5 py-0.5 rounded-full">
+                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-sky-800 bg-sky-50 border border-sky-200 px-2 sm:px-2.5 py-0.5 rounded-full">
                       Leg 1 of 2 Complete
                     </span>
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
-                  <h2 className="text-base sm:text-2xl font-bold text-white tracking-tight leading-tight">
+                  <h2 className="text-base sm:text-2xl font-bold text-[#18191F] tracking-tight leading-tight">
                     Playoff · First Leg Whistle
                   </h2>
-                  <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-[#6B7280] mt-0.5">
                     Halfway through the series. Review the first leg score and set your tactics for the home return leg.
                   </p>
                 </div>
               </div>
-              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 text-center shrink-0">
-                <div className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">Leg 1 Score</div>
-                <div className="text-sm font-bold text-white font-mono">{(leg1Result?.score || '0-0').replace('-', ' – ')}</div>
+              <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-xl px-3 py-1.5 text-center shrink-0">
+                <div className="text-[9px] text-[#6B7280] uppercase tracking-wider font-semibold">Leg 1 Score</div>
+                <div className="text-sm font-bold text-[#18191F] font-mono tabular-nums">{(leg1Result?.score || '0-0').replace('-', ' – ')}</div>
               </div>
             </div>
 
             {/* Body */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 custom-scrollbar relative z-10 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-full max-w-md bg-white/[0.03] border border-white/[0.08] rounded-3xl p-5 sm:p-6 shadow-2xl">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-4">
+              <div className="w-full max-w-md bg-[#F6F5F1] border border-[#E6E3DC] rounded-3xl p-5 sm:p-6 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-4">
                   First Leg Result (Away)
                 </div>
                 <div className="grid grid-cols-7 items-center mb-5">
@@ -1715,11 +1784,11 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       isModActive={isModActive}
                       className="w-14 h-14 object-contain mb-2 drop-shadow-sm"
                     />
-                    <div className="text-xs sm:text-sm font-bold text-white truncate max-w-[120px] py-0.5 leading-normal">{userClub.name}</div>
+                    <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[120px] py-0.5 leading-normal">{userClub.name}</div>
                   </div>
 
                   <div className="col-span-1 flex flex-col items-center justify-center">
-                    <div className="text-2xl sm:text-3xl font-black text-amber-300 font-mono tabular-nums bg-black/40 px-3 py-1.5 rounded-2xl border border-white/10">
+                    <div className="text-2xl sm:text-3xl font-black text-amber-300 font-mono tabular-nums bg-[#10131C] px-3 py-1.5 rounded-2xl border border-[#232736] whitespace-nowrap">
                       {leg1Result.me} – {leg1Result.opp}
                     </div>
                   </div>
@@ -1734,23 +1803,23 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       isModActive={isModActive}
                       className="w-14 h-14 object-contain mb-2 drop-shadow-sm"
                     />
-                    <div className="text-xs sm:text-sm font-bold text-white truncate max-w-[120px] py-0.5 leading-normal">{oppClub.name}</div>
+                    <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[120px] py-0.5 leading-normal">{oppClub.name}</div>
                   </div>
                 </div>
 
                 {/* Aggregate Status Box */}
-                <div className="bg-black/40 border border-white/10 rounded-2xl p-3.5 mb-5 text-center">
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">
+                <div className="bg-white border border-[#E6E3DC] rounded-2xl p-3.5 mb-5 text-center">
+                  <div className="text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold">
                     Current Aggregate Status
                   </div>
-                  <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">
+                  <div className="text-base sm:text-lg font-bold text-emerald-700 mt-0.5">
                     {leg1Result.me > leg1Result.opp
                       ? `Advantage ${userClub.name} (+${leg1Result.me - leg1Result.opp} Agg)`
                       : leg1Result.me === leg1Result.opp
                       ? 'All Square on Aggregate (0-0)'
                       : `Deficit to Overturn (-${leg1Result.opp - leg1Result.me} Agg)`}
                   </div>
-                  <div className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                  <div className="text-xs text-[#4B5563] mt-1 leading-relaxed">
                     {leg1Result.me > leg1Result.opp
                       ? `Crucial road advantage! A home victory or draw in Leg 2 seals promotion.`
                       : leg1Result.me === leg1Result.opp
@@ -1762,7 +1831,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                 {/* Next Step CTA */}
                 <button
                   onClick={handleProceedToLeg2}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-black font-bold text-sm sm:text-base tracking-wide transition-all shadow-lg shadow-sky-500/20 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-6 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold text-sm sm:text-base tracking-wide transition-all shadow-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>Proceed to Leg 2 (Home Decider) · Set Tactics</span>
                   <i className="fa-solid fa-arrow-right" />
@@ -1778,21 +1847,21 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
         {stage === 'result' && matchResult && (
           <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Pinned Stage 3 Header */}
-            <div className="shrink-0 relative z-20 border-b border-white/[0.08] bg-[#12141c]/90 backdrop-blur-md px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3 text-left">
+            <div className="shrink-0 relative z-20 border-b border-[#E6E3DC] bg-white px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3 text-left">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div className="relative shrink-0">
                   {ddType === 'title' ? (
                     <PrestigeTrophy
                       type={!didWinDuel && gameState.club.tier > 1 ? 'promotion' : ddType}
                       size={38}
-                      className="drop-shadow-lg"
+                      className="drop-shadow-sm"
                     />
                   ) : isPlayoff ? (
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/25 to-emerald-500/25 border border-cyan-400/40 flex items-center justify-center text-cyan-300 text-lg shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-lg shadow-sm">
                       <i className="fa-solid fa-arrow-trend-up"></i>
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 text-lg">
+                    <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700 text-lg">
                       <i className="fa-solid fa-shield-halved"></i>
                     </div>
                   )}
@@ -1802,12 +1871,14 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                     <span className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-full ${theme.tagPillBg}`}>
                       {theme.badgeLabel.en}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-400/20 px-2 sm:px-2.5 py-0.5 rounded-full">
+                    <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-2 sm:px-2.5 py-0.5 rounded-full">
                       Full Time · Season Finale
                     </span>
-                    <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
-                  <h2 className="text-base sm:text-xl font-bold text-white tracking-tight leading-tight">
+                  <h2 className="text-sm sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
                     {didWinDuel 
                       ? (ddType === 'title' 
                           ? 'Champions of the League!' 
@@ -1826,7 +1897,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
               </div>
 
               {/* Final Score Badge */}
-              <div className="bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-center shrink-0">
+              <div className="bg-[#10131C] border border-[#232736] rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-center shrink-0">
                 <div className="text-[9px] sm:text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Final Score</div>
                 <div className="text-sm sm:text-base font-bold text-amber-300 font-mono tabular-nums">{(matchResult?.score || '0-0').replace('-', '–')}</div>
               </div>
@@ -1841,32 +1912,32 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                   <PrestigeTrophy
                     type={!didWinDuel && gameState.club.tier > 1 ? 'promotion' : ddType}
                     size={Math.round(theme.trophyHeight * 1.1)}
-                    className="animate-pulse drop-shadow-2xl"
+                    className="animate-pulse drop-shadow-md"
                   />
                 </div>
               ) : isPlayoff ? (
                 <div className="mb-4 flex flex-col items-center">
-                  <div className={`w-24 h-24 rounded-3xl border flex items-center justify-center text-4xl shadow-2xl transition-all duration-500 ${
+                  <div className={`w-24 h-24 rounded-3xl border flex items-center justify-center text-4xl shadow-sm transition-all duration-500 ${
                     didWinDuel
-                      ? 'bg-gradient-to-br from-cyan-500/25 via-emerald-500/20 to-cyan-500/25 border-cyan-400/50 text-cyan-300 shadow-[0_0_50px_rgba(6,182,212,0.4)] animate-bounce'
-                      : 'bg-white/[0.04] border-white/[0.1] text-zinc-400'
+                      ? 'bg-sky-50 border-sky-200 text-sky-700 animate-bounce'
+                      : 'bg-[#F6F5F1] border-[#E6E3DC] text-[#6B7280]'
                   }`}>
                     <i className={`fa-solid ${didWinDuel ? 'fa-arrow-trend-up' : 'fa-xmark'}`} />
                   </div>
-                  <div className="mt-2 text-xs font-bold uppercase tracking-widest text-cyan-300">
+                  <div className="mt-2 text-xs font-bold uppercase tracking-widest text-sky-700">
                     {didWinDuel ? 'Direct Promotion Secured · #3 Playoff Winner' : 'Promotion Playoff Finalist'}
                   </div>
                 </div>
               ) : (
                 <div className="mb-4 flex flex-col items-center">
-                  <div className={`w-24 h-24 rounded-3xl border flex items-center justify-center text-4xl shadow-2xl transition-all duration-500 ${
+                  <div className={`w-24 h-24 rounded-3xl border flex items-center justify-center text-4xl shadow-sm transition-all duration-500 ${
                     didWinDuel
-                      ? 'bg-gradient-to-br from-emerald-500/25 via-sky-500/20 to-emerald-500/25 border-emerald-400/50 text-emerald-300 shadow-[0_0_50px_rgba(16,185,129,0.4)]'
-                      : 'bg-gradient-to-br from-rose-500/25 via-red-500/20 to-rose-500/25 border-rose-400/50 text-rose-300 shadow-[0_0_50px_rgba(244,63,94,0.4)] animate-pulse'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse'
                   }`}>
                     <i className={`fa-solid ${didWinDuel ? 'fa-shield-halved' : 'fa-arrow-trend-down'}`} />
                   </div>
-                  <div className="mt-2 text-xs font-bold uppercase tracking-widest text-zinc-300">
+                  <div className="mt-2 text-xs font-bold uppercase tracking-widest text-[#4B5563]">
                     {didWinDuel 
                       ? 'Survival Secured' 
                       : (isBottomTier ? 'Dismissal Zone Confirmed' : 'Relegation Confirmed')}
@@ -1876,17 +1947,19 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
               {/* Official Broadcast Branding - always active for Decision Day presentation */}
               <div className="flex items-center justify-center gap-2 mb-2">
-                <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
-                <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-md">
+                <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                  <BroadcastBadge country={gameState.club.country} competitionId={ddType} isModActive={isModActive} tier={gameState.club.tier} />
+                </div>
+                <span className="text-[10px] font-bold tracking-widest text-[#4B5563] uppercase bg-[#F6F5F1] border border-[#E6E3DC] px-2 py-0.5 rounded-md">
                   Official Broadcast
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-[#6B7280] mb-1 tabular-nums">
                 <span>{(matchResult?.score || '0-0').replace('-', ' – ')} Full Time</span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-bold text-white uppercase tracking-tight mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#18191F] uppercase tracking-tight mb-2">
                 {didWinDuel 
                   ? (ddType === 'title' 
                       ? 'CHAMPIONS OF THE LEAGUE!' 
@@ -1902,7 +1975,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                   : 'FINAL DAY HEARTBREAK'}
               </h2>
 
-              <p className="text-sm text-zinc-300 max-w-md mb-4 font-normal leading-relaxed">
+              <p className="text-sm text-[#4B5563] max-w-md mb-4 font-normal leading-relaxed">
                 {didWinDuel
                   ? (ddType === 'title'
                       ? (matchResult?.draw
@@ -1937,32 +2010,32 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                 <div className="pt-2 pb-4 shrink-0 w-full flex justify-center">
                   <button
                     onClick={() => {
-                      let finalUserRank = 1;
-                      const wonMatch = !!matchResult?.won;
-                      const drawMatch = !!matchResult?.draw;
-                      if (ddType === 'title') {
-                        finalUserRank = didWinDuel ? 1 : 2;
-                      } else if (isPlayoff) {
-                        finalUserRank = didWinDuel ? 3 : (userPos || 4);
-                      } else if (isRelegation) {
-                        finalUserRank = didWinDuel ? (isCrossTierPlayoff ? 16 : Math.min(15, userPos ? Math.max(1, userPos - 1) : 15)) : (isBottomTier ? 18 : 16);
-                      }
-                      const isPostSeasonPlayoff = Boolean(isPlayoff || isCrossTierPlayoff);
-                      const deltaPts = isPostSeasonPlayoff ? 0 : (wonMatch ? 3 : drawMatch ? 1 : 0);
-                      const finalPts = userPts + deltaPts;
-                      const isShootout = !!(matchResult?.score && matchResult.score.includes('pens'));
-                      const deltaGd = (isPostSeasonPlayoff || isShootout)
-                        ? 0
-                        : (wonMatch ? Math.max(1, liveScore.me - liveScore.opp) : drawMatch ? 0 : Math.min(-1, liveScore.me - liveScore.opp));
-                      const finalGd = userGd + deltaGd;
+                      const fallbackOutcome = resolveDecisionDayOutcome({
+                        ddType,
+                        isCrossTierPlayoff,
+                        isBottomTier,
+                        userPreGamePts: userPts,
+                        userPreGameGd: userGd,
+                        rivalPreGamePts: rivalPts,
+                        rivalPreGameGd: rivalGd,
+                        rivalName,
+                        opponentName: oppClub.name,
+                        wonMatch: Boolean(matchResult?.won),
+                        drawMatch: Boolean(matchResult?.draw),
+                        userGoals: liveScore.me,
+                        oppGoals: liveScore.opp,
+                        isShootout: Boolean(matchResult?.score && matchResult.score.includes('pens')),
+                        regularSeasonPos: userPos,
+                      });
+                      const out = resolvedOutcome || fallbackOutcome;
                       handleResolve({
-                        won: isTwoLegged ? didWinDuel : wonMatch,
-                        draw: drawMatch,
-                        userRank: finalUserRank,
-                        finalPts: finalPts,
-                        finalGd: finalGd,
+                        won: isTwoLegged ? out.userWonDuel : Boolean(matchResult?.won),
+                        draw: Boolean(matchResult?.draw),
+                        userRank: out.finalUserRank,
+                        finalPts: out.userFinalPts,
+                        finalGd: out.userFinalGd,
                         score: matchResult?.score || `${liveScore.me}-${liveScore.opp}`,
-                        choice: decisionChoice
+                        choice: decisionChoice,
                       });
                     }}
                     className={`px-8 sm:px-10 py-3 sm:py-3.5 rounded-2xl font-semibold text-sm uppercase tracking-wider transition-all cursor-pointer shadow-sm ${theme.primaryBtnClass}`}

@@ -4,7 +4,7 @@ import { getTrophyImage } from '../utils/trophyHelpers';
 import { motion, animate } from 'motion/react';
 import confetti from 'canvas-confetti';
 import * as htmlToImage from 'html-to-image';
-import { Club, GameState, Language, TrophiesObj, UniverseMovement } from '../types';
+import { Club, GameState, Language, PressureSeasonVerdict, TrophiesObj, UniverseMovement } from '../types';
 import { getLeagueInfo, getDomesticCupInfo, TOURNAMENT_LOGOS, formatMoney, isReserveClub, getMinAllowedTierForReserve, getLeagueMaxAttendance, getLeagueScaledVal, getMaxTier, isCanadianMLSClub } from '../data/gameConstants';
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
@@ -12,6 +12,7 @@ import { REAL_CLUB_ALIASES, simplifyClubName } from '../engine/moddingEngine';
 import { PrestigeTrophy } from './PrestigeTrophy';
 import { getAllUniverseMovements, getHeadlineCategory, isMajorUniverseHeadline } from '../utils/universeMovements';
 import { ChampionsAlmanacView, TrophyLeadersChartView } from './HistoryAndAlmanacViews';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface SeasonFinishModalProps {
   state: GameState;
@@ -62,6 +63,7 @@ interface SeasonFinishModalProps {
     isSackedRelegation?: boolean;
     isSacked?: boolean;
     pointsDeducted?: number;
+    pressureVerdict?: PressureSeasonVerdict | null;
   };
   lang?: Language;
   onClose: () => void;
@@ -158,6 +160,25 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
   const country = state.club.country || 'GER';
   const league = getLeagueInfo(seasonData.tier, country);
+  const effectiveModActive = isModActive !== undefined
+    ? isModActive
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
+  const resolvedHeroClub = useMemo(() => resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: seasonData.clubName || state.club.name || 'Club',
+      country,
+      color: seasonData.clubColor || state.club.color,
+      logo: seasonData.clubLogo || state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    effectiveModActive,
+    clubsDb
+  ), [state.club.id, state.club.name, state.club.color, state.club.logo, state.club.fallbackLogo, seasonData.clubName, seasonData.clubColor, seasonData.clubLogo, country, effectiveModActive, clubsDb]);
+  const displayClubName = resolvedHeroClub.name || seasonData.clubName || state.club.name;
+  const displayClubColor = resolvedHeroClub.color || seasonData.clubColor || state.club.color;
+  const displayClubLogo = resolvedHeroClub.logo;
+  const displayClubFallbackLogo = resolvedHeroClub.fallbackLogo;
   const nextTier = seasonData.nextTier !== undefined
     ? seasonData.nextTier
     : seasonData.nextLeague !== undefined
@@ -240,7 +261,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.repeat && !isDownloading && !hasClosedRef.current) {
-        if (typeof document !== 'undefined' && document.querySelector('[data-wc-modal="true"]')) {
+        if (typeof document !== 'undefined' && (document.querySelector('[data-wc-modal="true"]') || document.querySelector('[data-pressure-modal="true"]'))) {
           return;
         }
         const target = e.target as HTMLElement | null;
@@ -394,8 +415,18 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   const superVillainClub = useMemo(() => {
     const targetId = rivalChallengerEvent?.clubId || null;
     if (!targetId) return null;
-    return (clubsDb || ALL_CLUBS).find(c => c.id === targetId) || null;
-  }, [rivalChallengerEvent, clubsDb]);
+    const raw = (clubsDb || ALL_CLUBS).find(c => c.id === targetId || String(c.id) === String(targetId));
+    if (!raw) return null;
+    const res = resolveHistoryClubDisplay(raw, effectiveModActive, clubsDb);
+    return {
+      ...raw,
+      id: res.id ?? raw.id,
+      name: res.name || raw.name,
+      color: res.color || raw.color,
+      logo: res.logo,
+      fallbackLogo: res.fallbackLogo,
+    };
+  }, [rivalChallengerEvent, clubsDb, effectiveModActive]);
   const decayReasons = seasonData.decayReasons || [];
 
   const tableData = useMemo(() => {
@@ -435,16 +466,35 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     // 1. Direct retrieval from permanent season standings archive if available
     const archivedRows = state.seasonStandingsArchive?.[seasonData.year]?.[currentTier];
     if (archivedRows && archivedRows.length > 0) {
+      const resolvedRivalTargetName = seasonData.rivalData?.name
+        ? resolveHistoryClubDisplay({ name: seasonData.rivalData.name, country: currentCountry }, effectiveModActive, clubsDb).name
+        : undefined;
       const mappedRows = archivedRows.slice(0, targetTotalClubs).map((r: any, idx: number) => {
+        const resRow = resolveHistoryClubDisplay(
+          {
+            id: r.id,
+            name: r.name || 'Club',
+            country: r.country || currentCountry,
+            color: r.color,
+            logo: r.logo,
+            fallbackLogo: r.fallbackLogo,
+          },
+          effectiveModActive,
+          clubsDb
+        );
+        const resolvedRowName = resRow.name || r.name;
         const isUserClub = Boolean(
           r.isUser ||
           (seasonData.clubName && r.name?.toLowerCase().trim() === seasonData.clubName.toLowerCase().trim()) ||
-          (!seasonData.clubName && r.id === state.club.id)
+          (displayClubName && resolvedRowName?.toLowerCase().trim() === displayClubName.toLowerCase().trim()) ||
+          (r.id != null && state.club.id != null && String(r.id) === String(state.club.id))
         );
         if (isUserClub) {
           const rawGd = seasonData.gf - seasonData.ga;
           return {
             ...r,
+            name: displayClubName,
+            color: displayClubColor || resRow.color || r.color,
             isUser: true,
             pos: idx + 1,
             pts: seasonData.pts,
@@ -454,15 +504,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             gf: seasonData.gf,
             ga: seasonData.ga,
             gd: rawGd > 0 ? `+${rawGd}` : `${rawGd}`,
-            logo: isModActive ? (r.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
+            logo: effectiveModActive ? (resRow.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : displayClubLogo
           };
         }
         return {
           ...r,
+          name: resolvedRowName,
+          color: resRow.color || r.color,
           pos: idx + 1,
           isUser: false,
-          isRival: Boolean(!seasonData.rivalData?.isPaused && (r.isRival || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name))),
-          logo: isModActive ? (r.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
+          isRival: Boolean(!seasonData.rivalData?.isPaused && (r.isRival || (resolvedRivalTargetName && resolvedRowName === resolvedRivalTargetName) || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name))),
+          logo: effectiveModActive ? (resRow.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
         };
       });
       mappedRows.sort((a: any, b: any) => {
@@ -771,9 +823,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
         rows.push({
           pos: safeUserPos,
           id: state.club.id,
-          name: seasonData.clubName || state.club.name,
-          color: seasonData.clubColor || state.club.color,
-          logo: seasonData.clubLogo || (isModActive ? state.club.logo : undefined),
+          name: displayClubName,
+          color: displayClubColor,
+          logo: displayClubLogo,
           mp: 34,
           w: userWins,
           d: userDraws,
@@ -861,7 +913,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     });
 
     return rows;
-  }, [seasonData, country, league, clubsDb, state.club, state.currentRival, state.seasonStandingsArchive, isModActive]);
+  }, [seasonData, country, league, clubsDb, state.club, state.currentRival, state.seasonStandingsArchive, effectiveModActive, displayClubName, displayClubColor, displayClubLogo]);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -893,13 +945,13 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       });
       if (!blob) return;
 
-      const filename = `season-${seasonData.year}-${seasonData.clubName.replace(/\s+/g, '-').toLowerCase()}.png`;
+      const filename = `season-${seasonData.year}-${displayClubName.replace(/\s+/g, '-').toLowerCase()}.png`;
       const file = new File([blob], filename, { type: 'image/png' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
-            title: `${seasonData.clubName} Season ${seasonData.year}`,
+            title: `${displayClubName} Season ${seasonData.year}`,
             files: [file]
           });
           return;
@@ -1064,12 +1116,12 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 shadow-md p-2 relative">
                 <ClubLogo
-                  name={seasonData.clubName || state.club.name}
+                  name={displayClubName}
                   id={state.club.id}
-                  color={seasonData.clubColor || state.club.color}
-                  logo={state.club.logo}
-                  fallbackLogo={state.club.fallbackLogo}
-                  isModActive={isModActive}
+                  color={displayClubColor}
+                  logo={displayClubLogo}
+                  fallbackLogo={displayClubFallbackLogo}
+                  isModActive={effectiveModActive}
                   className="w-10 h-10 object-contain drop-shadow"
                   fallbackClassName="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-base"
                 />
@@ -1092,7 +1144,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                 </div>
 
                 <h1 className="text-xl sm:text-2xl font-bold text-white break-words leading-tight tracking-tight">
-                  {seasonData.clubName}
+                  {displayClubName}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -1284,12 +1336,12 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     </h2>
                     <p className="text-xs sm:text-sm text-yellow-100/90 mt-1 max-w-lg font-medium leading-relaxed">
                       {trophyList.length > 1
-                        ? `Historic multi-trophy triumph! ${seasonData.clubName} lifts ${trophyList.map(t => t.name).join(' & ')} in an extraordinary campaign!`
+                        ? `Historic multi-trophy triumph! ${displayClubName} lifts ${trophyList.map(t => t.name).join(' & ')} in an extraordinary campaign!`
                         : isChamp
-                        ? `Historic triumph! ${seasonData.clubName} lifts the championship trophy after dominating the season with ${seasonData.pts} points!`
+                        ? `Historic triumph! ${displayClubName} lifts the championship trophy after dominating the season with ${seasonData.pts} points!`
                         : ['cl', 'el', 'ecl', 'cwc'].includes(trophyList[0]?.type || '')
-                        ? `Historic continental triumph! ${seasonData.clubName} conquers the ${trophyList[0]?.name || 'continental cup'} to claim the crown!`
-                        : `Historic cup triumph! ${seasonData.clubName} lifts the ${trophyList[0]?.name || 'cup'} trophy!`
+                        ? `Historic continental triumph! ${displayClubName} conquers the ${trophyList[0]?.name || 'continental cup'} to claim the crown!`
+                        : `Historic cup triumph! ${displayClubName} lifts the ${trophyList[0]?.name || 'cup'} trophy!`
                       }
                     </p>
                   </div>
@@ -1518,6 +1570,65 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* ================= STRATEGIC INTELLIGENCE & DYNASTY RADAR ================= */}
                 <div className="space-y-3 pt-2">
+                  {/* Press & Board Pressure Verdict Card */}
+                  {seasonData.pressureVerdict && (() => {
+                    const pv = seasonData.pressureVerdict;
+                    const toneStyles =
+                      pv.tone === 'crisis'
+                        ? 'from-rose-950/60 via-red-950/35 to-rose-950/30 border-rose-500/40'
+                        : pv.tone === 'warning'
+                        ? 'from-orange-950/50 via-amber-950/30 to-orange-950/25 border-orange-500/35'
+                        : pv.tone === 'triumph'
+                        ? 'from-emerald-950/55 via-sky-950/35 to-emerald-950/25 border-emerald-400/40'
+                        : 'from-sky-950/45 via-slate-900/40 to-sky-950/25 border-sky-400/30';
+                    const badgeColor =
+                      pv.tone === 'crisis'
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/35'
+                        : pv.tone === 'warning'
+                        ? 'bg-orange-500/20 text-orange-300 border-orange-500/35'
+                        : pv.tone === 'triumph'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/35'
+                        : 'bg-sky-500/20 text-sky-300 border-sky-400/35';
+                    return (
+                      <div className={`bg-gradient-to-br ${toneStyles} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-3`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+                              {pv.badge}
+                            </span>
+                            <span className="text-[11px] font-semibold text-zinc-400 tabular-nums">
+                              Media Heat: {pv.pressureBefore}% ➔ {pv.pressureAfter}%
+                            </span>
+                          </div>
+                          {((pv.boardTrustBonus ?? 0) !== 0 || (pv.repBonus ?? 0) !== 0) && (
+                            <span className={`text-[11px] font-bold tabular-nums ${(pv.boardTrustBonus ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                              Trust {(pv.boardTrustBonus ?? 0) >= 0 ? `+${pv.boardTrustBonus}` : pv.boardTrustBonus}
+                              {(pv.repBonus ?? 0) !== 0 ? ` · Rep ${(pv.repBonus ?? 0) >= 0 ? `+${pv.repBonus}` : pv.repBonus}` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-bold text-white leading-snug">{pv.headline}</h4>
+                          <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{pv.summary}</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <div className="bg-black/25 border border-white/[0.06] rounded-xl p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">
+                              Press on Coaching Bench
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">{pv.coachVerdict}</p>
+                          </div>
+                          <div className="bg-black/25 border border-white/[0.06] rounded-xl p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-sky-300 mb-1">
+                              Press on Sporting Director
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">{pv.gmVerdict}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Head Coach Poached / Departed Alert */}
                   {seasonData.coachDepartureAlert && (
                     <div className="bg-gradient-to-r from-rose-950/50 via-amber-950/35 to-rose-950/40 border border-rose-500/40 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1584,18 +1695,14 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     <div className="bg-gradient-to-r from-purple-950/40 via-fuchsia-950/30 to-indigo-950/30 border border-fuchsia-500/40 rounded-2xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/30 flex items-center justify-center p-1.5 shrink-0">
-                          {superVillainClub.logo ? (
-                            <ClubLogo name={superVillainClub.name} club={superVillainClub} size={28} />
-                          ) : (
-                            <span className="text-base">⚔️</span>
-                          )}
+                          <ClubLogo name={superVillainClub.name} club={superVillainClub} isModActive={effectiveModActive} size={28} />
                         </div>
                         <div className="min-w-0">
                           <div className="text-[10px] uppercase font-bold text-fuchsia-300">
                             {rivalChallengerEvent.badge || 'League Challenger · Title Threat'}
                           </div>
                           <p className="text-xs text-zinc-300 mt-0.5 truncate sm:whitespace-normal">
-                            {rivalChallengerEvent.desc || `${superVillainClub.name} (${superVillainClub.baseOvr} OVR) has mounted a major title challenge for next season.`}
+                            {(effectiveModActive ? rivalChallengerEvent.desc : undefined) || `${superVillainClub.name} (${superVillainClub.baseOvr} OVR) has mounted a major title challenge for next season.`}
                           </p>
                         </div>
                       </div>
@@ -2640,17 +2747,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   <div className="bg-gradient-to-r from-purple-950/40 via-fuchsia-950/30 to-indigo-950/30 border border-fuchsia-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3.5">
                       <div className="w-11 h-11 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/30 flex items-center justify-center p-2 shrink-0">
-                        <ClubLogo name={superVillainClub.name} club={superVillainClub} size={32} />
+                        <ClubLogo name={superVillainClub.name} club={superVillainClub} isModActive={effectiveModActive} size={32} />
                       </div>
                       <div>
                         <div className="text-[10px] uppercase font-bold text-fuchsia-400 tracking-wider">
                           BREAKING LEAGUE HEADLINE · {rivalChallengerEvent.badge?.toUpperCase() || 'NEW TITLE CHALLENGER'}
                         </div>
                         <h4 className="text-sm sm:text-base font-bold text-white">
-                          {rivalChallengerEvent.headline || `${superVillainClub.name} Mounts Challenge Against ${state.club.name}`}
+                          {(effectiveModActive ? rivalChallengerEvent.headline : undefined) || `${superVillainClub.name} Mounts Challenge Against ${displayClubName}`}
                         </h4>
                         <p className="text-xs text-zinc-300 mt-0.5">
-                          {rivalChallengerEvent.desc || `A surging ${rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR domestic contender emerges in ${league.name}.`}
+                          {(effectiveModActive ? rivalChallengerEvent.desc : undefined) || `A surging ${rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR domestic contender emerges in ${league.name}.`}
                         </p>
                       </div>
                     </div>

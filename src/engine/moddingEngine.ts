@@ -839,7 +839,19 @@ export const REAL_CLUB_ALIASES: Record<string, number> = {
   'vitória de setúbal': 255,
   'setúbal': 255,
   'urawa red diamonds': 2004,
-  'urawa': 2004
+  'urawa': 2004,
+  'sd aucas': 857,
+  's.d. aucas': 857,
+  'sociedad deportiva aucas': 857,
+  'aucas': 857,
+  'quito oro': 857,
+  'c.f. os belenenses': 236,
+  'cf os belenenses': 236,
+  'os belenenses': 236,
+  'belenenses': 236,
+  'belém os': 236,
+  'sporting cp b': 237,
+  'lisboa verde b': 237
 };
 
 // Clean club name for comparison: strip punctuation, extra spaces, and common prefixes/suffixes

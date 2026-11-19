@@ -208,12 +208,16 @@ describe('Deep Financial Logic, Realism & Systems Audit', () => {
       const finNeutral = calculateClubFinancials({ club: baseClub, budget: 50000, stadiumPolicy: 'balanced' });
       const finCommercial = calculateClubFinancials({ club: baseClub, budget: 50000, stadiumPolicy: 'commercial' });
       const finUltras = calculateClubFinancials({ club: baseClub, budget: 50000, stadiumPolicy: 'ultras' });
+      const finUltrasWithVip = calculateClubFinancials({ club: baseClub, budget: 50000, stadiumPolicy: 'ultras', vipHospitality: true });
 
       // Commercial hospitality yield must exceed neutral by ~18%
       expect(finCommercial.matchdayIncomeK).toBeGreaterThan(finNeutral.matchdayIncomeK * 1.15);
 
       // Ultras capped standing terrace policy must yield slightly less (~5% lower)
       expect(finUltras.matchdayIncomeK).toBeLessThan(finNeutral.matchdayIncomeK);
+
+      // Fortress Curva + VIP HospitalitySuites together still earn the +18% VIP boost on top of ultras terrace
+      expect(finUltrasWithVip.matchdayIncomeK).toBeGreaterThan(finUltras.matchdayIncomeK * 1.15);
     });
 
     it('scales stadium maintenance costs per seat by tier and applies 2.5x surcharge for mega-stadiums (>120k)', () => {

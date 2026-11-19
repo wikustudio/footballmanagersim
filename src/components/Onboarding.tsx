@@ -41,12 +41,12 @@ export { normalizeAndValidateCustomDb };
 
 
 const getStyleColor = (style: string) => {
-  if (style === 'Total Football') return 'text-orange-500';
-  if (style === 'Gegenpressing') return 'text-yellow-400';
-  if (style === 'Tiki-Taka') return 'text-blue-500';
-  if (style === 'Defensive' || style === 'Catenaccio' || style === 'Park the Bus') return 'text-emerald-400';
-  if (style === 'Direct Counter' || style === 'Wing Play') return 'text-cyan-400';
-  return 'text-zinc-400'; // Default / Survival
+  if (style === 'Total Football') return 'text-orange-600';
+  if (style === 'Gegenpressing') return 'text-amber-600';
+  if (style === 'Tiki-Taka') return 'text-blue-600';
+  if (style === 'Defensive' || style === 'Catenaccio' || style === 'Park the Bus') return 'text-emerald-600';
+  if (style === 'Direct Counter' || style === 'Wing Play') return 'text-cyan-700';
+  return 'text-[#6B6A64]'; // Default / Survival
 };
 
 const getCoachQuote = (ovrBoost: number, isDe: boolean, coachId: string) => {
@@ -272,6 +272,42 @@ export const Onboarding: React.FC<OnboardingProps> = ({
   const t = (en: string, de?: string, _ignoredEs?: string) => tr(lang, en, de);
 
   const [dossierCoach, setDossierCoach] = useState<Coach | null>(null);
+  const hasAutostartedRef = useRef(false);
+
+  React.useEffect(() => {
+    if (
+      !hasAutostartedRef.current &&
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('autostart') === '1' &&
+      clubsDb.length > 0
+    ) {
+      hasAutostartedRef.current = true;
+      const params = new URLSearchParams(window.location.search);
+      const reqClubId = Number(params.get('clubId'));
+      const reqTier = Number(params.get('tier'));
+      const baseClub =
+        (reqClubId ? clubsDb.find((c) => Number(c.id) === reqClubId) : undefined) ||
+        clubsDb.find((c) => c.tier === 1 && (c.country || 'GER') === 'GER') ||
+        clubsDb[0];
+      const defaultClub = reqTier >= 1 && reqTier <= 11 ? { ...baseClub, tier: reqTier } : baseClub;
+      try {
+        sessionStorage.setItem(`fms_dismissed_boardroom_${defaultClub.id}`, 'true');
+      } catch {
+        // Ignore storage error
+      }
+      const pool = generateCoachMarket(defaultClub.tier || 1, defaultClub.country || 'GER', 50, 0);
+      onStartGame({
+        club: defaultClub,
+        managerName: 'ALEX',
+        startYear,
+        tactic: 'Total Football',
+        nationality: defaultClub.country || 'GER',
+        mode: 'standard',
+        archetype: 'balanced',
+        coach: pool[0],
+      });
+    }
+  }, [clubsDb, onStartGame, startYear]);
 
   React.useEffect(() => {
     if (step === 4 && selectedClubForArchetype) {
@@ -550,14 +586,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
           onClose={() => setShowModModal(false)}
         />
       )}
-      {/* Step Navigation Header (Apple Minimalist Glassmorphism Tracker) */}
+      {/* Step Navigation Header (Warm Editorial Progress Tracker) */}
       {step > 1 && (
         <div className="max-w-xl mx-auto mb-8 px-4">
           <div className="flex items-center justify-between relative">
             {/* Minimalist connecting track */}
-            <div className="absolute top-1/2 left-8 right-8 h-[1.5px] bg-white/[0.08] -translate-y-1/2 pointer-events-none overflow-hidden rounded-full">
+            <div className="absolute top-1/2 left-8 right-8 h-[2px] bg-[#E6E3DC] -translate-y-1/2 pointer-events-none overflow-hidden rounded-full">
               <div 
-                className="h-full bg-white/70 transition-all duration-500 rounded-full"
+                className="h-full bg-[#18191F] transition-all duration-500 rounded-full"
                 style={{
                   width: `${
                     step === 1
@@ -595,17 +631,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   disabled={!canNavigate}
                   className={`relative z-10 flex flex-col items-center gap-1.5 transition ${canNavigate ? 'cursor-pointer group' : 'cursor-default'}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all backdrop-blur-md ${
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     isCurrent
-                      ? 'bg-white text-zinc-950 shadow-lg shadow-black/30 scale-105'
+                      ? 'bg-[#18191F] text-white shadow-[0_6px_16px_rgba(24,25,31,0.18)] scale-105'
                       : isCompleted
-                      ? 'bg-white/10 text-white border border-white/20 group-hover:bg-white/15'
-                      : 'bg-white/[0.03] text-zinc-500 border border-white/[0.08]'
+                      ? 'bg-[#EAE7E0] text-[#18191F] border border-[#D4CFC4] group-hover:bg-[#E0DDD4]'
+                      : 'bg-white text-[#9A9890] border border-[#E6E3DC]'
                   }`}>
                     {isCompleted ? <i className="fa-solid fa-check text-[10px]"></i> : s.num}
                   </div>
-                  <span className={`text-[11px] font-medium tracking-wide transition-colors ${
-                    isCurrent ? 'text-white' : isCompleted ? 'text-zinc-400' : 'text-zinc-600'
+                  <span className={`text-[11px] font-semibold tracking-wide transition-colors ${
+                    isCurrent ? 'text-[#18191F]' : isCompleted ? 'text-[#52525B]' : 'text-[#9A9890]'
                   }`}>
                     {s.title}
                   </span>
@@ -620,7 +656,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
       {step === 1 && (
         <>
           <div className="max-w-2xl mx-auto text-center fade-in px-4 py-4 relative">
-          <div className="w-20 h-20 border border-white/10 rounded-3xl mx-auto overflow-hidden shadow-2xl mb-5 bg-white/[0.04] backdrop-blur-xl">
+          <div className="w-20 h-20 border border-[#E6E3DC] rounded-3xl mx-auto overflow-hidden shadow-[0_10px_28px_rgba(24,25,31,0.12)] mb-5 bg-[#18191F]">
             <img src="/assets/a_footballsim_logo.jpg" alt="Football Manager Sim Logo" className="w-full h-full object-cover" />
           </div>
 
@@ -628,17 +664,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
           <div className="flex items-center justify-center gap-2 mb-5 flex-wrap">
             <button 
               onClick={() => onShowAbout && onShowAbout()} 
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.1] shadow-sm cursor-pointer hover:bg-white/[0.12] transition group backdrop-blur-md"
-              title="v2.6: Global Champions Almanac, World Cup History (1930+), Era-Locked Coaches & Cup Realism (v2.3, v2.2 & v2.1 Archived)"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E6E3DC] shadow-[0_2px_10px_rgba(24,25,31,0.04)] cursor-pointer hover:bg-[#FAF9F6] hover:border-[#D4CFC4] transition group"
+              title="v3.0: 5-Tab 3D Broadcast Workspace, Live 3D Stadium & Campus, Unified Standings Engine & Coaching Hub (v2.6, v2.3 & v2.2 Archived)"
             >
               <span 
-                className="bg-white font-extrabold text-[10px] px-2 py-0.5 rounded-full tracking-wider shadow-sm"
-                style={{ color: '#09090b', backgroundColor: '#ffffff' }}
+                className="bg-[#18191F] text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full tracking-wider shadow-sm"
               >
-                v 2.6
+                v 3.0
               </span>
-              <span className="text-zinc-300 group-hover:text-white transition text-xs font-medium pr-1 tracking-wide flex items-center gap-1.5">
-                Champions Almanac & World Cup Lore v2.6 <span className="text-[10px] text-zinc-500 hidden sm:inline">(v2.3 Archived)</span> <i className="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover:opacity-100 transition"></i>
+              <span className="text-[#4B5563] group-hover:text-[#18191F] transition text-xs font-semibold pr-1 tracking-wide flex items-center gap-1.5">
+                3D Broadcast Workspace &amp; Live Stadium v3.0 <span className="text-[10px] text-[#9A9890] hidden sm:inline">(v2.6 Archived)</span> <i className="fa-solid fa-chevron-right text-[9px] opacity-60 group-hover:opacity-100 transition"></i>
               </span>
             </button>
 
@@ -646,23 +681,23 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             <button
               type="button"
               onClick={() => setShowModModal(true)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all shadow-sm backdrop-blur-md active:scale-95 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold cursor-pointer transition-all shadow-sm active:scale-95 ${
                 isModActive
-                  ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_14px_rgba(16,185,129,0.3)]'
-                  : 'border-white/[0.1] bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08]'
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  : 'border-[#E6E3DC] bg-white text-[#52525B] hover:text-[#18191F] hover:bg-[#FAF9F6]'
               }`}
               title="CR27_Footy Community Mod (Toggle & JSON Export/Import)"
             >
-              <i className="fa-solid fa-shield-halved text-xs text-sky-400"></i>
+              <i className="fa-solid fa-shield-halved text-xs text-sky-600"></i>
               <span className="text-[11px] font-bold">CR27</span>
-              <span className={`w-1.5 h-1.5 rounded-full ${isModActive ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-zinc-600'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${isModActive ? 'bg-emerald-500 animate-pulse' : 'bg-[#9A9890]'}`}></span>
             </button>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-semibold text-white tracking-tight mb-2.5">
+          <h1 className="text-3xl md:text-5xl font-bold text-[#18191F] tracking-tight mb-2.5">
             {t('Football Manager Sim', 'Fussball Manager Sim')}
           </h1>
-          <p className="text-sm md:text-base text-zinc-400 mb-8 font-normal max-w-lg mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-[#6B6A64] mb-8 font-normal max-w-lg mx-auto leading-relaxed">
             {t(
               'Lead a club over 35 seasons. Hire coaches, scout talent, and build a dynasty.',
               'Fuehre einen Verein ueber 35 Saisons. Stelle Trainer ein, scoute Talente und baue eine Dynastie auf.'
@@ -672,70 +707,70 @@ export const Onboarding: React.FC<OnboardingProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto fade-in-delay-1 text-center">
             <div
               onClick={() => setMode('standard')}
-              className={`p-6 rounded-3xl border transition-all cursor-pointer relative overflow-hidden flex flex-col items-center text-center justify-between min-h-[160px] backdrop-blur-2xl ${
+              className={`p-6 rounded-[24px] border transition-all cursor-pointer relative overflow-hidden flex flex-col items-center text-center justify-between min-h-[168px] ${
                 mode === 'standard'
-                  ? 'bg-white/[0.12] border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.18)] ring-1 ring-white/20'
-                  : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08] hover:border-white/[0.16]'
+                  ? 'bg-white border-[#18191F] shadow-[0_12px_32px_rgba(24,25,31,0.1)] ring-2 ring-[#18191F]/10'
+                  : 'bg-white/80 hover:bg-white border-[#E6E3DC] hover:border-[#CBC7BC] shadow-[0_4px_16px_rgba(24,25,31,0.04)]'
               }`}
             >
               {mode === 'standard' && (
-                <span className="absolute top-3.5 right-3.5 text-[10px] font-semibold uppercase tracking-wider bg-white text-zinc-950 px-2 py-0.5 rounded-full shadow-sm">
+                <span className="absolute top-3.5 right-3.5 text-[10px] font-bold uppercase tracking-wider bg-[#18191F] text-white px-2.5 py-0.5 rounded-full">
                   {isDe ? 'Aktiv' : 'Selected'}
                 </span>
               )}
               <div className="flex flex-col items-center w-full">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-3 shadow-inner ${
-                  mode === 'standard' ? 'bg-white text-zinc-950 font-bold' : 'bg-white/[0.06] text-white border border-white/[0.1]'
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-3 ${
+                  mode === 'standard' ? 'bg-[#18191F] text-white font-bold shadow-sm' : 'bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC]'
                 }`}>
                   <i className="fas fa-list"></i>
                 </div>
-                <div className="font-semibold text-white text-base mb-1">
+                <div className="font-bold text-[#18191F] text-base mb-1">
                   {t('Pick Any Club', 'Freie Auswahl')}
                 </div>
-                <div className="text-xs text-zinc-400 font-normal leading-relaxed max-w-[220px]">
+                <div className="text-xs text-[#6B6A64] font-normal leading-relaxed max-w-[220px]">
                   {t(
                     'Choose any of the 1,200+ clubs worldwide.',
                     'Waehle einen beliebigen von 1.200+ Vereinen weltweit.'
                   )}
                 </div>
               </div>
-              <div className="pt-3 mt-4 border-t border-white/[0.06] text-[11px] text-zinc-400 font-normal flex items-center justify-center gap-1.5 w-full">
-                <i className="fa-solid fa-earth-americas text-[10px] text-zinc-400"></i>
+              <div className="pt-3 mt-4 border-t border-[#EAE7E0] text-[11px] text-[#6B6A64] font-medium flex items-center justify-center gap-1.5 w-full">
+                <i className="fa-solid fa-earth-americas text-[10px] text-[#6B6A64]"></i>
                 <span>{isDe ? '1.202 Vereine weltweit' : '1,202 clubs worldwide'}</span>
               </div>
             </div>
 
             <div
               onClick={() => setMode('realistic')}
-              className={`p-6 rounded-3xl border transition-all cursor-pointer relative overflow-hidden flex flex-col items-center text-center justify-between min-h-[160px] backdrop-blur-2xl ${
+              className={`p-6 rounded-[24px] border transition-all cursor-pointer relative overflow-hidden flex flex-col items-center text-center justify-between min-h-[168px] ${
                 mode === 'realistic'
-                  ? 'bg-white/[0.12] border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.18)] ring-1 ring-white/20'
-                  : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.08] hover:border-white/[0.16]'
+                  ? 'bg-white border-[#18191F] shadow-[0_12px_32px_rgba(24,25,31,0.1)] ring-2 ring-[#18191F]/10'
+                  : 'bg-white/80 hover:bg-white border-[#E6E3DC] hover:border-[#CBC7BC] shadow-[0_4px_16px_rgba(24,25,31,0.04)]'
               }`}
             >
               {mode === 'realistic' && (
-                <span className="absolute top-3.5 right-3.5 text-[10px] font-semibold uppercase tracking-wider bg-white text-zinc-950 px-2 py-0.5 rounded-full shadow-sm">
+                <span className="absolute top-3.5 right-3.5 text-[10px] font-bold uppercase tracking-wider bg-[#18191F] text-white px-2.5 py-0.5 rounded-full">
                   {isDe ? 'Aktiv' : 'Selected'}
                 </span>
               )}
               <div className="flex flex-col items-center w-full">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-3 shadow-inner ${
-                  mode === 'realistic' ? 'bg-white text-zinc-950 font-bold' : 'bg-white/[0.06] text-white border border-white/[0.1]'
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-3 ${
+                  mode === 'realistic' ? 'bg-[#18191F] text-white font-bold shadow-sm' : 'bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC]'
                 }`}>
                   <i className="fas fa-bolt"></i>
                 </div>
-                <div className="font-semibold text-white text-base mb-1">
+                <div className="font-bold text-[#18191F] text-base mb-1">
                   {t('Realistic Career', 'Realistische Karriere')}
                 </div>
-                <div className="text-xs text-zinc-400 font-normal leading-relaxed max-w-[220px]">
+                <div className="text-xs text-[#6B6A64] font-normal leading-relaxed max-w-[220px]">
                   {t(
                     'Authentic job offers & board pressure.',
                     'Authentische Job-Angebote & Vorstandsdruck.'
                   )}
                 </div>
               </div>
-              <div className="pt-3 mt-4 border-t border-white/[0.06] text-[11px] text-zinc-400 font-normal flex items-center justify-center gap-1.5 w-full">
-                <i className="fa-solid fa-briefcase text-[10px] text-zinc-400"></i>
+              <div className="pt-3 mt-4 border-t border-[#EAE7E0] text-[11px] text-[#6B6A64] font-medium flex items-center justify-center gap-1.5 w-full">
+                <i className="fa-solid fa-briefcase text-[10px] text-[#6B6A64]"></i>
                 <span>{isDe ? 'Grassroots-Angebote' : 'Grassroots offers'}</span>
               </div>
             </div>
@@ -744,7 +779,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
           <div className="mt-8 fade-in-delay-2 pb-6 flex flex-col items-center justify-center gap-4">
             <button
               onClick={() => setStep(2)}
-              className="bg-white hover:bg-zinc-100 text-zinc-950 text-sm md:text-base font-semibold py-3.5 px-10 rounded-2xl transition active:scale-95 shadow-[0_4px_20px_rgba(255,255,255,0.15)] cursor-pointer min-w-[200px] flex items-center justify-center gap-2"
+              className="bg-[#18191F] hover:bg-[#2A2B33] text-white text-sm md:text-base font-semibold py-3.5 px-10 rounded-2xl transition active:scale-95 shadow-[0_8px_24px_rgba(24,25,31,0.18)] cursor-pointer min-w-[220px] flex items-center justify-center gap-2"
             >
               <span>{t('Continue', 'Weiter')}</span>
               <i className="fa-solid fa-arrow-right text-xs"></i>
@@ -752,16 +787,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             
             <button 
               onClick={onShowLeaderboard} 
-              className="text-xs font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto"
+              className="text-xs font-bold text-[#52525B] hover:text-[#18191F] transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto"
             >
-              <i className="fas fa-trophy text-xs text-amber-400"></i> {t('View Global Leaderboard', 'Globale Rangliste')}
+              <i className="fas fa-trophy text-xs text-amber-600"></i> {t('View Global Leaderboard', 'Globale Rangliste')}
             </button>
           </div>
         </div>
         </>
       )}
 
-      {/* STEP 2: Director Profile (Apple Minimalist Glassmorphism: 2A Heritage -> 2B Managerial DNA) */}
+      {/* STEP 2: Director Profile (Warm Editorial: 2A Heritage -> 2B Managerial DNA) */}
       {step === 2 && (
         <div className="max-w-5xl mx-auto px-2 sm:px-4 pb-12">
           <AnimatePresence mode="wait">
@@ -775,50 +810,48 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 transition={{ duration: 0.25 }}
                 className="fade-in"
               >
-                {/* Header Title with Apple Frosted Kicker */}
+                {/* Header Title with Editorial Kicker */}
                 <div className="text-center mb-8">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-zinc-300 text-[11px] font-medium tracking-wide mb-3 backdrop-blur-md">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-[#E6E3DC] text-[#52525B] text-[11px] font-semibold tracking-wide mb-3 shadow-sm">
                     <span>{t('Identity & Country', 'Identität & Land')}</span>
                   </div>
-                  <h1 className="text-3xl md:text-5xl font-semibold text-white tracking-tight">
+                  <h1 className="text-3xl md:text-5xl font-bold text-[#18191F] tracking-tight">
                     {t('Director Identity', 'Sportdirektor-Identität')}
                   </h1>
-                  <p className="text-xs sm:text-sm text-zinc-400 mt-2 max-w-lg mx-auto font-normal leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#6B6A64] mt-2 max-w-lg mx-auto font-normal leading-relaxed">
                     {t('Establish your managerial persona, inaugural era, and starting federation roots.', 'Definiere deinen Namen, deine Start-Ära und dein Heimatland.')}
                   </p>
                 </div>
 
-                {/* Mobile-First Bento Dual-Card Layout (Equal heights & balanced spacing) */}
+                {/* Mobile-First Bento Dual-Card Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-8 items-stretch">
                   {/* Card 1: Director Credentials (Left 6 Cols) */}
-                  <div className="lg:col-span-6 bg-[#161820]/75 rounded-3xl p-6 sm:p-7 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-2xl relative overflow-hidden flex flex-col justify-between text-left h-full">
-                    <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/[0.02] blur-3xl pointer-events-none" />
-
+                  <div className="lg:col-span-6 bg-white rounded-[24px] p-6 sm:p-7 border border-[#E6E3DC] shadow-[0_6px_24px_rgba(24,25,31,0.06)] relative overflow-hidden flex flex-col justify-between text-left h-full">
                     <div className="flex flex-col justify-between h-full space-y-6">
                       {/* Section Header */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-white/[0.08] text-white border border-white/[0.12] flex items-center justify-center text-xs shadow-inner">
+                          <div className="w-8 h-8 rounded-xl bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC] flex items-center justify-center text-xs">
                             <i className="fa-solid fa-user-tie"></i>
                           </div>
                           <div>
-                            <h2 className="text-xs sm:text-sm font-semibold text-white tracking-wide">
+                            <h2 className="text-xs sm:text-sm font-bold text-[#18191F] tracking-wide">
                               {t('Personal Dossier', 'Personal-Dossier')}
                             </h2>
-                            <span className="text-[11px] text-zinc-400 font-normal">
+                            <span className="text-[11px] text-[#6B6A64] font-normal">
                               {t('Name & Inception Era', 'Name & Startjahr')}
                             </span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-medium text-zinc-400 bg-white/[0.06] px-2.5 py-0.5 rounded-full border border-white/[0.1]">
+                        <span className="text-[10px] font-semibold text-[#52525B] bg-[#F6F5F1] px-2.5 py-0.5 rounded-full border border-[#E6E3DC]">
                           1 of 2
                         </span>
                       </div>
 
                       {/* Name Input Field */}
-                      <div className="mb-5">
+                      <div className="mb-4">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-medium text-zinc-400 tracking-wide uppercase">
+                          <span className="text-[11px] font-semibold text-[#6B6A64] tracking-wide uppercase">
                             {t('Sporting Director Name', 'Name des Direktors')}
                           </span>
                           <button
@@ -828,18 +861,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               setManagerName(name);
                               setNameError(false);
                             }}
-                            className="text-zinc-300 hover:text-white px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-[11px] font-medium flex items-center gap-1.5 transition active:scale-95 cursor-pointer backdrop-blur-md"
+                            className="text-[#18191F] hover:bg-[#EAE7E0] px-2.5 py-1 rounded-lg bg-[#F6F5F1] border border-[#E6E3DC] text-[11px] font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
                           >
-                            <i className="fa-solid fa-dice text-[11px] text-zinc-400"></i>
+                            <i className="fa-solid fa-dice text-[11px] text-[#6B6A64]"></i>
                             <span>{t('Random', 'Zufall')}</span>
                           </button>
                         </div>
 
                         <div className={`transition-all duration-200 p-3.5 rounded-2xl border ${
                           nameError
-                            ? 'bg-rose-950/20 border-rose-500/80 ring-2 ring-rose-500/20'
-                            : 'bg-white/[0.03] border-white/[0.1] hover:border-white/20 focus-within:border-white/40 focus-within:ring-2 focus-within:ring-white/10 focus-within:bg-white/[0.05]'
-                        } shadow-inner relative flex items-center backdrop-blur-md`}>
+                            ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-200'
+                            : 'bg-[#F6F5F1] border-[#E6E3DC] hover:border-[#CBC7BC] focus-within:border-[#18191F] focus-within:ring-2 focus-within:ring-[#18191F]/10 focus-within:bg-white'
+                        } relative flex items-center`}>
                           <input
                             ref={nameInputRef}
                             type="text"
@@ -849,20 +882,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               setNameError(false);
                             }}
                             placeholder={t('E.G. ALEX FERGUSON', 'Z.B. JÜRGEN KLOPP')}
-                            className="bg-transparent w-full text-white font-semibold text-base sm:text-lg outline-none uppercase placeholder-zinc-600 pr-7 tracking-wide font-sans"
+                            className="bg-transparent w-full text-[#18191F] font-semibold text-base sm:text-lg outline-none uppercase placeholder-[#9A9890] pr-7 tracking-wide font-sans"
                           />
                           {managerName && (
                             <button
                               type="button"
                               onClick={() => setManagerName('')}
-                              className="absolute right-3 text-zinc-500 hover:text-zinc-300 p-1 transition cursor-pointer"
+                              className="absolute right-3 text-[#9A9890] hover:text-[#18191F] p-1 transition cursor-pointer"
                             >
                               <i className="fa-solid fa-xmark text-xs"></i>
                             </button>
                           )}
                         </div>
                         {nameError && (
-                          <span className="text-[11px] font-medium text-rose-400 mt-1.5 inline-block">
+                          <span className="text-[11px] font-medium text-rose-600 mt-1.5 inline-block">
                             {t('Please enter a director name to proceed.', 'Bitte gib einen Namen ein, um fortzufahren.')}
                           </span>
                         )}
@@ -871,35 +904,35 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                       {/* Start Year Dial / Controls */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-medium text-zinc-400 tracking-wide uppercase">
+                          <span className="text-[11px] font-semibold text-[#6B6A64] tracking-wide uppercase">
                             {t('Inaugural Season Era', 'Start-Saison')}
                           </span>
-                          <span className="text-[11px] text-zinc-300 font-medium">
+                          <span className="text-[11px] text-[#52525B] font-semibold tabular-nums">
                             {startYear} Kickoff
                           </span>
                         </div>
 
-                        <div className="bg-white/[0.02] rounded-2xl p-3 border border-white/[0.08] flex items-center justify-between gap-3 shadow-inner">
+                        <div className="bg-[#F6F5F1] rounded-2xl p-3 border border-[#E6E3DC] flex items-center justify-between gap-3">
                           <button
                             type="button"
                             onClick={() => setStartYear((prev) => Math.max(1950, prev - 1))}
-                            className="w-10 h-10 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center transition border border-white/[0.1] active:scale-95 cursor-pointer shrink-0"
+                            className="w-10 h-10 rounded-xl bg-white hover:bg-[#FAF9F6] text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] active:scale-95 cursor-pointer shrink-0 shadow-sm"
                             title="-1 Year"
                           >
                             <i className="fa-solid fa-minus text-xs"></i>
                           </button>
                           <div className="flex flex-col items-center">
-                            <span className="text-2xl sm:text-3xl font-semibold text-white tracking-tight leading-none">
+                            <span className="text-2xl sm:text-3xl font-bold text-[#18191F] tracking-tight leading-none tabular-nums">
                               {startYear}
                             </span>
-                            <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider mt-1">
+                            <span className="text-[10px] font-semibold text-[#6B6A64] uppercase tracking-wider mt-1">
                               {startYear === currentYear ? t('Modern Era', 'Moderne Ära') : t('Historical Era', 'Historische Ära')}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => setStartYear((prev) => Math.min(currentYear, prev + 1))}
-                            className="w-10 h-10 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center transition border border-white/[0.1] active:scale-95 cursor-pointer shrink-0"
+                            className="w-10 h-10 rounded-xl bg-white hover:bg-[#FAF9F6] text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] active:scale-95 cursor-pointer shrink-0 shadow-sm"
                             title="+1 Year"
                           >
                             <i className="fa-solid fa-plus text-xs"></i>
@@ -913,10 +946,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               key={y}
                               type="button"
                               onClick={() => setStartYear(y)}
-                              className={`text-[11px] px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                              className={`text-[11px] px-2.5 py-1 rounded-lg transition cursor-pointer tabular-nums ${
                                 startYear === y
-                                  ? 'bg-white text-zinc-950 font-semibold shadow-sm'
-                                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] border border-transparent'
+                                  ? 'bg-[#18191F] text-white font-semibold shadow-sm'
+                                  : 'text-[#6B6A64] hover:text-[#18191F] hover:bg-[#F6F5F1] border border-transparent'
                               }`}
                             >
                               {y}
@@ -928,69 +961,67 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
 
                   {/* Card 2: Federation Roots & Starting Country (Right 6 Cols) */}
-                  <div className="lg:col-span-6 bg-[#161820]/75 rounded-3xl p-6 sm:p-7 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-2xl relative overflow-hidden flex flex-col justify-between text-left h-full">
-                    <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/[0.02] blur-3xl pointer-events-none" />
-
+                  <div className="lg:col-span-6 bg-white rounded-[24px] p-6 sm:p-7 border border-[#E6E3DC] shadow-[0_6px_24px_rgba(24,25,31,0.06)] relative overflow-hidden flex flex-col justify-between text-left h-full">
                     <div className="flex flex-col justify-between h-full space-y-4">
                       {/* Section Header */}
-                      <div className="flex items-center justify-between mb-3.5">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-white/[0.08] text-white border border-white/[0.12] flex items-center justify-center text-xs shadow-inner">
+                          <div className="w-8 h-8 rounded-xl bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC] flex items-center justify-center text-xs">
                             <i className="fa-solid fa-earth-americas"></i>
                           </div>
                           <div>
-                            <h2 className="text-xs sm:text-sm font-semibold text-white tracking-wide">
+                            <h2 className="text-xs sm:text-sm font-bold text-[#18191F] tracking-wide">
                               {t('Starting Country', 'Start-Land')}
                             </h2>
-                            <span className="text-[11px] text-zinc-400 font-normal">
+                            <span className="text-[11px] text-[#6B6A64] font-normal">
                               {t('Domestic Pyramid & Heritage', 'Ligensystem & Verband')}
                             </span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-medium text-zinc-400 bg-white/[0.06] px-2.5 py-0.5 rounded-full border border-white/[0.1]">
+                        <span className="text-[10px] font-semibold text-[#52525B] bg-[#F6F5F1] px-2.5 py-0.5 rounded-full border border-[#E6E3DC]">
                           {nationality}
                         </span>
                       </div>
 
                       {/* Selected Country Spotlight Banner */}
-                      <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] shadow-inner backdrop-blur-xl flex items-center justify-between mb-3">
+                      <div className="p-3 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl drop-shadow select-none">{COUNTRIES[nationality]?.flag || '🌍'}</span>
+                          <span className="text-2xl select-none">{COUNTRIES[nationality]?.flag || '🌍'}</span>
                           <div>
-                            <div className="text-sm font-semibold text-white flex items-center gap-2">
+                            <div className="text-sm font-bold text-[#18191F] flex items-center gap-2">
                               <span>{COUNTRIES[nationality]?.name || 'Germany'}</span>
-                              <span className="text-[10px] font-medium px-2 py-0.2 rounded-full bg-white/[0.1] text-white border border-white/[0.15]">
+                              <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-white text-[#18191F] border border-[#E6E3DC]">
                                 Active
                               </span>
                             </div>
-                            <div className="text-[11px] text-zinc-400 font-normal">
+                            <div className="text-[11px] text-[#6B6A64] font-normal">
                               {UEFA_COUNTRIES.includes(nationality) ? 'Europe' : (CONMEBOL_COUNTRIES.includes(nationality) || CONCACAF_COUNTRIES.includes(nationality)) ? 'Americas' : 'Asia-Pacific'} • Tier 1-{getMaxTier(nationality, clubsDb)} Leagues
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs text-zinc-300 font-semibold uppercase tracking-wider">
+                          <span className="text-xs text-[#52525B] font-bold uppercase tracking-wider">
                             {nationality}
                           </span>
                         </div>
                       </div>
 
                       {/* Quick Search & Filter Bar */}
-                      <div className="flex items-center gap-2 mb-2.5">
+                      <div className="flex items-center gap-2 mb-2">
                         <div className="relative flex-1">
-                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-[10px]"></i>
+                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A9890] text-[10px]"></i>
                           <input
                             type="text"
                             value={countrySearch}
                             onChange={(e) => setCountrySearch(e.target.value)}
                             placeholder={t(`Filter ${isModActive ? 34 : 21} countries...`, `${isModActive ? 34 : 21} Länder filtern...`)}
-                            className="w-full bg-white/[0.03] text-xs text-white pl-7 pr-2.5 py-1.5 rounded-xl border border-white/[0.08] focus:border-white/30 outline-none placeholder-zinc-500 transition font-normal backdrop-blur-md"
+                            className="w-full bg-[#F6F5F1] text-xs text-[#18191F] pl-7 pr-2.5 py-1.5 rounded-xl border border-[#E6E3DC] focus:border-[#18191F] focus:bg-white outline-none placeholder-[#9A9890] transition font-normal"
                           />
                           {countrySearch && (
                             <button
                               type="button"
                               onClick={() => setCountrySearch('')}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-xs"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#9A9890] hover:text-[#18191F] text-xs"
                             >
                               <i className="fa-solid fa-xmark"></i>
                             </button>
@@ -999,7 +1030,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                       </div>
 
                       {/* Continent Filter Segmented Control */}
-                      <div className="flex bg-black/30 p-1 rounded-xl border border-white/[0.08] mb-3 gap-1 shadow-inner backdrop-blur-md">
+                      <div className="flex bg-[#F6F5F1] p-1 rounded-xl border border-[#E6E3DC] mb-2 gap-1">
                         {(['ALL', 'EUROPE', 'AMERICAS', 'APAC'] as const).map((cont) => (
                           <button
                             key={cont}
@@ -1016,11 +1047,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                             }}
                             className={`flex-1 py-1 rounded-lg text-[10px] font-semibold tracking-wider transition-all cursor-pointer ${
                               continentFilter === cont
-                                ? 'bg-white/[0.15] text-white shadow-sm backdrop-blur-md border border-white/[0.12]'
-                                : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                                ? 'bg-[#18191F] text-white shadow-sm'
+                                : 'text-[#6B6A64] hover:text-[#18191F] hover:bg-white/60'
                             }`}
                           >
-                            {cont === 'ALL' ? (isDe ? 'All' : 'All') : cont === 'EUROPE' ? 'Europe' : cont === 'AMERICAS' ? 'Americas' : 'APAC'}
+                            {cont === 'ALL' ? 'All' : cont === 'EUROPE' ? 'Europe' : cont === 'AMERICAS' ? 'Americas' : 'APAC'}
                           </button>
                         ))}
                       </div>
@@ -1058,10 +1089,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                                   }
                                 }}
                                 disabled={!isActive}
-                                className={`min-w-[125px] sm:min-w-0 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-200 flex items-center justify-between shrink-0 backdrop-blur-md ${
+                                className={`min-w-[125px] sm:min-w-0 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all duration-200 flex items-center justify-between shrink-0 ${
                                   isSelected
-                                    ? 'bg-white text-zinc-950 font-semibold shadow-md'
-                                    : 'bg-white/[0.03] text-zinc-300 border border-white/[0.06] hover:border-white/20 hover:text-white hover:bg-white/[0.06]'
+                                    ? 'bg-[#18191F] text-white font-semibold shadow-sm'
+                                    : 'bg-[#F6F5F1] text-[#3F3F46] border border-[#E6E3DC] hover:border-[#18191F]/30 hover:bg-[#EFECE4]'
                                 } ${!isActive ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-95'}`}
                               >
                                 <span className="flex items-center gap-1.5 truncate">
@@ -1069,7 +1100,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                                   <span className="truncate">{COUNTRIES[key].name}</span>
                                 </span>
                                 {isSelected && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-950 shrink-0 ml-1"></span>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 ml-1"></span>
                                 )}
                               </button>
                             );
@@ -1079,12 +1110,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
                 </div>
 
-                {/* Sticky Mobile Action Bar (Apple Frosted Dock) */}
-                <div className="sticky bottom-0 z-40 bg-[#0c0d12]/80 backdrop-blur-2xl border-t border-white/[0.08] px-4 py-3 -mx-2 sm:mx-0 sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none sm:backdrop-blur-none flex items-center justify-center gap-3">
+                {/* Sticky Mobile Action Bar */}
+                <div className="sticky bottom-0 z-40 bg-[#F5F3EE]/95 backdrop-blur-md border-t border-[#E6E3DC] px-4 py-3 -mx-2 sm:mx-0 sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none sm:backdrop-blur-none flex items-center justify-center gap-3">
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white text-xs sm:text-sm font-medium py-3.5 px-6 rounded-2xl border border-white/[0.1] backdrop-blur-md transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
+                    className="bg-white hover:bg-[#FAF9F6] text-[#18191F] text-xs sm:text-sm font-semibold py-3.5 px-6 rounded-2xl border border-[#E6E3DC] transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
                   >
                     <i className="fa-solid fa-arrow-left text-xs"></i>
                     <span>{t('Back', 'Zurück')}</span>
@@ -1101,7 +1132,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                       setSubStep2('2B');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="bg-white hover:bg-zinc-100 text-zinc-950 text-xs sm:text-sm font-semibold tracking-wide py-3.5 px-8 sm:px-10 rounded-2xl transition-all duration-200 active:scale-95 shadow-[0_4px_20px_rgba(255,255,255,0.12)] cursor-pointer flex-1 sm:flex-none sm:min-w-[240px] flex items-center justify-center gap-2.5"
+                    className="bg-[#18191F] hover:bg-[#2A2B33] text-white text-xs sm:text-sm font-semibold tracking-wide py-3.5 px-8 sm:px-10 rounded-2xl transition-all duration-200 active:scale-95 shadow-[0_8px_24px_rgba(24,25,31,0.18)] cursor-pointer flex-1 sm:flex-none sm:min-w-[240px] flex items-center justify-center gap-2.5"
                   >
                     <span>{t('Continue to Managerial DNA', 'Weiter zur Manager-DNA')}</span>
                     <i className="fa-solid fa-arrow-right text-xs"></i>
@@ -1118,36 +1149,36 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 transition={{ duration: 0.25 }}
                 className="fade-in"
               >
-                {/* Header Title with Apple Frosted Kicker */}
+                {/* Header Title with Editorial Kicker */}
                 <div className="text-center mb-7">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-zinc-300 text-[11px] font-medium tracking-wide mb-3 backdrop-blur-md">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-[#E6E3DC] text-[#52525B] text-[11px] font-semibold tracking-wide mb-3 shadow-sm">
                     <span>{t('Career Path & Tactical Philosophy', 'Karrierepfad & Philosophie')}</span>
                   </div>
-                  <h1 className="text-3xl md:text-5xl font-semibold text-white tracking-tight">
+                  <h1 className="text-3xl md:text-5xl font-bold text-[#18191F] tracking-tight">
                     {t('Director Vision', 'Sportdirektor-Vision')}
                   </h1>
-                  <p className="text-xs sm:text-sm text-zinc-400 mt-2 max-w-xl mx-auto font-normal leading-relaxed">
+                  <p className="text-xs sm:text-sm text-[#6B6A64] mt-2 max-w-xl mx-auto font-normal leading-relaxed">
                     {t('Every great football project starts with an identity. Choose the story of your tenure.', 'Jedes erfolgreiche Vereinsprojekt beginnt mit einer klaren Vision. Wähle den Schwerpunkt deiner Ära.')}
                   </p>
 
-                  {/* Director Credentials Breadcrumb Pill (Unified Sans Typography) */}
-                  <div className="inline-flex items-center gap-2.5 mt-3 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-300 shadow-sm backdrop-blur-xl">
-                    <span className="text-white font-medium">
+                  {/* Director Credentials Breadcrumb Pill */}
+                  <div className="inline-flex items-center gap-2.5 mt-3 px-3.5 py-1.5 rounded-full bg-white border border-[#E6E3DC] text-xs text-[#52525B] shadow-sm">
+                    <span className="text-[#18191F] font-semibold">
                       {managerName.trim() || 'Director'}
                     </span>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-zinc-400 font-normal">
+                    <span className="text-[#D4CFC4]">•</span>
+                    <span className="text-[#6B6A64] font-normal tabular-nums">
                       {startYear}
                     </span>
-                    <span className="text-zinc-600">•</span>
-                    <span className="text-zinc-300 flex items-center gap-1.5 font-normal">
+                    <span className="text-[#D4CFC4]">•</span>
+                    <span className="text-[#3F3F46] flex items-center gap-1.5 font-medium">
                       <span>{COUNTRIES[nationality]?.flag}</span>
                       <span>{COUNTRIES[nationality]?.name}</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setSubStep2('2A')}
-                      className="ml-1 text-[11px] text-zinc-400 hover:text-white underline font-medium cursor-pointer"
+                      className="ml-1 text-[11px] text-[#18191F] hover:underline font-semibold cursor-pointer"
                     >
                       {t('Edit', 'Ändern')}
                     </button>
@@ -1220,68 +1251,62 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                             setArchetype(vision.id as any);
                             setTactic(vision.defaultTactic);
                           }}
-                          className={`p-5 rounded-3xl border text-left transition-all duration-300 cursor-pointer flex flex-col justify-between group active:scale-[0.98] relative overflow-hidden backdrop-blur-2xl ${
+                          className={`p-5 rounded-[24px] border text-left transition-all duration-300 cursor-pointer flex flex-col justify-between group active:scale-[0.98] relative overflow-hidden ${
                             isSelected
-                              ? 'bg-sky-500/[0.08] border-sky-400/50 ring-1 ring-sky-400/25 shadow-[0_8px_32px_rgba(56,189,248,0.14),inset_0_1px_0_0_rgba(125,211,252,0.2)] scale-[1.01]'
-                              : 'opacity-60 hover:opacity-100 bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.16]'
+                              ? 'bg-white border-[#18191F] ring-2 ring-[#18191F]/10 shadow-[0_12px_32px_rgba(24,25,31,0.1)] scale-[1.01]'
+                              : 'bg-white/80 hover:bg-white border-[#E6E3DC] hover:border-[#CBC7BC] shadow-[0_4px_16px_rgba(24,25,31,0.04)]'
                           }`}
                         >
                           <div>
-                            {/* Top row: Icon & Radio Checkmark */}
                             <div className="flex items-center justify-between mb-4">
-                              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm shadow-inner transition-colors ${
+                              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm transition-colors ${
                                 isSelected
-                                  ? 'bg-sky-500/20 border border-sky-400/30 text-sky-300'
-                                  : 'bg-white/[0.06] border border-white/[0.1] text-white'
+                                  ? 'bg-[#18191F] text-white shadow-sm'
+                                  : 'bg-[#F6F5F1] border border-[#E6E3DC] text-[#18191F]'
                               }`}>
                                 <i className={`fas ${vision.icon}`}></i>
                               </div>
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-all ${
                                 isSelected
-                                  ? 'bg-sky-400 text-zinc-950 font-bold shadow-sm'
-                                  : 'border border-white/20 group-hover:border-white/40'
+                                  ? 'bg-[#18191F] text-white font-bold shadow-sm'
+                                  : 'border border-[#CBC7BC] group-hover:border-[#18191F]'
                               }`}>
                                 {isSelected && <i className="fa-solid fa-check"></i>}
                               </div>
                             </div>
 
-                            {/* Badge */}
-                            <div className={`inline-block text-[10px] font-medium px-2.5 py-0.5 rounded-full mb-2 transition-colors ${
+                            <div className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full mb-2 transition-colors ${
                               isSelected
-                                ? 'bg-sky-500/15 text-sky-300 border border-sky-400/25'
-                                : 'bg-white/[0.04] text-zinc-400 border border-white/[0.06]'
+                                ? 'bg-sky-50 text-sky-800 border border-sky-200'
+                                : 'bg-[#F6F5F1] text-[#6B6A64] border border-[#E6E3DC]'
                             }`}>
                               {vision.badge}
                             </div>
 
-                            {/* Title */}
-                            <h3 className="font-semibold text-white text-base tracking-tight mb-2">
+                            <h3 className="font-bold text-[#18191F] text-base tracking-tight mb-2">
                               {vision.title}
                             </h3>
 
-                            {/* Narrative Story */}
-                            <p className="text-[12px] text-zinc-400 font-normal leading-relaxed mb-4">
+                            <p className="text-[12px] text-[#6B6A64] font-normal leading-relaxed mb-4">
                               {vision.story}
                             </p>
                           </div>
 
                           <div>
-                            {/* Key Advantage Pill */}
-                            <div className={`text-[11px] font-medium p-2.5 rounded-2xl border transition-colors leading-snug mb-3 ${
+                            <div className={`text-[11px] font-semibold p-2.5 rounded-2xl border transition-colors leading-snug mb-3 ${
                               isSelected
-                                ? 'bg-sky-500/10 text-sky-200 border-sky-400/20'
-                                : 'bg-white/[0.03] text-zinc-300 border-white/[0.06]'
+                                ? 'bg-[#F6F5F1] text-[#18191F] border-[#D4CFC4]'
+                                : 'bg-[#F6F5F1] text-[#52525B] border-[#EAE7E0]'
                             }`}>
-                              <i className="fa-solid fa-bolt text-[9px] mr-1.5 opacity-70"></i>
+                              <i className="fa-solid fa-bolt text-[9px] mr-1.5 text-amber-600"></i>
                               <span>{vision.advantage}</span>
                             </div>
 
-                            {/* Natural Tactic Indicator */}
-                            <div className="text-[11px] text-zinc-500 flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                              <span className="text-[10px] uppercase font-medium tracking-wider text-zinc-500">
+                            <div className="text-[11px] text-[#6B6A64] flex items-center justify-between pt-2 border-t border-[#EAE7E0]">
+                              <span className="text-[10px] uppercase font-semibold tracking-wider text-[#9A9890]">
                                 {t('Tactical Style', 'Spielstil')}
                               </span>
-                              <span className={`font-medium ${isSelected ? 'text-sky-300' : 'text-zinc-400'}`}>
+                              <span className={`font-semibold ${isSelected ? 'text-[#18191F]' : 'text-[#52525B]'}`}>
                                 {vision.tacticLabel}
                               </span>
                             </div>
@@ -1292,24 +1317,24 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
                 </div>
 
-                {/* Tactical Alignment Bar (Apple Glass Capsule with Progressive Disclosure) */}
-                <div className="bg-[#161820]/75 border border-white/[0.08] rounded-3xl p-4 sm:p-5 mb-8 backdrop-blur-2xl text-left shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+                {/* Tactical Alignment Bar */}
+                <div className="bg-white border border-[#E6E3DC] rounded-[24px] p-4 sm:p-5 mb-8 text-left shadow-[0_6px_24px_rgba(24,25,31,0.06)]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 text-sm shadow-inner shrink-0">
+                      <div className="w-10 h-10 rounded-2xl bg-[#18191F] text-white flex items-center justify-center text-sm shadow-sm shrink-0">
                         <i className={`fas ${PHILOSOPHIES[tactic]?.icon || 'fa-chess-board'}`}></i>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs uppercase font-medium text-zinc-400 tracking-wider">
+                          <span className="text-xs uppercase font-semibold text-[#6B6A64] tracking-wider">
                             {t('Tactical Philosophy', 'Taktische Ausrichtung')}
                           </span>
-                          <span className="text-[11px] font-semibold text-sky-300 bg-sky-500/15 px-2.5 py-0.5 rounded-full border border-sky-400/25">
+                          <span className="text-[11px] font-bold text-[#18191F] bg-[#F6F5F1] px-2.5 py-0.5 rounded-full border border-[#E6E3DC]">
                             {tactic}
                           </span>
                         </div>
-                        <p className="text-[12px] text-zinc-300 font-normal mt-0.5">
-                          {TACTIC_DETAILS[tactic]?.shortEthos || tactic} · <span className="text-sky-300/90">{TACTIC_DETAILS[tactic]?.shortPerk || ''}</span>
+                        <p className="text-[12px] text-[#52525B] font-normal mt-0.5">
+                          {TACTIC_DETAILS[tactic]?.shortEthos || tactic} · <span className="text-sky-700 font-semibold">{TACTIC_DETAILS[tactic]?.shortPerk || ''}</span>
                         </p>
                       </div>
                     </div>
@@ -1317,18 +1342,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCustomTactics(!showCustomTactics)}
-                      className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-medium text-zinc-300 hover:text-white transition cursor-pointer self-start sm:self-center flex items-center gap-1.5 backdrop-blur-md"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] text-xs font-semibold text-[#18191F] transition cursor-pointer self-start sm:self-center flex items-center gap-1.5"
                     >
-                      <i className="fa-solid fa-sliders text-[10px] text-sky-400"></i>
+                      <i className="fa-solid fa-sliders text-[10px] text-[#52525B]"></i>
                       <span>{showCustomTactics ? (isDe ? 'Schließen' : 'Close') : (isDe ? 'Spielstil anpassen' : 'Change Philosophy')}</span>
-                      <i className={`fa-solid ${showCustomTactics ? 'fa-chevron-up' : 'fa-chevron-down'} text-[9px] text-zinc-400`}></i>
+                      <i className={`fa-solid ${showCustomTactics ? 'fa-chevron-up' : 'fa-chevron-down'} text-[9px] text-[#6B6A64]`}></i>
                     </button>
                   </div>
 
                   {/* Expandable 5 Core Tactics Pills */}
                   {showCustomTactics && (
-                    <div className="mt-4 pt-4 border-t border-white/[0.06] fade-in">
-                      <p className="text-[11px] text-zinc-400 mb-2.5">
+                    <div className="mt-4 pt-4 border-t border-[#EAE7E0] fade-in">
+                      <p className="text-[11px] text-[#6B6A64] mb-2.5">
                         {t('Select an alternative matchday philosophy for your squad:', 'Wähle einen alternativen Matchday-Spielstil für dein Team:')}
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -1340,14 +1365,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               key={tacKey}
                               type="button"
                               onClick={() => setTactic(tacKey)}
-                              className={`px-3.5 py-2.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-2.5 backdrop-blur-md active:scale-95 ${
+                              className={`px-3.5 py-2.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-2.5 active:scale-95 ${
                                 isTacSelected
-                                  ? 'bg-sky-500/20 border-sky-400/50 text-white shadow-sm ring-1 ring-sky-400/20'
-                                  : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                                  ? 'bg-[#18191F] border-[#18191F] text-white shadow-sm'
+                                  : 'bg-[#F6F5F1] border-[#E6E3DC] text-[#52525B] hover:text-[#18191F] hover:bg-[#EFECE4]'
                               }`}
                             >
-                              <i className={`fas ${tac.icon} text-xs ${isTacSelected ? 'text-sky-300' : 'text-zinc-500'}`}></i>
-                              <span className="text-xs font-medium truncate">{tacKey}</span>
+                              <i className={`fas ${tac.icon} text-xs ${isTacSelected ? 'text-white' : 'text-[#6B6A64]'}`}></i>
+                              <span className="text-xs font-semibold truncate">{tacKey}</span>
                             </button>
                           );
                         })}
@@ -1356,15 +1381,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   )}
                 </div>
 
-                {/* Sticky Mobile Action Bar (Apple Frosted Dock) */}
-                <div className="sticky bottom-0 z-40 bg-[#0c0d12]/80 backdrop-blur-2xl border-t border-white/[0.08] px-4 py-3 -mx-2 sm:mx-0 sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none sm:backdrop-blur-none flex items-center justify-center gap-3">
+                {/* Sticky Mobile Action Bar */}
+                <div className="sticky bottom-0 z-40 bg-[#F5F3EE]/95 backdrop-blur-md border-t border-[#E6E3DC] px-4 py-3 -mx-2 sm:mx-0 sm:static sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none sm:backdrop-blur-none flex items-center justify-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
                       setSubStep2('2A');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white text-xs sm:text-sm font-medium py-3.5 px-6 rounded-2xl border border-white/[0.1] backdrop-blur-md transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
+                    className="bg-white hover:bg-[#FAF9F6] text-[#18191F] text-xs sm:text-sm font-semibold py-3.5 px-6 rounded-2xl border border-[#E6E3DC] transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
                   >
                     <i className="fa-solid fa-arrow-left text-xs"></i>
                     <span>{t('Back to Identity & Country', 'Zurück zu Identität & Land')}</span>
@@ -1372,7 +1397,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   <button
                     type="button"
                     onClick={handleGoToStep3}
-                    className="bg-white hover:bg-zinc-100 text-zinc-950 text-xs sm:text-sm font-semibold tracking-wide py-3.5 px-8 sm:px-10 rounded-2xl transition-all duration-200 active:scale-95 shadow-[0_4px_20px_rgba(255,255,255,0.12)] cursor-pointer flex-1 sm:flex-none sm:min-w-[240px] flex items-center justify-center gap-2.5"
+                    className="bg-[#18191F] hover:bg-[#2A2B33] text-white text-xs sm:text-sm font-semibold tracking-wide py-3.5 px-8 sm:px-10 rounded-2xl transition-all duration-200 active:scale-95 shadow-[0_8px_24px_rgba(24,25,31,0.18)] cursor-pointer flex-1 sm:flex-none sm:min-w-[240px] flex items-center justify-center gap-2.5"
                   >
                     <span>{t('Continue to Club Selection', 'Weiter zur Vereinswahl')}</span>
                     <i className="fa-solid fa-arrow-right text-xs"></i>
@@ -1384,27 +1409,27 @@ export const Onboarding: React.FC<OnboardingProps> = ({
         </div>
       )}
 
-      {/* STEP 3: Club Selection / Job Offers (Apple Minimalist Glassmorphism) */}
+      {/* STEP 3: Club Selection / Job Offers */}
       {step === 3 && (
         <div className="max-w-5xl mx-auto fade-in text-center px-2 sm:px-4 pb-12">
-          {/* Director Context Pill (Unified Apple Typography & Soft Azure Accent) */}
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-medium backdrop-blur-xl shadow-sm">
-            <span className="text-zinc-400">{isDe ? 'Sportdirektor:' : 'Director:'}</span>
-            <span className="text-white font-medium">{managerName.trim() || 'Director'}</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-zinc-400">{isDe ? 'Start:' : 'Start:'}</span>
-            <span className="text-zinc-200 font-medium">{startYear}</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-zinc-400">{isDe ? 'Philosophie:' : 'Philosophy:'}</span>
-            <span className="text-sky-300 font-medium">{tactic}</span>
+          {/* Director Context Pill */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-white border border-[#E6E3DC] text-xs font-medium shadow-sm">
+            <span className="text-[#6B6A64]">{isDe ? 'Sportdirektor:' : 'Director:'}</span>
+            <span className="text-[#18191F] font-semibold">{managerName.trim() || 'Director'}</span>
+            <span className="text-[#D4CFC4]">•</span>
+            <span className="text-[#6B6A64]">{isDe ? 'Start:' : 'Start:'}</span>
+            <span className="text-[#18191F] font-semibold tabular-nums">{startYear}</span>
+            <span className="text-[#D4CFC4]">•</span>
+            <span className="text-[#6B6A64]">{isDe ? 'Philosophie:' : 'Philosophy:'}</span>
+            <span className="text-sky-700 font-semibold">{tactic}</span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-[#18191F] tracking-tight mb-2">
             {mode === 'standard'
               ? t('Choose Your Club', 'Verein wählen')
               : t('Grassroots Job Offers', 'Offizielle Job-Angebote')}
           </h1>
-          <p className="text-[14px] md:text-[15px] font-normal text-zinc-400 max-w-xl mx-auto mb-6 leading-relaxed">
+          <p className="text-[14px] md:text-[15px] font-normal text-[#6B6A64] max-w-xl mx-auto mb-6 leading-relaxed">
             {mode === 'standard'
               ? t('Explore clubs by league division, search by name, or browse international powerhouses.', 'Wähle deinen Verein nach Liga, suche nach Namen oder starte bei einem Spitzenklub.')
               : t('Three clubs have submitted official managerial contract offers. Review their project and choose your club.', 'Drei Vereine bieten dir den Posten als Sportdirektor an. Wähle dein Einstiegsprojekt.')}
@@ -1412,12 +1437,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
           {/* CR27_Footy Real Name Pack Status & Responsive Toggle */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 max-w-5xl mx-auto mb-6 px-1">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs backdrop-blur-xl">
-              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isModActive ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)] animate-pulse' : 'bg-zinc-500'}`} />
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-white border border-[#E6E3DC] text-xs shadow-sm">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isModActive ? 'bg-emerald-500 animate-pulse' : 'bg-[#9A9890]'}`} />
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-bold text-white tracking-tight">CR27_Footy Pack</span>
-                <span className="text-zinc-400">·</span>
-                <span className="text-zinc-300 font-medium truncate">
+                <span className="font-bold text-[#18191F] tracking-tight">CR27_Footy Pack</span>
+                <span className="text-[#D4CFC4]">·</span>
+                <span className="text-[#52525B] font-medium truncate">
                   {isModActive
                     ? (isDe ? '1.202 reale Vereine & Wappen aktiv' : '1,202 verified clubs & crests active')
                     : (isDe ? 'Lizenzfreie Standard-Namen' : 'Standard copyright-safe names')}
@@ -1427,9 +1452,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
             <div className="flex items-center justify-end gap-2.5">
               {onToggleMod && (
-                <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 rounded-2xl backdrop-blur-xl">
-                  <span className="text-[11px] font-semibold text-zinc-300">
-                    {isModActive ? (isDe ? 'Echtnamen' : 'Real Names') : (isDe ? 'Standard' : 'Standard')}
+                <div className="flex items-center gap-2 bg-white border border-[#E6E3DC] px-3 py-1.5 rounded-2xl shadow-sm">
+                  <span className="text-[11px] font-semibold text-[#52525B]">
+                    {isModActive ? (isDe ? 'Echtnamen' : 'Real Names') : 'Standard'}
                   </span>
                   <button
                     type="button"
@@ -1437,7 +1462,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     aria-checked={isModActive}
                     onClick={() => onToggleMod(!isModActive)}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-sm ${
-                      isModActive ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 'bg-zinc-700 hover:bg-zinc-600'
+                      isModActive ? 'bg-emerald-600' : 'bg-[#D4CFC4] hover:bg-[#B8B2A6]'
                     }`}
                     title={isModActive ? 'Disable Real Name Pack' : 'Enable Real Name Pack'}
                   >
@@ -1453,25 +1478,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({
               <button
                 type="button"
                 onClick={() => setShowModModal(true)}
-                className="px-3.5 py-1.5 rounded-2xl text-xs font-semibold text-zinc-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition cursor-pointer backdrop-blur-xl active:scale-95 flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-1.5 rounded-2xl text-xs font-semibold text-[#18191F] bg-white hover:bg-[#FAF9F6] border border-[#E6E3DC] transition cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-sm"
                 title="Open Database & Community Mods"
               >
-                <i className="fa-solid fa-sliders text-[11px] text-zinc-400"></i>
+                <i className="fa-solid fa-sliders text-[11px] text-[#52525B]"></i>
                 <span>{isDe ? 'Optionen' : 'Options'}</span>
               </button>
             </div>
           </div>
 
-          {/* REALISTIC MODE: 3 Job Offers (Apple Glass Dossiers) */}
+          {/* REALISTIC MODE: 3 Job Offers */}
           {mode === 'realistic' && (
             <div className="w-full max-w-5xl mx-auto space-y-6">
               <div className="flex justify-center mb-2">
                 <button
                   type="button"
                   onClick={generateRealisticOffers}
-                  className="bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 hover:text-white font-medium text-xs py-2 px-5 rounded-full border border-white/[0.1] transition backdrop-blur-md active:scale-95 cursor-pointer flex items-center gap-2 shadow-sm"
+                  className="bg-white hover:bg-[#FAF9F6] text-[#18191F] font-semibold text-xs py-2 px-5 rounded-full border border-[#E6E3DC] transition active:scale-95 cursor-pointer flex items-center gap-2 shadow-sm"
                 >
-                  <i className="fa-solid fa-arrows-rotate text-xs text-sky-400/80"></i>
+                  <i className="fa-solid fa-arrows-rotate text-xs text-sky-600"></i>
                   <span>{isDe ? 'Angebote neu mischen' : 'Reshuffle Job Offers'}</span>
                 </button>
               </div>
@@ -1492,23 +1517,21 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         setSelectedClubForArchetype(c);
                         setStep(4);
                       }}
-                      className="rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[350px] sm:min-h-[390px] bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-sky-400/40 hover:shadow-[0_8px_32px_rgba(56,189,248,0.12)] transition-all duration-300 cursor-pointer shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)] relative overflow-hidden group backdrop-blur-2xl"
+                      className="rounded-[24px] p-5 sm:p-6 flex flex-col justify-between min-h-[350px] sm:min-h-[390px] bg-white hover:bg-[#FAF9F6] border border-[#E6E3DC] hover:border-[#18191F] hover:shadow-[0_12px_32px_rgba(24,25,31,0.1)] transition-all duration-300 cursor-pointer shadow-[0_6px_24px_rgba(24,25,31,0.06)] relative overflow-hidden group"
                     >
-                      {/* Top offer badge */}
                       <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] text-zinc-300 border border-white/[0.1] text-[10px] font-medium tracking-wide">
-                          <i className="fa-solid fa-briefcase text-[9px] text-sky-400/80"></i>
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC] text-[10px] font-semibold tracking-wide">
+                          <i className="fa-solid fa-briefcase text-[9px] text-sky-700"></i>
                           <span>{isDe ? `Angebot #${idx + 1}` : `Offer #${idx + 1}`}</span>
                         </div>
-                        <div className="px-2.5 py-0.5 rounded-lg font-medium text-xs text-zinc-200 bg-white/[0.06] border border-white/[0.08] flex items-center gap-1.5">
-                          <span className="text-[10px] text-zinc-400">OVR</span>
-                          <span className="font-semibold text-white">{c.baseOvr}</span>
+                        <div className="px-2.5 py-0.5 rounded-lg font-medium text-xs text-[#18191F] bg-[#F6F5F1] border border-[#E6E3DC] flex items-center gap-1.5 tabular-nums">
+                          <span className="text-[10px] text-[#6B6A64]">OVR</span>
+                          <span className="font-bold">{c.baseOvr}</span>
                         </div>
                       </div>
 
-                      {/* Crest Section */}
                       <div className="my-2 flex flex-col items-center text-center">
-                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-2.5 mb-3 shadow-inner group-hover:scale-105 transition-transform duration-200 backdrop-blur-md">
+                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] flex items-center justify-center p-2.5 mb-3 group-hover:scale-105 transition-transform duration-200">
                           <ClubLogo
                             name={c.name}
                             id={c.id}
@@ -1516,55 +1539,54 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                             logo={c.logo}
                             fallbackLogo={c.fallbackLogo}
                             isModActive={isModActive}
-                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-md"
+                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-sm"
                             fallbackClassName="w-14 h-14 sm:w-16 sm:h-16 text-lg sm:text-xl rounded-xl flex items-center justify-center font-bold text-white"
                           />
                         </div>
 
-                        <h3 className="text-lg font-semibold text-white tracking-tight leading-snug">
+                        <h3 className="text-lg font-bold text-[#18191F] tracking-tight leading-snug">
                           {c.name}
                         </h3>
 
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-1">
+                        <div className="flex items-center gap-1.5 text-xs text-[#6B6A64] mt-1">
                           <span>{countryInfo?.flag || '🏁'}</span>
-                          <span className="font-medium text-zinc-300">{leagueInfo?.name || `Tier ${c.tier}`}</span>
+                          <span className="font-medium text-[#52525B]">{leagueInfo?.name || `Tier ${c.tier}`}</span>
                         </div>
 
                         {clubContext ? (
-                          <p className="text-[11px] font-normal text-zinc-400 line-clamp-2 mt-2 px-1 leading-snug">
+                          <p className="text-[11px] font-normal text-[#6B6A64] line-clamp-2 mt-2 px-1 leading-snug">
                             "{clubContext}"
                           </p>
                         ) : (
-                          <p className="text-[11px] text-zinc-500 mt-2">
+                          <p className="text-[11px] text-[#6B6A64] mt-2 tabular-nums">
                             {(c.stadium || 15000).toLocaleString()} {isDe ? 'Zuschauerkapazität' : 'capacity'}
                           </p>
                         )}
                       </div>
 
-                      {/* Key contract specifications */}
                       <div className="w-full space-y-3 mt-4">
-                        <div className="grid grid-cols-3 gap-1 bg-white/[0.03] p-2.5 rounded-2xl border border-white/[0.06] text-center text-xs backdrop-blur-sm">
+                        <div className="grid grid-cols-3 gap-1 bg-[#F6F5F1] p-2.5 rounded-2xl border border-[#EAE7E0] text-center text-xs tabular-nums">
                           <div>
-                            <div className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
-                              {isDe ? 'Budget' : 'Budget'}
+                            <div className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
+                              Budget
                             </div>
-                            <div className="font-semibold text-white text-xs mt-0.5">
+                            <div className="font-bold text-[#18191F] text-xs mt-0.5">
                               {formatMoney(c.currentBudget != null ? parseAndNormalizeModBudget(c.currentBudget, c.tier, c.country || 'GER') : getStartingBudget(c.tier, c.country || 'GER'), c.country || 'GER')}
                             </div>
                           </div>
-                          <div className="border-x border-white/[0.06]">
-                            <div className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
+                          <div className="border-x border-[#E6E3DC]">
+                            <div className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
                               {isDe ? 'Stadion' : 'Stadium'}
                             </div>
-                            <div className="font-semibold text-zinc-300 text-xs mt-0.5">
+                            <div className="font-semibold text-[#52525B] text-xs mt-0.5">
                               {((c.stadium || 15000) / 1000).toFixed(0)}k
                             </div>
                           </div>
                           <div>
-                            <div className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
-                              {isDe ? 'Reputation' : 'Rep'}
+                            <div className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
+                              Rep
                             </div>
-                            <div className="font-semibold text-sky-300 text-xs mt-0.5">
+                            <div className="font-bold text-sky-700 text-xs mt-0.5">
                               {c.rep || c.baseOvr || 65}
                             </div>
                           </div>
@@ -1572,7 +1594,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
                         <button
                           type="button"
-                          className="w-full py-2.5 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 font-semibold text-xs transition duration-150 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                          className="w-full py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold text-xs transition duration-150 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
                         >
                           <span>{isDe ? 'Angebot annehmen' : 'Accept Contract'}</span>
                           <i className="fa-solid fa-arrow-right text-[10px]"></i>
@@ -1585,14 +1607,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             </div>
           )}
 
-          {/* STANDARD MODE: Clean Unified Apple Glass Explorer */}
+          {/* STANDARD MODE: Clean Unified Editorial Explorer */}
           {mode === 'standard' && (
             <div className="w-full max-w-5xl mx-auto mb-6 text-left space-y-4">
-              <div className="bg-[#161820]/75 border border-white/[0.08] rounded-3xl p-4 sm:p-5 shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-2xl space-y-3.5">
+              <div className="bg-white border border-[#E6E3DC] rounded-[24px] p-4 sm:p-5 shadow-[0_6px_24px_rgba(24,25,31,0.06)] space-y-3.5">
                 
                 {/* Search Bar */}
                 <div className="relative flex items-center">
-                  <i className="fas fa-search absolute left-4 text-zinc-400 text-sm pointer-events-none"></i>
+                  <i className="fas fa-search absolute left-4 text-[#9A9890] text-sm pointer-events-none"></i>
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1606,7 +1628,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     autoCorrect="off"
                     autoCapitalize="none"
                     spellCheck={false}
-                    className="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.06] text-white font-medium text-xs sm:text-sm pl-11 pr-24 py-3 rounded-2xl border border-white/[0.08] focus:border-sky-400/40 focus:ring-1 focus:ring-sky-400/30 outline-none transition placeholder-zinc-500"
+                    className="w-full bg-[#F6F5F1] hover:bg-[#EFECE4] focus:bg-white text-[#18191F] font-medium text-xs sm:text-sm pl-11 pr-24 py-3 rounded-2xl border border-[#E6E3DC] focus:border-[#18191F] focus:ring-2 focus:ring-[#18191F]/10 outline-none transition placeholder-[#9A9890]"
                   />
                   <div className="absolute right-3 flex items-center gap-2">
                     {searchQuery && (
@@ -1616,25 +1638,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                           setSearchQuery('');
                           if (searchInputRef.current) searchInputRef.current.focus();
                         }}
-                        className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center text-xs transition cursor-pointer"
+                        className="w-6 h-6 rounded-full bg-[#EAE7E0] hover:bg-[#D4CFC4] text-[#52525B] hover:text-[#18191F] flex items-center justify-center text-xs transition cursor-pointer"
                       >
                         <i className="fas fa-xmark"></i>
                       </button>
                     )}
-                    <span className="text-[10px] font-medium text-zinc-400 bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/[0.06]">
+                    <span className="text-[10px] font-semibold text-[#52525B] bg-white px-2.5 py-1 rounded-full border border-[#E6E3DC] tabular-nums">
                       {displayedClubs.length} {isDe ? 'Vereine' : 'clubs'}
                     </span>
                   </div>
                 </div>
 
                 {/* Country / League Quick Switch Strip */}
-                <div className="space-y-2 pt-1 border-t border-white/[0.06]">
+                <div className="space-y-2 pt-2 border-t border-[#EAE7E0]">
                   <div className="flex items-center justify-between text-xs px-0.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64]">
                       {isDe ? 'Land / Wettbewerb' : 'Country / Region'}
                     </span>
                     {nationality !== 'ALL' && COUNTRIES[nationality] && (
-                      <span className="text-zinc-300 text-xs flex items-center gap-1 font-medium">
+                      <span className="text-[#18191F] text-xs flex items-center gap-1 font-semibold">
                         <span>{COUNTRIES[nationality].flag}</span>
                         <span>{COUNTRIES[nationality].name}</span>
                       </span>
@@ -1642,7 +1664,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5 custom-scrollbar -mx-1 px-1">
-                    {/* Top Football Nations */}
                     {(['GER', 'ENG', 'ESP', 'ITA', 'FRA', 'POR', 'USA'] as const).map(code => {
                       const country = COUNTRIES[code];
                       if (!country) return null;
@@ -1656,10 +1677,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                             setTierFilter(1);
                             setShowAllClubs(false);
                           }}
-                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all cursor-pointer backdrop-blur-md ${
+                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                             isSelected
-                              ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-sm'
-                              : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.06]'
+                              ? 'bg-[#18191F] text-white shadow-sm'
+                              : 'bg-[#F6F5F1] text-[#52525B] hover:text-[#18191F] border border-[#E6E3DC] hover:bg-[#EFECE4]'
                           }`}
                         >
                           <span>{country.flag}</span>
@@ -1668,7 +1689,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                       );
                     })}
 
-                    {/* All Countries (World) */}
                     <button
                       type="button"
                       onClick={() => {
@@ -1676,17 +1696,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         setTierFilter('all');
                         setShowAllClubs(false);
                       }}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all cursor-pointer backdrop-blur-md ${
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                         nationality === 'ALL'
-                          ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-sm'
-                          : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.06]'
+                          ? 'bg-[#18191F] text-white shadow-sm'
+                          : 'bg-[#F6F5F1] text-[#52525B] hover:text-[#18191F] border border-[#E6E3DC] hover:bg-[#EFECE4]'
                       }`}
                     >
                       <span>🌍</span>
                       <span>{isDe ? 'Alle Länder' : 'All Countries'}</span>
                     </button>
 
-                    {/* More Nations Dropdown */}
                     <div className="relative shrink-0">
                       <select
                         value={['ALL', 'GER', 'ENG', 'ESP', 'ITA', 'FRA', 'POR', 'USA'].includes(nationality) ? '' : nationality}
@@ -1697,7 +1716,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                             setShowAllClubs(false);
                           }
                         }}
-                        className="bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.06] rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer pr-7 transition backdrop-blur-md"
+                        className="bg-[#F6F5F1] text-[#52525B] hover:text-[#18191F] border border-[#E6E3DC] hover:bg-[#EFECE4] rounded-xl px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer pr-7 transition"
                       >
                         <option value="" disabled>
                           {isDe ? '🌐 Weitere Länder...' : '🌐 More Nations...'}
@@ -1706,7 +1725,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                           .filter(k => !['ALL', 'GER', 'ENG', 'ESP', 'ITA', 'FRA', 'POR', 'USA'].includes(k))
                           .filter(k => isModActive || !MOD_ONLY_COUNTRIES.includes(k))
                           .map(k => (
-                            <option key={k} value={k} className="bg-[#161820] text-white">
+                            <option key={k} value={k} className="bg-white text-[#18191F]">
                               {COUNTRIES[k]?.flag} {COUNTRIES[k]?.name}
                             </option>
                           ))}
@@ -1715,14 +1734,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
                 </div>
 
-                {/* Division / Tier Tabs (Allows hiding lower leagues by defaulting to Tier 1) */}
+                {/* Division / Tier Tabs */}
                 {nationality !== 'ALL' && availableLeaguesForCountry.length > 0 && (
-                  <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                  <div className="pt-2 border-t border-[#EAE7E0] space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] px-0.5">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64]">
                         {isDe ? 'Spielklasse wählen' : 'Select Division'}
                       </span>
-                      <span className="text-zinc-400 text-xs">
+                      <span className="text-[#52525B] text-xs font-medium">
                         {COUNTRIES[nationality]?.flag} {COUNTRIES[nationality]?.name}
                       </span>
                     </div>
@@ -1739,16 +1758,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               setTierFilter(isSelected ? 'all' : tier);
                               setShowAllClubs(false);
                             }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all cursor-pointer backdrop-blur-md ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-sm'
-                                : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.06]'
+                                ? 'bg-[#18191F] text-white shadow-sm'
+                                : 'bg-[#F6F5F1] text-[#52525B] hover:text-[#18191F] border border-[#E6E3DC] hover:bg-[#EFECE4]'
                             }`}
                           >
-                            <span className="opacity-70 text-[10px] font-medium">T{tier}</span>
+                            <span className="opacity-70 text-[10px] font-semibold">T{tier}</span>
                             <span>{name}</span>
                             {tierClubsCount > 0 && (
-                              <span className="text-[10px] opacity-70 ml-0.5">({tierClubsCount})</span>
+                              <span className="text-[10px] opacity-70 ml-0.5 tabular-nums">({tierClubsCount})</span>
                             )}
                           </button>
                         );
@@ -1760,10 +1779,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                           setTierFilter('all');
                           setShowAllClubs(false);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all cursor-pointer backdrop-blur-md ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
                           tierFilter === 'all'
-                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40 shadow-sm'
-                            : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/[0.06] hover:bg-white/[0.06]'
+                            ? 'bg-[#18191F] text-white shadow-sm'
+                            : 'bg-[#F6F5F1] text-[#52525B] hover:text-[#18191F] border border-[#E6E3DC] hover:bg-[#EFECE4]'
                         }`}
                       >
                         {isDe ? 'Alle Ligen' : 'All Divisions'}
@@ -1773,16 +1792,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 )}
 
                 {/* Sort Bar */}
-                <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400 mr-1.5">
+                <div className="pt-2 border-t border-[#EAE7E0] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64] mr-1.5">
                       {isDe ? 'Sortierung:' : 'Sort By:'}
                     </span>
                     {(
                       [
                         { id: 'tier', label: isDe ? 'Liga & Stärke' : 'Tier & Rating', icon: 'fa-layer-group' },
                         { id: 'ovr', label: isDe ? 'Stärke (OVR)' : 'Overall OVR', icon: 'fa-bolt' },
-                        { id: 'budget', label: isDe ? 'Budget' : 'Budget', icon: 'fa-coins' },
+                        { id: 'budget', label: 'Budget', icon: 'fa-coins' },
                         { id: 'name', label: isDe ? 'Name' : 'A-Z', icon: 'fa-arrow-down-a-z' },
                       ] as const
                     ).map(s => (
@@ -1790,10 +1809,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         key={s.id}
                         type="button"
                         onClick={() => setSortBy(s.id)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                           sortBy === s.id
-                            ? 'bg-white/15 text-white shadow-sm border border-white/10'
-                            : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
+                            ? 'bg-[#18191F] text-white shadow-sm'
+                            : 'text-[#6B6A64] hover:text-[#18191F] hover:bg-[#F6F5F1]'
                         }`}
                       >
                         <i className={`fa-solid ${s.icon} text-[10px]`}></i>
@@ -1806,7 +1825,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 cursor-pointer transition text-xs"
+                      className="text-sky-700 hover:text-sky-900 font-semibold flex items-center gap-1 cursor-pointer transition text-xs"
                     >
                       <i className="fas fa-xmark text-xs"></i>
                       <span>{isDe ? 'Suche zurücksetzen' : 'Clear search'}</span>
@@ -1818,15 +1837,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             </div>
           )}
 
-          {/* Standard Mode Clubs Grid with Progressive Disclosure (Hides overwhelming choice) */}
+          {/* Standard Mode Clubs Grid */}
           {mode === 'standard' && (
             displayedClubs.length === 0 ? (
-              <div className="bg-[#161820]/75 border border-white/[0.08] rounded-3xl p-8 max-w-md mx-auto text-center my-6 shadow-xl backdrop-blur-2xl">
-                <i className="fas fa-magnifying-glass text-3xl text-zinc-500 mb-3 block"></i>
-                <p className="text-white font-medium text-base mb-1">
+              <div className="bg-white border border-[#E6E3DC] rounded-[24px] p-8 max-w-md mx-auto text-center my-6 shadow-[0_6px_24px_rgba(24,25,31,0.06)]">
+                <i className="fas fa-magnifying-glass text-3xl text-[#9A9890] mb-3 block"></i>
+                <p className="text-[#18191F] font-bold text-base mb-1">
                   {isDe ? 'Keine Vereine gefunden' : 'No Results Found'}
                 </p>
-                <p className="text-zinc-400 text-xs mb-4">
+                <p className="text-[#6B6A64] text-xs mb-4">
                   {isDe
                     ? `Kein Verein entspricht "${searchQuery}". Versuche es mit einem anderen Begriff oder setze Filter zurück.`
                     : `No clubs matched "${searchQuery}". Try a different keyword or reset filters.`}
@@ -1834,7 +1853,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="bg-white hover:bg-zinc-100 text-zinc-950 font-medium text-xs py-2.5 px-6 rounded-full transition shadow-sm active:scale-95 cursor-pointer"
+                  className="bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold text-xs py-2.5 px-6 rounded-full transition shadow-sm active:scale-95 cursor-pointer"
                 >
                   {isDe ? 'Suche zurücksetzen' : 'Reset Search'}
                 </button>
@@ -1866,11 +1885,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                           setSelectedClubForArchetype(c);
                           setStep(4);
                         }}
-                        className="rounded-3xl p-4 sm:p-5 flex flex-col justify-between bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] hover:border-sky-400/40 hover:shadow-[0_8px_32px_rgba(56,189,248,0.12)] transition-all duration-300 cursor-pointer shadow-[0_8px_32px_rgba(0,0,0,0.36),inset_0_1px_0_0_rgba(255,255,255,0.06)] relative overflow-hidden group backdrop-blur-2xl active:scale-[0.99]"
+                        className="rounded-[24px] p-4 sm:p-5 flex flex-col justify-between bg-white hover:bg-[#FAF9F6] border border-[#E6E3DC] hover:border-[#18191F] hover:shadow-[0_12px_32px_rgba(24,25,31,0.1)] transition-all duration-300 cursor-pointer shadow-[0_6px_24px_rgba(24,25,31,0.05)] relative overflow-hidden group active:scale-[0.99]"
                       >
                         {/* Mobile Row Layout (< sm) */}
                         <div className="sm:hidden flex items-center gap-3.5 w-full mb-3">
-                          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-2 shrink-0 shadow-inner">
+                          <div className="w-14 h-14 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] flex items-center justify-center p-2 shrink-0">
                             <ClubLogo
                               name={c.name}
                               id={c.id}
@@ -1878,28 +1897,28 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               logo={c.logo}
                               fallbackLogo={c.fallbackLogo}
                               isModActive={isModActive}
-                              className="w-10 h-10 object-contain drop-shadow-md"
+                              className="w-10 h-10 object-contain drop-shadow-sm"
                               fallbackClassName="w-10 h-10 text-base rounded-xl shadow-sm flex items-center justify-center font-bold text-white"
                             />
                           </div>
                           <div className="flex-1 min-w-0 text-left">
                             <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className="text-[10px] font-medium text-zinc-300 truncate bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.06]">
+                              <span className="text-[10px] font-semibold text-[#52525B] truncate bg-[#F6F5F1] px-2 py-0.5 rounded-md border border-[#E6E3DC]">
                                 {isCanadianMLSClub(c.name, c.id, c.country) ? '🇨🇦' : (countryInfo?.flag || '🏁')} {leagueInfo?.name || `Tier ${c.tier}`}
                               </span>
-                              <span className="px-2 py-0.5 rounded-md font-medium text-[10px] shrink-0 bg-white/[0.06] text-zinc-200 border border-white/[0.08]">
+                              <span className="px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC] tabular-nums">
                                 OVR {c.baseOvr}
                               </span>
                             </div>
-                            <h3 className="text-base font-semibold text-white break-words leading-tight">
+                            <h3 className="text-base font-bold text-[#18191F] break-words leading-tight">
                               {c.name}
                             </h3>
                             {clubContext ? (
-                              <p className="text-[10px] font-normal text-zinc-400 truncate mt-0.5">
+                              <p className="text-[10px] font-normal text-[#6B6A64] truncate mt-0.5">
                                 "{clubContext}"
                               </p>
                             ) : (
-                              <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                              <p className="text-[10px] text-[#6B6A64] truncate mt-0.5 tabular-nums">
                                 {(c.stadium || 20000).toLocaleString()} {isDe ? 'Plätze' : 'seats'}
                               </p>
                             )}
@@ -1908,19 +1927,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
                         {/* Desktop Top Row (>= sm) */}
                         <div className="hidden sm:flex w-full items-center justify-between text-xs mb-2">
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px] font-medium text-zinc-300 truncate max-w-[65%] shadow-sm">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#F6F5F1] border border-[#E6E3DC] text-[11px] font-semibold text-[#52525B] truncate max-w-[65%]">
                             <span>{isCanadianMLSClub(c.name, c.id, c.country) ? '🇨🇦' : (countryInfo?.flag || '🏁')}</span>
                             <span className="truncate">{leagueInfo?.name || `Tier ${c.tier}`}</span>
                           </div>
-                          <div className="px-2.5 py-0.5 rounded-lg font-medium text-xs shrink-0 flex items-center gap-1 bg-white/[0.06] text-zinc-200 border border-white/[0.08] shadow-sm">
-                            <span className="text-[10px] text-zinc-400">OVR</span>
-                            <span className="font-semibold">{c.baseOvr}</span>
+                          <div className="px-2.5 py-0.5 rounded-lg font-medium text-xs shrink-0 flex items-center gap-1 bg-[#F6F5F1] text-[#18191F] border border-[#E6E3DC] tabular-nums">
+                            <span className="text-[10px] text-[#6B6A64]">OVR</span>
+                            <span className="font-bold">{c.baseOvr}</span>
                           </div>
                         </div>
 
                         {/* Desktop Crest Section (>= sm) */}
                         <div className="hidden sm:flex my-2 items-center justify-center relative">
-                          <div className="w-18 h-18 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-2.5 shadow-inner group-hover:scale-105 transition-transform duration-200 backdrop-blur-sm">
+                          <div className="w-18 h-18 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] flex items-center justify-center p-2.5 group-hover:scale-105 transition-transform duration-200">
                             <ClubLogo
                               name={c.name}
                               id={c.id}
@@ -1928,58 +1947,58 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                               logo={c.logo}
                               fallbackLogo={c.fallbackLogo}
                               isModActive={isModActive}
-                              className="w-14 h-14 object-contain drop-shadow-md p-0.5"
-                              fallbackClassName="w-14 h-14 text-xl rounded-xl shadow-md flex items-center justify-center font-bold text-white"
+                              className="w-14 h-14 object-contain drop-shadow-sm p-0.5"
+                              fallbackClassName="w-14 h-14 text-xl rounded-xl shadow-sm flex items-center justify-center font-bold text-white"
                             />
                           </div>
                         </div>
 
                         {/* Desktop Club Name & Context (>= sm) */}
                         <div className="hidden sm:flex text-center w-full mb-3 flex-col items-center">
-                          <h3 className="text-base font-semibold text-white tracking-tight truncate w-full px-1 py-0.5 leading-normal">
+                          <h3 className="text-base font-bold text-[#18191F] tracking-tight truncate w-full px-1 py-0.5 leading-normal">
                             {c.name}
                           </h3>
 
                           {clubContext ? (
-                            <p className="text-[11px] font-normal text-zinc-400 text-center line-clamp-2 min-h-[32px] px-2 mt-1 leading-snug">
+                            <p className="text-[11px] font-normal text-[#6B6A64] text-center line-clamp-2 min-h-[32px] px-2 mt-1 leading-snug">
                               "{clubContext}"
                             </p>
                           ) : (
-                            <p className="text-[11px] font-normal text-zinc-400 text-center line-clamp-1 min-h-[20px] px-2 mt-1">
+                            <p className="text-[11px] font-normal text-[#6B6A64] text-center line-clamp-1 min-h-[20px] px-2 mt-1 tabular-nums">
                               {countryInfo?.name || clubCountry} · {(c.stadium || 20000).toLocaleString()} {isDe ? 'Kapazität' : 'Capacity'}
                             </p>
                           )}
 
                           {isReserveClub(c.name) && (
-                            <span className="mt-1 text-[9px] font-medium uppercase tracking-wider bg-white/[0.06] text-zinc-300 border border-white/[0.1] px-2 py-0.5 rounded-full">
+                            <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider bg-[#F6F5F1] text-[#52525B] border border-[#E6E3DC] px-2 py-0.5 rounded-full">
                               {isDe ? 'Reserve-Team' : 'Reserve Team'}
                             </span>
                           )}
                         </div>
 
                         {/* Key Metrics Strip */}
-                        <div className="w-full grid grid-cols-3 gap-1 bg-white/[0.03] p-2 rounded-2xl border border-white/[0.06] text-center text-xs mb-3 backdrop-blur-sm">
+                        <div className="w-full grid grid-cols-3 gap-1 bg-[#F6F5F1] p-2 rounded-2xl border border-[#EAE7E0] text-center text-xs mb-3 tabular-nums">
                           <div className="flex flex-col">
-                            <span className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
-                              {isDe ? 'Budget' : 'Budget'}
+                            <span className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
+                              Budget
                             </span>
-                            <span className="font-semibold text-white text-[11px]">
+                            <span className="font-bold text-[#18191F] text-[11px]">
                               {formatMoney(c.currentBudget != null ? parseAndNormalizeModBudget(c.currentBudget, c.tier, c.country || 'GER') : getStartingBudget(c.tier, c.country || 'GER'), c.country || 'GER')}
                             </span>
                           </div>
-                          <div className="flex flex-col border-x border-white/[0.06]">
-                            <span className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
+                          <div className="flex flex-col border-x border-[#E6E3DC]">
+                            <span className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
                               {isDe ? 'Stadion' : 'Stadium'}
                             </span>
-                            <span className="font-semibold text-zinc-300 text-[11px]">
+                            <span className="font-semibold text-[#52525B] text-[11px]">
                               {((c.stadium || 20000) / 1000).toFixed(0)}k
                             </span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[9px] uppercase font-medium text-zinc-500 tracking-wider">
-                              {isDe ? 'Rep' : 'Rep'}
+                            <span className="text-[9px] uppercase font-semibold text-[#9A9890] tracking-wider">
+                              Rep
                             </span>
-                            <span className="font-semibold text-sky-300 text-[11px]">
+                            <span className="font-bold text-sky-700 text-[11px]">
                               {c.rep || c.baseOvr || 70}
                             </span>
                           </div>
@@ -1988,7 +2007,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         {/* Select Action Button */}
                         <button
                           type="button"
-                          className="w-full py-2.5 rounded-xl bg-white/[0.06] group-hover:bg-white text-zinc-300 group-hover:text-zinc-950 font-medium text-xs transition duration-150 flex items-center justify-center gap-1.5 shadow-sm"
+                          className="w-full py-2.5 rounded-xl bg-[#F6F5F1] group-hover:bg-[#18191F] text-[#18191F] group-hover:text-white font-semibold text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-[#E6E3DC] group-hover:border-[#18191F]"
                         >
                           <span>{t('Select Club', 'Verein wählen')}</span>
                           <i className="fa-solid fa-arrow-right text-[10px]"></i>
@@ -2004,14 +2023,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowAllClubs(!showAllClubs)}
-                      className="px-6 py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] backdrop-blur-xl text-xs font-medium transition cursor-pointer flex items-center gap-2 shadow-sm active:scale-95"
+                      className="px-6 py-2.5 rounded-full bg-white hover:bg-[#FAF9F6] text-[#18191F] border border-[#E6E3DC] text-xs font-semibold transition cursor-pointer flex items-center gap-2 shadow-sm active:scale-95"
                     >
                       <span>
                         {showAllClubs
                           ? (isDe ? 'Weniger Vereine anzeigen' : 'Show fewer clubs')
                           : (isDe ? `Alle ${displayedClubs.length} Vereine anzeigen` : `Show all ${displayedClubs.length} clubs`)}
                       </span>
-                      <i className={`fa-solid ${showAllClubs ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] text-zinc-400`}></i>
+                      <i className={`fa-solid ${showAllClubs ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] text-[#6B6A64]`}></i>
                     </button>
                   </div>
                 )}
@@ -2026,7 +2045,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 setStep(2);
                 setSubStep2('2B');
               }}
-              className="bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white font-medium text-xs sm:text-sm py-3 px-7 rounded-2xl border border-white/[0.08] backdrop-blur-xl transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2 shadow-sm"
+              className="bg-white hover:bg-[#FAF9F6] text-[#18191F] font-semibold text-xs sm:text-sm py-3 px-7 rounded-2xl border border-[#E6E3DC] transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2 shadow-sm"
             >
               <i className="fas fa-arrow-left text-xs"></i>
               <span>{t('Back to Managerial DNA', 'Zurück zur Management-DNA')}</span>
@@ -2038,18 +2057,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({
       {/* STEP 4: Hire Head Coach */}
       {step === 4 && selectedClubForArchetype && (
         <div className="max-w-2xl mx-auto text-center fade-in px-4 pb-10">
-          <div className="inline-flex items-center gap-2 mb-3 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs font-medium backdrop-blur-xl shadow-sm">
-            <span className="text-zinc-400">{isDe ? 'Verein:' : 'Club:'}</span>
-            <span className="text-white font-medium">{selectedClubForArchetype.name}</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-zinc-400">{isDe ? 'Philosophie:' : 'Philosophy:'}</span>
-            <span className="text-sky-300 font-medium">{tactic}</span>
+          <div className="inline-flex items-center gap-2 mb-3 px-4 py-1.5 rounded-full bg-white border border-[#E6E3DC] text-xs font-medium shadow-sm">
+            <span className="text-[#6B6A64]">{isDe ? 'Verein:' : 'Club:'}</span>
+            <span className="text-[#18191F] font-semibold">{selectedClubForArchetype.name}</span>
+            <span className="text-[#D4D0C7]">•</span>
+            <span className="text-[#6B6A64]">{isDe ? 'Philosophie:' : 'Philosophy:'}</span>
+            <span className="text-sky-700 font-semibold">{tactic}</span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-[#18191F] tracking-tight mb-2">
             {t('Hire Head Coach', 'Cheftrainer einstellen')}
           </h1>
-          <p className="text-[14px] md:text-[15px] font-normal text-zinc-400 max-w-xl mx-auto mb-8 leading-relaxed">
+          <p className="text-[14px] md:text-[15px] font-normal text-[#52525B] max-w-xl mx-auto mb-8 leading-relaxed">
             {t(
               `As the new Sporting Director of ${selectedClubForArchetype.name}, appoint your Head Coach. Choose someone who aligns with your ${tactic} philosophy.`,
               `Als neuer Sportdirektor von ${selectedClubForArchetype.name} musst du einen Cheftrainer einstellen. Wähle jemanden, der zu deiner ${tactic}-Philosophie passt.`
@@ -2066,14 +2085,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 <div 
                   key={coach.id}
                   onClick={() => setSelectedCoach(coach)}
-                  className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 backdrop-blur-2xl ${
+                  className={`p-4 sm:p-5 rounded-3xl border transition-all duration-200 cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
                     isSelected
-                      ? 'bg-sky-500/[0.08] border-sky-400/40 ring-1 ring-sky-400/25 shadow-[0_8px_30px_rgba(56,189,248,0.14),inset_0_1px_0_0_rgba(125,211,252,0.2)] scale-[1.01]'
-                      : 'bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.16]'
+                      ? 'bg-[#FAF9F6] border-[#18191F] ring-2 ring-[#18191F]/10 shadow-[0_10px_28px_rgba(24,25,31,0.08)] scale-[1.01]'
+                      : 'bg-white border-[#E6E3DC] hover:border-[#CFCAC0] shadow-[0_4px_16px_rgba(24,25,31,0.04)]'
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-base sm:text-lg text-white mb-1.5 flex items-center gap-2 flex-wrap">
+                    <div className="font-semibold text-base sm:text-lg text-[#18191F] mb-1.5 flex items-center gap-2 flex-wrap">
                       <span>{coach.name}</span>
                       
                       {/* Coach Archetype Pill */}
@@ -2082,40 +2101,40 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         <span>{isDe ? archConfig.labelDe : archConfig.labelEn}</span>
                       </span>
 
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium transition-colors ${
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition-colors ${
                         isSelected
-                          ? 'bg-sky-500/20 text-sky-200 border border-sky-400/30'
-                          : 'bg-white/[0.08] border border-white/[0.1] text-zinc-300'
+                          ? 'bg-[#18191F] text-white border border-[#18191F]'
+                          : 'bg-[#F6F5F1] border border-[#E6E3DC] text-[#52525B]'
                       }`}>{coach.strength}</span>
                     </div>
 
                     <div className="text-xs sm:text-sm flex items-center gap-2 flex-wrap">
-                      <span className="text-zinc-300 font-medium flex items-center gap-1">
-                        <i className={`fas ${TACTICS[coach.style]?.icon || 'fa-chess-board'} text-zinc-400 text-xs`}></i> {coach.style}
+                      <span className="text-[#52525B] font-medium flex items-center gap-1">
+                        <i className={`fas ${TACTICS[coach.style]?.icon || 'fa-chess-board'} text-[#6B6A64] text-xs`}></i> {coach.style}
                       </span>
                       {hasSynergy && (
-                         <span className="text-[10px] bg-sky-500/15 text-sky-200 px-2.5 py-0.5 rounded-full font-medium tracking-wide border border-sky-400/30 flex items-center gap-1">
-                           <i className="fa-solid fa-circle-check text-[9px] text-sky-400"></i>
+                         <span className="text-[10px] bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full font-semibold tracking-wide border border-sky-200 flex items-center gap-1">
+                           <i className="fa-solid fa-circle-check text-[9px] text-sky-600"></i>
                            <span>Synergy</span>
                          </span>
                       )}
                       {coach.trophyPedigree ? (
-                        <span className="text-[11px] text-amber-400/90 font-medium flex items-center gap-1">
-                          <i className="fa-solid fa-trophy text-[9px]"></i>
+                        <span className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
+                          <i className="fa-solid fa-trophy text-[9px] text-amber-600"></i>
                           <span>{coach.trophyPedigree} {isDe ? 'Titel' : 'Trophies'}</span>
                         </span>
                       ) : null}
                     </div>
 
-                    <div className="text-xs text-zinc-400 mt-2 font-normal italic line-clamp-1">
+                    <div className="text-xs text-[#6B6A64] mt-2 font-normal italic line-clamp-1">
                       "{getCoachQuote(coach.ovrBoost, isDe, coach.id)}"
                     </div>
                   </div>
 
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.06] gap-2">
-                    <div className="text-left sm:text-right">
-                      <div className="text-sm font-semibold text-white mb-0.5">{formatMoney(coach.cost)} / {isDe ? 'Jahr' : 'yr'}</div>
-                      <div className="text-xs text-zinc-400">{coach.contractYearsLeft} {isDe ? 'Jahre Vertrag' : 'Year Deal'}</div>
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E6E3DC] gap-2">
+                    <div className="text-left sm:text-right tabular-nums">
+                      <div className="text-sm font-bold text-[#18191F] mb-0.5">{formatMoney(coach.cost)} / {isDe ? 'Jahr' : 'yr'}</div>
+                      <div className="text-xs text-[#6B6A64]">{coach.contractYearsLeft} {isDe ? 'Jahre Vertrag' : 'Year Deal'}</div>
                     </div>
 
                     {/* View Dossier Button */}
@@ -2125,9 +2144,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                         e.stopPropagation();
                         setDossierCoach(coach);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-sky-300 hover:text-white border border-white/[0.1] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-[#F6F5F1] hover:bg-[#EAE7E0] text-[#18191F] border border-[#E6E3DC] text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
                     >
-                      <i className="fa-solid fa-fingerprint text-[11px] text-sky-400"></i>
+                      <i className="fa-solid fa-fingerprint text-[11px] text-[#52525B]"></i>
                       <span>{isDe ? 'Dossier ansehen' : 'View Dossier'}</span>
                     </button>
                   </div>
@@ -2140,7 +2159,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             <button 
               type="button" 
               onClick={() => setStep(3)} 
-              className="bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white font-medium text-xs sm:text-sm py-3.5 px-7 rounded-2xl border border-white/[0.1] backdrop-blur-md transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
+              className="bg-white hover:bg-[#FAF9F6] text-[#18191F] font-semibold text-xs sm:text-sm py-3.5 px-7 rounded-2xl border border-[#E6E3DC] transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-2"
             >
               <i className="fa-solid fa-arrow-left text-xs"></i>
               <span>{t('Back', 'Zurück')}</span>
@@ -2158,8 +2177,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   coach: selectedCoach || undefined,
                 });
               }}
-              className={`flex-1 font-semibold text-xs sm:text-sm py-3.5 px-8 rounded-2xl transition-all duration-200 cursor-pointer shadow-[0_4px_20px_rgba(255,255,255,0.15)] ${
-                selectedCoach ? 'bg-white text-zinc-950 hover:bg-zinc-100 active:scale-95' : 'bg-white/[0.06] text-zinc-600 border border-white/[0.05] cursor-not-allowed shadow-none'
+              className={`flex-1 font-semibold text-xs sm:text-sm py-3.5 px-8 rounded-2xl transition-all duration-200 cursor-pointer ${
+                selectedCoach
+                  ? 'bg-[#18191F] hover:bg-[#2A2B33] text-white shadow-[0_8px_24px_rgba(24,25,31,0.18)] active:scale-95'
+                  : 'bg-[#EAE7E0] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed shadow-none'
               }`}
               disabled={!selectedCoach}
             >

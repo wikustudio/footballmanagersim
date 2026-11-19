@@ -1,38 +1,56 @@
 import { TOURNAMENT_LOGOS, getLeagueInfo, getDomesticCupInfo } from '../data/gameConstants';
-import { getRegion } from './regionHelpers';
+import { getCompetitionLogo } from './competitionLogos';
 
-export const getTrophyImage = (id: string, country: string = 'GER'): string => {
-  id = id.toLowerCase().trim();
-  const region = getRegion(country);
+export const getTrophyImage = (id: string, country: string = 'GER', isModActive: boolean = true): string => {
+  const norm = (id || '').toLowerCase().trim();
 
-  if (id === 'cl') {
-    if (region === 'CONCACAF') return TOURNAMENT_LOGOS.concacaf;
-    if (region === 'CONMEBOL') return TOURNAMENT_LOGOS.copaLibertadores;
-    if (region === 'AFC') return TOURNAMENT_LOGOS.afcChampionsLeague; // We need to add this
-    return TOURNAMENT_LOGOS.cl;
+  if (norm === 'cl' || norm === 'el' || norm === 'ecl' || norm === 'cwc') {
+    return getCompetitionLogo({
+      kind: 'continental',
+      competitionId: norm,
+      country,
+      isModActive,
+    });
   }
-  if (id === 'el') {
-    if (region === 'CONCACAF') return TOURNAMENT_LOGOS.leaguesCup;
-    if (region === 'CONMEBOL') return TOURNAMENT_LOGOS.copaSudamericana;
-    if (region === 'AFC') return TOURNAMENT_LOGOS.afcCup;
-    return TOURNAMENT_LOGOS.el;
+  if (norm === 'wc' || norm === 'world-cup') {
+    return getCompetitionLogo({
+      kind: 'world_cup',
+      competitionId: 'wc',
+      country,
+      isModActive,
+    });
   }
-  if (id === 'cwc') return TOURNAMENT_LOGOS.cwc || '';
-  if (id === 'ecl') {
-    if (region === 'CONCACAF') return TOURNAMENT_LOGOS.campeonesCup;
-    if (region === 'CONMEBOL') return TOURNAMENT_LOGOS.recopaSudamericana;
-    if (region === 'AFC') return TOURNAMENT_LOGOS.afcChallengeLeague;
-    return TOURNAMENT_LOGOS.ecl;
+  if (norm === 'supercup') {
+    return getCompetitionLogo({
+      kind: 'supercup',
+      competitionId: 'supercup',
+      country,
+      isModActive,
+    });
   }
-  if (id === 'dfb') {
-    const cupInfo = getDomesticCupInfo(country);
-    return cupInfo.logo || TOURNAMENT_LOGOS.dfbPokal;
+  if (norm === 'dfb') {
+    if (isModActive) {
+      const cupInfo = getDomesticCupInfo(country);
+      return (
+        getCompetitionLogo({ kind: 'cup', country, tier: 1, isModActive: true }) ||
+        cupInfo.logo ||
+        TOURNAMENT_LOGOS.dfbPokal
+      );
+    }
+    return getCompetitionLogo({ kind: 'cup', country, tier: 1, isModActive: false });
   }
-  if (id === 'bl') {
-    const leagueInfo = getLeagueInfo(1, country);
-    return leagueInfo.logo || TOURNAMENT_LOGOS.supercup;
+  if (norm === 'bl') {
+    if (isModActive) {
+      const leagueInfo = getLeagueInfo(1, country);
+      return (
+        getCompetitionLogo({ kind: 'league', country, tier: 1, isModActive: true }) ||
+        leagueInfo.logo ||
+        TOURNAMENT_LOGOS.supercup
+      );
+    }
+    return getCompetitionLogo({ kind: 'league', country, tier: 1, isModActive: false });
   }
-  
+
   return '';
 };
 

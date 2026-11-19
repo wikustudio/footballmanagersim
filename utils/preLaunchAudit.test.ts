@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getMinAllowedTierForReserve, isReserveClub, getMaxTier } from '../data/gameConstants';
 import { getBaseModClubs, getSafeDefaultClubs } from '../engine/moddingEngine';
 import { simulateAiLeagues, canReserveClubPromoteToTier, getParentClub } from '../engine/simulateAiLeagues';
 import { autoRepairClubsDb, mergeClubsDbSafeguards, resolveHistoryClubDisplay } from './modSafeguards';
 import { getAllUniverseMovements } from './universeMovements';
+import { buildChampionsAlmanac } from './championsAlmanac';
+import { cacheLogoBlob } from './logoCache';
 import { getRegionalQualificationLegend } from './regionHelpers';
 import { generateRandomEvent } from '../data/randomEvents';
 import { compactGameState } from './storageManager';
@@ -373,6 +375,157 @@ describe('7-Point Pre-Launch Verification Suite', () => {
     expect(sanitized!.history[0].logo).toBeUndefined();
     expect(sanitized!.history[1].clubName).toBe('Prussia Dortmund');
     expect(sanitized!.history[1].clubId).toBe(3);
+  });
+
+  it('9. Logo Cache Wikimedia CORS Guard: skips fetch() on wikimedia.org and wikipedia.org URLs', async () => {
+    const originalWindow = (globalThis as any).window;
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn();
+    (globalThis as any).window = {};
+    globalThis.fetch = fetchSpy as any;
+
+    try {
+      const res1 = await cacheLogoBlob('bayern_wikimedia', 'https://commons.wikimedia.org/wiki/Special:FilePath/FC_Bayern_M%C3%BCnchen_logo_(2017).svg');
+      const res2 = await cacheLogoBlob('dortmund_wikipedia', 'https://en.wikipedia.org/wiki/Special:FilePath/Borussia_Dortmund_logo.svg');
+      expect(res1).toBeNull();
+      expect(res2).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalWindow === undefined) {
+        delete (globalThis as any).window;
+      } else {
+        (globalThis as any).window = originalWindow;
+      }
+    }
+  });
+
+  it('10. Universe Movements Fallback Resolution: resolves reserve and ID-less modded clubs and strips mod logos when mod is inactive', () => {
+    const modClubs = getBaseModClubs();
+    const state: any = {
+      year: 2029,
+      seasonCount: 3,
+      club: {
+        id: 1,
+        name: 'FC Bayern München',
+        country: 'GER',
+        tier: 1,
+        baseOvr: 94,
+        color: 'dc052d',
+        stadium: 75024,
+        logo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayern.svg',
+      },
+      history: [
+        {
+          year: 2027,
+          tier: 1,
+          pos: 1,
+          pts: 81,
+          clubId: 1,
+          clubName: 'FC Bayern München',
+          country: 'GER',
+          trophiesThisYear: { bl: 1 },
+          logo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayern.svg',
+        }
+      ],
+      universeMovements: [
+        {
+          id: 'mv_bvb_no_id',
+          year: 2028,
+          type: 'title_won',
+          clubName: 'Borussia Dortmund',
+          country: 'GER',
+          fromTier: 1,
+          toTier: 1,
+          clubLogo: 'https://commons.wikimedia.org/wiki/Special:FilePath/BVB.svg',
+          reason: 'Bundesliga Champion',
+        },
+        {
+          id: 'mv_fcb2_no_id',
+          year: 2028,
+          type: 'promotion',
+          clubName: 'FC Bayern München II',
+          country: 'GER',
+          fromTier: 4,
+          toTier: 3,
+          clubLogo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayern.svg',
+          reason: 'Promoted to 3. Liga',
+        }
+      ],
+    };
+
+    const moves = getAllUniverseMovements(state, modClubs, false);
+    const bvbMove = moves.find(m => m.id === 'mv_bvb_no_id');
+    const fcb2Move = moves.find(m => m.id === 'mv_fcb2_no_id');
+
+    expect(bvbMove).toBeDefined();
+    expect(bvbMove!.clubName).toBe('Prussia Dortmund');
+    expect(bvbMove!.clubLogo).toBeUndefined();
+
+    expect(fcb2Move).toBeDefined();
+    expect(fcb2Move!.clubName).toBe('Bavaria München II');
+    expect(fcb2Move!.clubLogo).toBeUndefined();
+
+    // No external HTTP logo URLs leak when mod is inactive
+    const leakedHttpLogo = moves.find(m => typeof m.clubLogo === 'string' && m.clubLogo.startsWith('http'));
+    expect(leakedHttpLogo).toBeUndefined();
+  });
+
+  it('11. Champions Almanac Fallback Resolution: strips modded club names and external logos when mod is inactive', () => {
+    const safeDefaults = getSafeDefaultClubs();
+    const state: any = {
+      year: 2028,
+      startYear: 2026,
+      seasonCount: 3,
+      club: {
+        id: 1,
+        name: 'FC Bayern München',
+        country: 'GER',
+        tier: 1,
+        baseOvr: 95,
+        color: 'dc052d',
+        stadium: 75024,
+        logo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayern.svg',
+      },
+      history: [
+        {
+          year: 2026,
+          tier: 1,
+          pos: 1,
+          pts: 82,
+          clubId: 1,
+          clubName: 'FC Bayern München',
+          country: 'GER',
+          trophiesThisYear: { bl: 1 },
+          logo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Bayern.svg',
+        }
+      ],
+      universeMovements: [
+        {
+          id: 'almanac_bvb_champ',
+          year: 2027,
+          type: 'title_won',
+          clubName: 'Borussia Dortmund',
+          country: 'GER',
+          fromTier: 1,
+          toTier: 1,
+          clubLogo: 'https://commons.wikimedia.org/wiki/Special:FilePath/BVB.svg',
+          reason: 'Top Flight Champion',
+        }
+      ],
+    };
+
+    const almanac = buildChampionsAlmanac(state, 'GER', safeDefaults, false);
+    const yr2026 = almanac.find(r => r.year === 2026);
+    const yr2027 = almanac.find(r => r.year === 2027);
+
+    const yr2026T1 = yr2026?.leagueWinners.find(w => w.tier === 1);
+    const yr2027T1 = yr2027?.leagueWinners.find(w => w.tier === 1);
+
+    expect(yr2026T1?.clubName).toBe('Bavaria München');
+    expect(yr2026T1?.clubLogo).toBeUndefined();
+    expect(yr2027T1?.clubName).toBe('Prussia Dortmund');
+    expect(yr2027T1?.clubLogo).toBeUndefined();
   });
 });
 

@@ -20,6 +20,7 @@ import {
   getHostNation,
   isWorldCupYear,
 } from '../engine/internationalEngine';
+import { resolveHistoryClubDisplay } from './modSafeguards';
 
 export type CompetitionCategory = 'league' | 'domestic_cup' | 'continental_cup' | 'global_cup';
 
@@ -1551,7 +1552,19 @@ export function buildChampionsAlmanac(
   const defaultClubById = DEFAULT_CLUB_BY_ID;
   const modClubById = MOD_CLUB_BY_ID;
 
+  const clubDisplayMemo = new Map<string, {
+    clubId?: number;
+    clubName: string;
+    clubColor: string;
+    clubLogo?: string;
+    country: string;
+  }>();
+
   const resolveClubDisplay = (id?: number, fallbackName?: string, fallbackColor?: string, fallbackLogo?: string) => {
+    const memoKey = `${id ?? ''}|${fallbackName ?? ''}|${fallbackColor ?? ''}|${fallbackLogo ?? ''}`;
+    const cached = clubDisplayMemo.get(memoKey);
+    if (cached) return cached;
+
     const dbClub =
       (id != null ? clubById.get(id) : undefined) ||
       (fallbackName ? clubByName.get(fallbackName.toLowerCase().trim()) : undefined);
@@ -1559,40 +1572,59 @@ export function buildChampionsAlmanac(
     const modEntry = resolvedId != null ? modClubById.get(resolvedId) : undefined;
     const defEntry = resolvedId != null ? defaultClubById.get(resolvedId) : undefined;
 
-    let name = fallbackName || dbClub?.name || modEntry?.name || 'Club';
+    let rawName = fallbackName || dbClub?.name || modEntry?.name || 'Club';
     if (resolvedId != null && state.club?.id === resolvedId && state.club?.name) {
-      name = state.club.name;
+      rawName = state.club.name;
     } else if (effectiveModActive && modEntry?.name) {
-      name = modEntry.name;
+      rawName = modEntry.name;
     } else if (!effectiveModActive && defEntry?.name) {
-      name = defEntry.name;
+      rawName = defEntry.name;
     } else if (dbClub?.name) {
-      name = dbClub.name;
+      rawName = dbClub.name;
     } else if (modEntry?.name) {
-      name = modEntry.name;
+      rawName = modEntry.name;
     }
 
+    const resolvedDisplay = resolveHistoryClubDisplay(
+      {
+        id: resolvedId,
+        name: rawName,
+        country: dbClub?.country || modEntry?.country || country,
+        color: dbClub?.color || defEntry?.color || modEntry?.color || fallbackColor || '38bdf8',
+        logo: (resolvedId != null && state.club?.id === resolvedId ? state.club?.logo : undefined) ||
+              (effectiveModActive ? modEntry?.logo : undefined) ||
+              dbClub?.logo ||
+              dbClub?.fallbackLogo ||
+              fallbackLogo,
+        fallbackLogo: dbClub?.fallbackLogo,
+      },
+      effectiveModActive,
+      rawSourceClubs
+    );
+
     const rawColor =
+      resolvedDisplay.color ||
       dbClub?.color ||
       defEntry?.color ||
       modEntry?.color ||
       fallbackColor ||
       '38bdf8';
     const color = rawColor.startsWith('#') ? rawColor : `#${rawColor}`;
-    const logo =
-      (resolvedId != null && state.club?.id === resolvedId ? state.club?.logo : undefined) ||
-      (effectiveModActive ? modEntry?.logo : undefined) ||
-      dbClub?.logo ||
-      dbClub?.fallbackLogo ||
-      fallbackLogo;
+    const logo = effectiveModActive
+      ? (resolvedDisplay.logo || resolvedDisplay.fallbackLogo)
+      : (typeof resolvedDisplay.logo === 'string' && (resolvedDisplay.logo.startsWith('data:image/') || resolvedDisplay.logo.startsWith('blob:'))
+          ? resolvedDisplay.logo
+          : undefined);
 
-    return {
-      clubId: resolvedId,
-      clubName: name,
+    const res = {
+      clubId: resolvedDisplay.id ?? resolvedId,
+      clubName: resolvedDisplay.name || rawName,
       clubColor: color,
       clubLogo: logo,
       country: dbClub?.country || modEntry?.country || country,
     };
+    clubDisplayMemo.set(memoKey, res);
+    return res;
   };
 
   // Identify user's current club and historical season-by-season club tenure

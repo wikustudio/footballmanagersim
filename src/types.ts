@@ -2,6 +2,7 @@ export type Language = 'en' | 'de';
 export type ViewMode = 'game' | 'about' | 'leaderboard';
 export type GameMode = 'standard' | 'realistic';
 export type StadiumPolicy = 'balanced' | 'ultras' | 'commercial' | 'family';
+export type StadiumArchitectureStyle = 'english_box' | 'olympic_track' | 'continental_bowl' | 'open_terrace';
 
 export interface SponsorSlot {
   id: string;
@@ -45,6 +46,7 @@ export interface Club {
   metroName?: string;
   ovr?: number;
   stadiumName?: string;
+  stadiumStyle?: StadiumArchitectureStyle;
 }
 
 export interface ClubSeasonRecord {
@@ -165,6 +167,7 @@ export interface SeasonHistory {
   rivalH2HLosses?: number;
   status?: 'C' | 'P' | 'R';
   survived?: boolean;
+  last5?: ('W' | 'D' | 'L')[];
 }
 
 export type LocalizedString = { en: string; de: string };
@@ -308,6 +311,7 @@ export interface GameState {
   maxOvrCap: number;
   investmentsThisSeason: number;
   sponsorsPitchedThisSeason: number;
+  failedMegaDeals?: number;
   globalToursThisSeason?: number;
   latestTourMatches?: { opponent: string; ourScore: number; theirScore: number }[];
   stadiumExpandedThisSeason: number;
@@ -344,6 +348,8 @@ export interface GameState {
   hasResolvedInsolvencyBefore?: boolean;
   careerScore?: number;
   stadiumPolicy?: StadiumPolicy;
+  vipHospitality?: boolean;
+  unlockedStadiumStyles?: StadiumArchitectureStyle[];
   glassCeilingCursed?: boolean;
   billionaireTakeoverYear?: number;
   wonderkidOvrBoost?: number;
@@ -470,6 +476,18 @@ export interface GameState {
   boardTarget?: number;
   managerAge?: number;
   ovrHistory?: { year: number; delta: number; reason: string }[];
+  mediaPressure?: number;
+  pressureContext?: PressureAssessment | null;
+  pressureMomentResolvedYear?: number;
+  pressureChoiceThisSeason?: PressureChoiceId | null;
+  pressureBoostOvr?: number;
+  pressureCommitment?: { year: number; targetPos: number; choice: PressureChoiceId } | null;
+  pitchDesign?: PitchDesignId;
+  stadiumStyle?: StadiumArchitectureStyle;
+  stadiumNamingRights?: StadiumNamingRightsDeal | null;
+  namingRightsSignedYear?: number;
+  supercupPlayedYear?: number;
+  supercupHistory?: SupercupResult[];
 }
 
 export interface MatchdayOutcome {
@@ -499,6 +517,7 @@ export interface MatchdayOutcome {
   runningPos: number;
   runningPosition: number;
   isUpsetWin?: boolean;
+  attendance?: number;
 }
 
 export interface PendingSeasonState {
@@ -519,6 +538,7 @@ export interface PendingSeasonState {
   gd: number;
   effectiveOvr: number;
   leagueAvgOvr: number;
+  expectedSeasonAtt?: number;
   schedule: MatchdayOutcome[];
   matchdaySchedule: MatchdayOutcome[];
   _meta: {
@@ -538,8 +558,15 @@ export interface PendingSeasonState {
     skillsKeyAtCalculation?: string;
     stadiumAtCalculation?: number;
     stadiumPolicyAtCalculation?: string;
+    pressureBoostAtCalculation?: number;
+    mediaPressureAtCalculation?: number;
+    predictedPointsDeducted?: number;
+    cursedAtCalculation?: boolean;
     midPos?: number;
     midPts?: number;
+    lockedFirstHalfAnchorPos?: number;
+    lockedFirstHalfAnchorPts?: number;
+    lockedFirstHalfAnchorGd?: number;
   };
 }
 
@@ -773,6 +800,115 @@ export interface DirectorSynergyResult {
   clutchGoalChance: number;
 }
 
+
+export type PressureLevel = 'calm' | 'scrutiny' | 'high' | 'crisis';
+export type PressureScenario = 'none' | 'title_collapse' | 'relegation_spiral' | 'expectation_gap';
+export type PressureChoiceId = 'back_coach' | 'demand_coach_change' | 'take_gm_accountability' | 'crisis_pr_summit';
+
+export interface PressureScrutinyProfile {
+  name: string;
+  role: string;
+  statusTag: string;
+  heatRating: number;
+  quote: string;
+}
+
+export interface PressureMediaClipping {
+  outlet: string;
+  headline: string;
+  tone: 'critical' | 'alarm' | 'supportive';
+}
+
+export interface PressureAssessment {
+  pressureScore: number;
+  level: PressureLevel;
+  scenario: PressureScenario;
+  expectedRank: number;
+  actualRank: number;
+  expectationGap: number;
+  ptsGapFromTarget: number;
+  streakLosses: number;
+  triggerMoment: boolean;
+  headline: string;
+  subheadline: string;
+  coachScrutiny: PressureScrutinyProfile;
+  gmScrutiny: PressureScrutinyProfile;
+  mediaOutlets: PressureMediaClipping[];
+  evaluatedYear?: number;
+  evaluatedPhase?: 'mid' | 'end' | 'dashboard';
+}
+
+export interface PressureOption {
+  id: PressureChoiceId;
+  title: string;
+  subtitle: string;
+  stanceBadge: string;
+  icon: string;
+  costK?: number;
+  mpCost?: number;
+  effectsSummary: string;
+  riskLabel: string;
+  disabledReason?: string;
+}
+
+export type WorkspaceTab = 'overview' | 'squad' | 'commercial' | 'infrastructure' | 'board';
+export type PitchDesignId = 'emerald_stripe' | 'club_heritage' | 'continental_carpet' | 'classic_cut';
+export type CameraAngle = 'isometric' | 'topdown' | 'endzone' | 'inspection';
+export type MatchPhase = 'idle' | 'buildup' | 'counter' | 'setpiece' | 'shot' | 'goal';
+
+export interface StadiumNamingRightsDeal {
+  partnerName: string;
+  stadiumDisplayName: string;
+  tagline?: string;
+  tier: 'regional' | 'national' | 'global';
+  annualPayoutK: number;
+  signingBonusK: number;
+  totalYears: number;
+  yearsLeft: number;
+  signedYear: number;
+  accentColor?: string;
+}
+
+export interface SupercupResult {
+  year: number;
+  cupName: string;
+  opponentName: string;
+  opponentId: number;
+  opponentColor: string;
+  opponentLogo?: string;
+  opponentOvr: number;
+  ourScore: number;
+  oppScore: number;
+  won: boolean;
+  prizeK: number;
+  decidedOnPens?: boolean;
+  ourPenScore?: number;
+  oppPenScore?: number;
+}
+
+export interface ShotEvent {
+  id: string;
+  matchday: number;
+  zone: 'box' | 'range' | 'flanks';
+  x: number;
+  y: number;
+  made: boolean;
+  minute: number;
+}
+
+export interface PressureSeasonVerdict {
+  scenario: 'title_collapse' | 'relegation_survival' | 'relegation_disaster' | 'comeback_redemption' | 'sustained_heat';
+  headline: string;
+  summary: string;
+  coachVerdict: string;
+  gmVerdict: string;
+  pressureBefore: number;
+  pressureAfter: number;
+  badge: string;
+  tone: 'crisis' | 'warning' | 'triumph' | 'relief';
+  boardTrustBonus?: number;
+  repBonus?: number;
+}
 
 declare global {
   interface Window {

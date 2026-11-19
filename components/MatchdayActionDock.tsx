@@ -138,8 +138,9 @@ export const MatchdayActionDock: React.FC<MatchdayActionDockProps> = ({
 
   return (
     <div
+      aria-hidden={isHidden}
       className={`fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 w-[95vw] max-w-2xl select-none transition-all duration-300 ${
-        isHidden ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'
+        isHidden ? 'opacity-0 pointer-events-none translate-y-4 invisible' : 'opacity-100 pointer-events-auto translate-y-0 visible'
       }`}
     >
       <div
@@ -192,6 +193,8 @@ export const MatchdayActionDock: React.FC<MatchdayActionDockProps> = ({
         <button
           type="button"
           onClick={onSimulate}
+          disabled={isHidden}
+          tabIndex={isHidden ? -1 : 0}
           className={`shrink-0 rounded-full px-3.5 sm:px-5 py-2.5 sm:py-3 text-white font-extrabold text-xs sm:text-sm tracking-tight border flex items-center gap-2 transition-all active:scale-95 cursor-pointer ${theme.button}`}
         >
           <i className="fa-solid fa-play text-[10px] sm:text-xs" />

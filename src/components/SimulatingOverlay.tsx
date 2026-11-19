@@ -51,6 +51,8 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     const currentSkillsKey = (gameState.managerSkills || []).slice().sort().join(',');
     const currentStadium = gameState.club?.stadium || 0;
     const currentStadiumPolicy = gameState.stadiumPolicy || 'balanced';
+    const currentPressureBoost = gameState.pressureBoostOvr || 0;
+    const currentMediaPressure = gameState.mediaPressure ?? 0;
 
     if (!existing || !Array.isArray(existing.matchdaySchedule) || existing.matchdaySchedule.length === 0) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive);
@@ -67,7 +69,9 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
         (existing._meta.hasBounceAtCalculation ?? currentHasBounce) !== currentHasBounce ||
         (existing._meta.skillsKeyAtCalculation ?? currentSkillsKey) !== currentSkillsKey ||
         (existing._meta.stadiumAtCalculation ?? currentStadium) !== currentStadium ||
-        (existing._meta.stadiumPolicyAtCalculation ?? currentStadiumPolicy) !== currentStadiumPolicy)
+        (existing._meta.stadiumPolicyAtCalculation ?? currentStadiumPolicy) !== currentStadiumPolicy ||
+        (existing._meta.pressureBoostAtCalculation ?? currentPressureBoost) !== currentPressureBoost ||
+        (existing._meta.mediaPressureAtCalculation ?? currentMediaPressure) !== currentMediaPressure)
     ) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive, {
         lockFirstHalfFrom: existing,
@@ -88,6 +92,8 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     gameState.managerSkills,
     gameState.club?.stadium,
     gameState.stadiumPolicy,
+    gameState.pressureBoostOvr,
+    gameState.mediaPressure,
     clubsDb,
     isModActive,
   ]);
@@ -316,16 +322,16 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     result === 'W'
       ? {
           text: 'FT · WIN (+3P)',
-          cls: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
+          cls: 'text-emerald-800 bg-emerald-50 border-emerald-200',
         }
       : result === 'D'
       ? {
           text: 'FT · DRAW (+1P)',
-          cls: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
+          cls: 'text-amber-800 bg-amber-50 border-amber-200',
         }
       : {
           text: 'FT · LOSS',
-          cls: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+          cls: 'text-rose-800 bg-rose-50 border-rose-200',
         };
 
   // Dynamic Form Pill in Momentum Swings header
@@ -333,16 +339,16 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     result === 'W'
       ? {
           text: playerOvr < oppOvr - 2 ? '+3 FORM · UPSET VICTORY!' : '+2 FORM · MATCHDAY WIN',
-          cls: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30',
+          cls: 'text-emerald-800 bg-emerald-50 border-emerald-200',
         }
       : result === 'D'
       ? {
           text: '±0 FORM · LEVEL PEGGING',
-          cls: 'text-amber-300 bg-amber-500/15 border-amber-500/30',
+          cls: 'text-amber-800 bg-amber-50 border-amber-200',
         }
       : {
           text: isRelegationSeason ? '-3 FORM · RELEGATION STRUGGLE' : '-2 FORM · UNDER PRESSURE',
-          cls: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+          cls: 'text-rose-800 bg-rose-50 border-rose-200',
         };
 
   // Active soundwave bars calculation (0..11 left/negative, 12..23 right/positive)
@@ -352,21 +358,21 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     liveMomentumPercent < 0 ? Math.min(12, Math.max(2, Math.round((Math.abs(liveMomentumPercent) / 50) * 12))) : 0;
 
   return (
-    <div className="fixed inset-0 z-[9995] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 select-none animate-[fadeIn_0.18s_ease-out]">
-      <div className="w-full max-w-[380px] sm:max-w-[420px] bg-[#0e1018]/95 border border-white/10 rounded-3xl p-6 sm:p-7 shadow-[0_24px_70px_rgba(0,0,0,0.85)] relative overflow-hidden">
+    <div className="fixed inset-0 z-[9995] bg-[#18191F]/45 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 select-none overflow-y-auto overscroll-contain animate-[fadeIn_0.18s_ease-out]">
+      <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white text-[#18191F] border border-[#E6E3DC] rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 shadow-[0_24px_64px_rgba(24,25,31,0.18)] relative overflow-hidden my-auto max-h-[92dvh] sm:max-h-[88vh] flex flex-col">
         {/* Dynamic Ambient Glow */}
         <div
-          className={`absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-300 ${ambientGlowClass}`}
+          className={`absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-300 opacity-60 ${ambientGlowClass}`}
         />
 
         {/* Top Header Row */}
-        <div className="relative z-10 flex items-center justify-between gap-2 mb-5">
+        <div className="relative z-10 flex items-center justify-between gap-2 mb-4 pb-3 border-b border-[#E6E3DC]">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${statusDotClass}`} />
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-300 truncate">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#4B5563] truncate">
               {isSecondHalf
-                ? '2ND HALF FINALE · CHAMPIONSHIP DECIDERS'
-                : '1ST HALF CAMPAIGN · AUTUMN FIXTURES'}
+                ? '2ND HALF FINALE'
+                : '1ST HALF CAMPAIGN'}
             </span>
           </div>
 
@@ -377,8 +383,8 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
               title={isFastMode ? 'Switch to 1x Speed' : 'Switch to 2x Fast-Forward'}
               className={`px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold transition-colors cursor-pointer ${
                 isFastMode
-                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                  : 'bg-white/[0.06] border-white/10 text-zinc-300 hover:bg-white/10'
+                  ? 'bg-amber-50 border-amber-300 text-amber-800'
+                  : 'bg-[#FAF9F6] border-[#E6E3DC] text-[#4B5563] hover:bg-[#EFECE4]'
               }`}
             >
               {isFastMode ? '2X' : '1X'}
@@ -387,30 +393,30 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
               type="button"
               onClick={handleSkipSim}
               title="Skip to End of Half"
-              className="px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/12 border border-white/10 text-[10px] font-mono font-bold text-zinc-200 transition-colors cursor-pointer"
+              className="px-2 py-0.5 rounded-lg bg-[#18191F] hover:bg-[#2A2C35] text-[10px] font-mono font-bold text-white transition-colors cursor-pointer"
             >
               SKIP
             </button>
-            <span className="px-2 py-0.5 rounded-lg bg-white/[0.06] border border-white/10 text-[10px] font-mono font-bold text-zinc-200 tabular-nums">
+            <span className="px-2 py-0.5 rounded-lg bg-[#FAF9F6] border border-[#E6E3DC] text-[10px] font-mono font-bold text-[#18191F] tabular-nums">
               MD {matchday}/{targetEnd}
             </span>
-            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400 tabular-nums">
+            <span className="px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[10px] font-mono font-bold text-emerald-800 tabular-nums">
               {cumulativeStats.pts} PTS
             </span>
           </div>
         </div>
 
         {/* 5-Column Matchup Box (Cols 1-2 ALWAYS User Club, Col 3 Score, Cols 4-5 Opponent) */}
-        <div className="relative z-10 grid grid-cols-5 items-center gap-2 bg-black/40 rounded-2xl p-4 border border-white/[0.08] mb-5">
+        <div className="relative z-10 grid grid-cols-5 items-center gap-2 bg-[#FAF9F6] rounded-2xl p-4 border border-[#E6E3DC] mb-4">
           {/* Left: Cols 1-2 — ALWAYS User Club */}
           <div className="col-span-2 flex flex-col items-center text-center min-w-0">
-            <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center p-1.5 mb-2 shadow-inner">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center p-1.5 mb-2 shadow-xs">
               <ClubLogo club={gameState.club} size={32} isModActive={isModActive} />
             </div>
-            <div className="text-xs font-bold text-white truncate w-full px-1">
+            <div className="text-xs font-bold text-[#18191F] truncate w-full px-1">
               {gameState.club?.name || 'Your Club'}
             </div>
-            <div className="text-[10px] font-mono font-semibold text-zinc-400 mt-0.5 tabular-nums">
+            <div className="text-[10px] font-mono font-semibold text-[#6B7280] mt-0.5 tabular-nums">
               OVR {playerOvr}
             </div>
           </div>
@@ -421,16 +427,16 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
               <span
                 className={
                   result === 'W'
-                    ? 'text-emerald-400'
+                    ? 'text-emerald-700'
                     : result === 'L'
-                    ? 'text-rose-400'
-                    : 'text-amber-300'
+                    ? 'text-rose-700'
+                    : 'text-amber-700'
                 }
               >
                 {userGoals}
               </span>
-              <span className="text-zinc-600">:</span>
-              <span className="text-white">{oppGoals}</span>
+              <span className="text-[#9CA3AF]">:</span>
+              <span className="text-[#18191F]">{oppGoals}</span>
             </div>
             <span
               className={`px-2 py-0.5 rounded-md border text-[9px] font-mono font-bold uppercase tracking-wider whitespace-nowrap ${outcomePill.cls}`}
@@ -441,22 +447,22 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
 
           {/* Right: Cols 4-5 — Opponent Club */}
           <div className="col-span-2 flex flex-col items-center text-center min-w-0">
-            <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center p-1.5 mb-2 shadow-inner">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center p-1.5 mb-2 shadow-xs">
               <ClubLogo club={oppClubObj} size={32} isModActive={isModActive} />
             </div>
-            <div className="text-xs font-bold text-white truncate w-full px-1">
+            <div className="text-xs font-bold text-[#18191F] truncate w-full px-1">
               {oppName}
             </div>
-            <div className="text-[10px] font-mono font-semibold text-zinc-400 mt-0.5 tabular-nums">
+            <div className="text-[10px] font-mono font-semibold text-[#6B7280] mt-0.5 tabular-nums">
               OVR {oppOvr}
             </div>
           </div>
         </div>
 
         {/* Momentum Swings Section */}
-        <div className="relative z-10 space-y-2.5 mb-5">
+        <div className="relative z-10 space-y-2.5 mb-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-zinc-400">
+            <span className="text-[11px] font-semibold text-[#6B7280]">
               Momentum Swings
             </span>
             <span
@@ -467,11 +473,11 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
           </div>
 
           {/* Center-Anchored Bidirectional Momentum Bar */}
-          <div className="h-2.5 bg-black/60 rounded-full relative overflow-hidden border border-white/[0.06]">
-            <div className="absolute top-0 bottom-0 left-1/2 w-[1.5px] -translate-x-1/2 bg-white/30 z-10" />
+          <div className="h-2.5 bg-[#EAE7E0] rounded-full relative overflow-hidden border border-[#E6E3DC]">
+            <div className="absolute top-0 bottom-0 left-1/2 w-[1.5px] -translate-x-1/2 bg-[#18191F]/30 z-10" />
             {liveMomentumPercent >= 0 ? (
               <div
-                className="absolute top-0 bottom-0 bg-gradient-to-r from-sky-500 to-emerald-400 rounded-r-full transition-all duration-150"
+                className="absolute top-0 bottom-0 bg-gradient-to-r from-sky-500 to-emerald-500 rounded-r-full transition-all duration-150"
                 style={{
                   left: '50%',
                   width: `${Math.min(50, Math.max(result === 'D' ? 3 : 6, liveMomentumPercent))}%`,
@@ -500,13 +506,13 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
               const barHeights = [35, 55, 75, 95, 65, 85, 100, 70, 50, 80, 60, 45];
               const hPct = barHeights[distFromCenter % barHeights.length];
 
-              let colorCls = 'bg-white/10';
+              let colorCls = 'bg-[#E6E3DC]';
               if (isPosLit) {
-                colorCls = 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]';
+                colorCls = 'bg-emerald-500';
               } else if (isNegLit) {
-                colorCls = 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.6)]';
+                colorCls = 'bg-rose-500';
               } else if (isDrawPulse || result === 'D') {
-                colorCls = distFromCenter < 4 ? 'bg-amber-400/60 animate-pulse' : 'bg-amber-400/40 animate-pulse';
+                colorCls = distFromCenter < 4 ? 'bg-amber-400 animate-pulse' : 'bg-amber-300/70 animate-pulse';
               }
 
               return (
@@ -523,23 +529,23 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
         </div>
 
         {/* Bottom Footer Strip */}
-        <div className="relative z-10 pt-3 border-t border-white/[0.08] flex items-center justify-between gap-2 text-[11px]">
+        <div className="relative z-10 pt-3 border-t border-[#E6E3DC] flex items-center justify-between gap-2 text-[11px]">
           <div className="flex items-center gap-2 min-w-0">
             <i
               className={`fa-solid fa-chess-knight text-xs ${
                 result === 'W'
-                  ? 'text-emerald-400'
+                  ? 'text-emerald-600'
                   : result === 'D'
-                  ? 'text-amber-400'
-                  : 'text-rose-400'
+                  ? 'text-amber-600'
+                  : 'text-rose-600'
               }`}
             />
-            <span className="font-semibold text-zinc-300 truncate">
+            <span className="font-semibold text-[#18191F] truncate">
               {gameState.tactic || '4-3-3 Gegenpressing'}
             </span>
           </div>
 
-          <div className="font-mono font-bold text-zinc-400 tabular-nums shrink-0">
+          <div className="font-mono font-bold text-[#6B7280] tabular-nums shrink-0">
             {isFinishing
               ? `${cumulativeStats.pts} Pts (${cumulativeStats.wins}W ${cumulativeStats.draws}D ${cumulativeStats.losses}L)`
               : `${cumulativeStats.wins}W ${cumulativeStats.draws}D ${cumulativeStats.losses}L · ${progressPct}%`}

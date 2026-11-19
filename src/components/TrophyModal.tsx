@@ -42,6 +42,7 @@ interface TrophyModalProps {
   onClose: () => void;
   logo?: string;
   prizeMoney?: number;
+  isModActive?: boolean;
 }
 
 export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
@@ -55,7 +56,9 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
   onClose,
   logo,
   prizeMoney,
+  isModActive = false,
 }) => {
+  const effectiveLogo = isModActive ? logo : '';
   const isDe = lang === 'de';
   const t = (en: string, de?: string, _ignoredEs?: string) => tr(lang, en, de);
 
@@ -312,22 +315,19 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.1, ease: "linear" }}
-        className="fixed inset-0 bg-black/85 flex flex-col items-center justify-center z-[70] p-2.5 sm:p-4 backdrop-blur-xl overflow-y-auto overscroll-contain"
+        className="fixed inset-0 bg-[#18191F]/45 flex flex-col items-center justify-center z-[70] p-2.5 sm:p-4 backdrop-blur-sm overflow-y-auto overscroll-contain"
       >
         <motion.div
           initial={{ scale: 0.98, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.98, opacity: 0 }}
           transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-md mx-auto my-auto max-h-[92vh] sm:max-h-[88vh] min-h-0 flex flex-col rounded-[28px] bg-gradient-to-b from-[#181613] via-[#0f0e11] to-[#0a0a0c] border border-amber-500/35 shadow-[0_0_60px_-10px_rgba(245,158,11,0.3),0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden shrink-0"
+          className="relative w-full max-w-md mx-auto my-auto max-h-[92vh] sm:max-h-[88vh] min-h-0 flex flex-col rounded-[28px] sm:rounded-[32px] bg-gradient-to-b from-amber-50/85 via-white to-[#FAF9F6] border border-amber-300 shadow-[0_24px_64px_rgba(24,25,31,0.18)] text-[#18191F] overflow-hidden shrink-0"
         >
-          {/* Subtle Golden Ambient Halo at the top */}
+          {/* Subtle Warm Amber Ambient Halo */}
           <div
-            className={`absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-44 bg-gradient-to-b ${gradFrom} ${gradTo} rounded-full blur-[64px] opacity-25 pointer-events-none`}
+            className={`absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-44 bg-gradient-to-b ${gradFrom} ${gradTo} rounded-full blur-[64px] opacity-20 pointer-events-none`}
           ></div>
-
-          {/* Top Edge Hairline Highlight */}
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-300/60 to-transparent pointer-events-none" />
 
           <div className="relative p-5 sm:p-7 text-center flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar z-10 flex flex-col items-center">
             {/* Trophy Showcase */}
@@ -337,33 +337,33 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
                   <PrestigeTrophy
                     type={isLeagueChampion ? 'title' : type}
                     size={140}
-                    className="drop-shadow-[0_12px_28px_rgba(250,204,21,0.4)]"
+                    className="drop-shadow-[0_10px_24px_rgba(180,120,20,0.28)]"
                   />
                 </div>
               ) : (
                 <div
-                  className={`relative w-24 h-20 bg-gradient-to-b ${gradFrom} ${gradTo} rounded-2xl flex items-center justify-center border border-white/25 shadow-[0_8px_30px_rgba(0,0,0,0.5)]`}
+                  className={`relative w-24 h-20 bg-gradient-to-b ${gradFrom} ${gradTo} rounded-2xl flex items-center justify-center border border-amber-300/70 shadow-md`}
                 >
-                  {logo ? (
+                  {effectiveLogo ? (
                     <img
-                      src={logo}
+                      src={effectiveLogo}
                       alt="Trophy"
                       referrerPolicy="no-referrer"
-                      className="w-12 h-12 object-contain drop-shadow-lg"
+                      className="w-12 h-12 object-contain drop-shadow"
                       onError={(e) => {
                         const target = e.currentTarget as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent && !parent.querySelector('.fallback-icon')) {
                           const icon = document.createElement('i');
-                          icon.className = `fas ${iconStr} text-4xl text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.3)] fallback-icon`;
+                          icon.className = `fas ${iconStr} text-4xl text-white drop-shadow fallback-icon`;
                           parent.appendChild(icon);
                         }
                       }}
                     />
                   ) : (
                     <i
-                      className={`fas ${iconStr} text-4xl text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.3)]`}
+                      className={`fas ${iconStr} text-4xl text-white drop-shadow`}
                     ></i>
                   )}
                 </div>
@@ -371,8 +371,8 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
             </div>
 
             {/* Unboxed Clean Eyebrow Header */}
-            <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.2em] uppercase text-amber-400/90 mb-1.5">
-              <i className={`fas ${isBronze ? 'fa-shield-halved' : 'fa-crown'} text-[10px] text-amber-400`}></i>
+            <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.2em] uppercase text-amber-800 mb-1.5">
+              <i className={`fas ${isBronze ? 'fa-shield-halved' : 'fa-crown'} text-[10px] text-amber-600`}></i>
               <span>
                 {isBl
                   ? t('National Champions', 'Nationaler Meister')
@@ -387,12 +387,12 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
             </div>
 
             {/* Main Championship Title */}
-            <h2 className="text-2xl sm:text-[26px] font-black tracking-tight leading-tight uppercase bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(245,158,11,0.25)] mb-2.5">
+            <h2 className="text-2xl sm:text-[26px] font-black tracking-tight leading-tight uppercase text-[#18191F] mb-2.5">
               {title}
             </h2>
 
             {/* Clean, Non-Redundant Description */}
-            <p className="text-[13px] sm:text-[14px] text-zinc-300 leading-relaxed font-normal mb-4 px-1 max-w-sm">
+            <p className="text-[13px] sm:text-[14px] text-[#4B5563] leading-relaxed font-normal mb-4 px-1 max-w-sm">
               {cleanMessage.split('\n').map((line, idx) => (
                 <React.Fragment key={idx}>
                   {line}
@@ -407,12 +407,12 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
               if (prizeMoneyVal < 1) return null;
 
               return (
-                <div className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-b from-emerald-950/40 via-emerald-950/20 to-[#0c1410] border border-emerald-500/35 p-3.5 mb-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_20px_rgba(0,0,0,0.4)]">
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400/90 flex items-center justify-center gap-1.5 mb-0.5">
-                    <i className="fas fa-coins text-amber-400 text-xs"></i>
+                <div className="w-full relative overflow-hidden rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 mb-4 text-center">
+                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-800 flex items-center justify-center gap-1.5 mb-0.5">
+                    <i className="fas fa-coins text-amber-600 text-xs"></i>
                     <span>{t('Prize Money Awarded to Treasury', 'Preisgeld-Gutschrift auf Konto')}</span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-black text-emerald-300 font-mono tracking-tight drop-shadow-[0_0_18px_rgba(52,211,153,0.35)]">
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-mono tabular-nums tracking-tight">
                     +{formatMoney(prizeMoneyVal)}
                   </div>
                 </div>
@@ -421,9 +421,9 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
 
             {/* Benefits & Honors Section */}
             {(type === 'promotion' || isLeagueChampion) && (
-              <div className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3.5 mb-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400/95 flex items-center gap-1.5 pb-2 mb-2.5 border-b border-white/[0.08]">
-                  <i className={`fas ${isBl ? 'fa-crown text-amber-400 text-xs' : 'fa-angles-up text-emerald-400 text-xs'}`}></i>
+              <div className="w-full rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] p-3.5 mb-5 text-left">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 pb-2 mb-2.5 border-b border-[#E6E3DC]">
+                  <i className={`fas ${isBl ? 'fa-crown text-amber-600 text-xs' : 'fa-angles-up text-emerald-600 text-xs'}`}></i>
                   <span>
                     {isBl
                       ? t('Championship Honors & Perks', 'Meisterschafts-Vorteile')
@@ -431,20 +431,20 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex items-center gap-2 text-emerald-300 font-medium bg-white/[0.02] px-2.5 py-1.5 rounded-lg border border-white/[0.04]">
-                    <i className="fas fa-coins text-amber-400 text-xs"></i>
+                  <div className="flex items-center gap-2 text-emerald-800 font-semibold bg-white px-2.5 py-1.5 rounded-xl border border-[#E6E3DC]">
+                    <i className="fas fa-coins text-amber-600 text-xs"></i>
                     <span>{t('Cash Windfall', 'Prämie & Bonus')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sky-300 font-medium bg-white/[0.02] px-2.5 py-1.5 rounded-lg border border-white/[0.04]">
-                    <i className={`fas ${isBl ? 'fa-trophy text-amber-400' : 'fa-tv text-cyan-400'} text-xs`}></i>
+                  <div className="flex items-center gap-2 text-sky-800 font-semibold bg-white px-2.5 py-1.5 rounded-xl border border-[#E6E3DC]">
+                    <i className={`fas ${isBl ? 'fa-trophy text-amber-600' : 'fa-tv text-sky-600'} text-xs`}></i>
                     <span>{isBl ? t('Continental Berth', 'Europapokal') : t('Higher TV Money', 'Höhere TV-Gelder')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-purple-300 font-medium bg-white/[0.02] px-2.5 py-1.5 rounded-lg border border-white/[0.04]">
-                    <i className="fas fa-handshake text-purple-400 text-xs"></i>
+                  <div className="flex items-center gap-2 text-purple-800 font-semibold bg-white px-2.5 py-1.5 rounded-xl border border-[#E6E3DC]">
+                    <i className="fas fa-handshake text-purple-600 text-xs"></i>
                     <span>{t('Top Sponsors', 'Bessere Sponsoren')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-amber-300 font-medium bg-white/[0.02] px-2.5 py-1.5 rounded-lg border border-white/[0.04]">
-                    <i className="fas fa-users text-amber-400 text-xs"></i>
+                  <div className="flex items-center gap-2 text-amber-800 font-semibold bg-white px-2.5 py-1.5 rounded-xl border border-[#E6E3DC]">
+                    <i className="fas fa-users text-amber-600 text-xs"></i>
                     <span>{t('Bigger Crowds', 'Mehr Zuschauer')}</span>
                   </div>
                 </div>
@@ -455,7 +455,7 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
             <button
               aria-label="Close modal"
               onClick={onClose}
-              className="w-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:via-yellow-200 hover:to-amber-300 text-slate-950 font-black text-sm sm:text-base py-3.5 rounded-xl transition duration-150 active:scale-[0.98] cursor-pointer shadow-[0_6px_22px_-4px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.6)] border border-amber-300/40"
+              className="w-full bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold text-sm sm:text-base py-3.5 rounded-2xl transition duration-150 active:scale-[0.98] cursor-pointer shadow-sm"
             >
               {t('Continue to Season Summary', 'Weiter zur Saisonbilanz')}
             </button>
@@ -466,28 +466,28 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
   }
 
   // Standard modal
-  let icon = 'fa-circle-info text-system-blue';
-  let iconBg = 'bg-blue-500/10';
+  let icon = 'fa-circle-info text-sky-700';
+  let iconBg = 'bg-sky-50 border border-sky-200';
 
   if (type === 'success') {
-    icon = 'fa-circle-check text-system-green';
-    iconBg = 'bg-green-500/10';
+    icon = 'fa-circle-check text-emerald-700';
+    iconBg = 'bg-emerald-50 border border-emerald-200';
   } else if (type === 'warning' || type === 'error') {
-    icon = 'fa-triangle-exclamation text-system-red';
-    iconBg = 'bg-red-500/10';
+    icon = 'fa-triangle-exclamation text-rose-700';
+    iconBg = 'bg-rose-50 border border-rose-200';
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1, ease: "linear" }} className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center p-2.5 sm:p-4 z-[70] backdrop-blur-md overflow-y-auto overscroll-contain">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.98, opacity: 0 }} transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }} className="bg-[#1c1c1e] w-full sm:max-w-sm rounded-[24px] p-5 sm:p-6 shadow-[0_10px_50px_rgba(0,0,0,0.8)] border border-white/10 text-center pointer-events-auto relative my-auto shrink-0 max-h-[92vh] sm:max-h-[88vh] min-h-0 flex flex-col overflow-y-auto overscroll-contain">
-        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6 sm:hidden"></div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1, ease: "linear" }} className="fixed inset-0 bg-[#18191F]/45 flex flex-col items-center justify-center p-2.5 sm:p-4 z-[70] backdrop-blur-sm overflow-y-auto overscroll-contain">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.98, opacity: 0 }} transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }} className="bg-white w-full sm:max-w-sm rounded-[28px] p-5 sm:p-6 shadow-[0_24px_64px_rgba(24,25,31,0.18)] border border-[#E6E3DC] text-[#18191F] text-center pointer-events-auto relative my-auto shrink-0 max-h-[92vh] sm:max-h-[88vh] min-h-0 flex flex-col overflow-y-auto overscroll-contain">
+        <div className="w-12 h-1.5 bg-[#E6E3DC] rounded-full mx-auto mb-6 sm:hidden"></div>
         <div className={`w-16 h-16 mx-auto ${iconBg} rounded-full flex items-center justify-center mb-5`}>
           <i className={`fas ${icon} text-3xl`}></i>
         </div>
-        <h3 className="text-2xl font-bold text-white tracking-tight mb-4">
+        <h3 className="text-2xl font-bold text-[#18191F] tracking-tight mb-4">
           {typeof title === 'object' ? getLoc(lang, title as any) : String(title || '')}
         </h3>
-        <div className="text-[14px] text-[#98989d] mb-8 font-medium w-full leading-relaxed">
+        <div className="text-[14px] text-[#4B5563] mb-8 font-medium w-full leading-relaxed">
           {String(typeof message === 'object' ? getLoc(lang, message as any) : (message || '')).split('\n').map((line, idx, arr) => (
             <React.Fragment key={idx}>
               {line}
@@ -497,7 +497,7 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
         </div>
         <button aria-label="Close modal"
           onClick={onClose}
-          className="w-full bg-[#2c2c2e] hover:bg-system-blue text-white font-semibold text-base py-3.5 rounded-2xl transition active:scale-95 border border-white/5 hover:border-system-blue cursor-pointer"
+          className="w-full bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-base py-3.5 rounded-2xl transition active:scale-95 cursor-pointer shadow-sm"
         >
           {t('Continue', 'Weiter')}
         </button>

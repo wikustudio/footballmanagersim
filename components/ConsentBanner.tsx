@@ -312,7 +312,7 @@ export const ConsentBanner: React.FC = () => {
             if (current) setCustomPrefs(current.preferences);
             setIsModalOpen(true);
           }}
-          className="fixed bottom-2.5 left-2.5 z-[9000] p-2 rounded-xl bg-black/60 hover:bg-black/85 text-zinc-500 hover:text-sky-300 border border-white/10 backdrop-blur-sm shadow-md transition-all text-xs flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 opacity-70 hover:opacity-100"
+          className="fixed bottom-2.5 left-2.5 z-20 p-2 rounded-xl bg-black/60 hover:bg-black/85 text-zinc-500 hover:text-sky-300 border border-white/10 backdrop-blur-sm shadow-md transition-all text-xs flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 opacity-70 hover:opacity-100"
           title="Privacy & Cookie Preferences"
           aria-label="Open Privacy and Cookie Settings"
         >

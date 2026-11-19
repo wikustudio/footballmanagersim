@@ -50,7 +50,7 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto cursor-pointer"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#18191F]/45 backdrop-blur-sm overflow-y-auto cursor-pointer"
       onClick={onClose}
     >
       <motion.div
@@ -59,27 +59,24 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
         exit={{ scale: 0.96, opacity: 0, y: 12 }}
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-[#12141c]/95 border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-[0_24px_70px_rgba(0,0,0,0.85)] overflow-hidden my-auto cursor-default flex flex-col relative"
+        className="w-full max-w-2xl bg-white text-[#18191F] border border-[#E6E3DC] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.18)] overflow-hidden my-auto cursor-default flex flex-col relative"
       >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Step 1: Sleek Header */}
-        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0 text-left">
+        {/* Header */}
+        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 text-left">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-400/20 flex items-center justify-center text-emerald-400 text-base shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-base shrink-0">
               <i className="fa-solid fa-clipboard-check"></i>
             </div>
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
                 <span>{t('Division Governance', 'Verbandsstatuten')}</span>
-                <span className="text-zinc-600">·</span>
-                <span className="text-zinc-400">{league.name}</span>
+                <span className="text-[#C7C4BC]">·</span>
+                <span className="text-[#6B7280]">{league.name}</span>
               </div>
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight mt-0.5">
+              <h2 className="text-base sm:text-lg font-black text-[#18191F] tracking-tight leading-tight mt-0.5">
                 {t('Squad Health & Roster Compliance', 'Kader-Gesundheit & Statuten-Bericht')}
               </h2>
-              <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-[#6B7280] mt-0.5">
                 {t('Official division governance and squad performance metrics.', 'Offizielle Ligavorgaben und Kader-Leistungsindikatoren.')}
               </p>
             </div>
@@ -87,35 +84,35 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
 
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white p-2 rounded-xl hover:bg-white/[0.06] transition-colors cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
-            <i className="fa-solid fa-xmark text-base"></i>
+            <i className="fa-solid fa-xmark text-sm"></i>
           </button>
         </div>
 
-        {/* Step 2: Vertically Stacked Actionable Cards */}
-        <div className="p-6 max-h-[75vh] overflow-y-auto">
+        {/* Vertically Stacked Actionable Cards */}
+        <div className="p-5 sm:p-6 max-h-[75vh] overflow-y-auto bg-white">
           <div className="flex flex-col gap-4">
             {/* Card 1: Roster Compliance */}
             <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
               !isCompliant
-                ? 'bg-rose-500/[0.04] border-rose-500/30'
-                : 'bg-white/[0.03] border-white/[0.06]'
+                ? 'bg-rose-50 border-rose-200'
+                : 'bg-[#FAF9F6] border-[#E6E3DC]'
             }`}>
               {/* Top Row: Flex Between */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0 ${
-                    !isCompliant ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
+                  <div className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm shrink-0 ${
+                    !isCompliant ? 'bg-rose-100 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                   }`}>
                     <i className={`fa-solid ${!isCompliant ? 'fa-triangle-exclamation' : 'fa-users'}`}></i>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white tracking-wide">
+                    <h3 className="text-sm font-bold text-[#18191F] tracking-wide">
                       {t('Roster Compliance', 'Kader-Zulassung')}
                     </h3>
-                    <span className="block text-[11px] text-zinc-400">
+                    <span className="block text-[11px] text-[#6B7280]">
                       {t('Minimum Required: 18 · Hard Cap: 50', 'Erforderlich Mindestens: 18 · Obergrenze: 50')}
                     </span>
                   </div>
@@ -123,28 +120,28 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <span className={`text-2xl font-bold tabular-nums ${!isCompliant ? 'text-rose-400' : 'text-white'}`}>
+                    <span className={`text-2xl font-bold tabular-nums ${!isCompliant ? 'text-rose-700' : 'text-[#18191F]'}`}>
                       {squadSize}
                     </span>
-                    <span className="text-xs text-zinc-500 font-semibold ml-1">/ 50</span>
+                    <span className="text-xs text-[#6B7280] font-semibold ml-1">/ 50</span>
                   </div>
 
                   {/* Status Badge */}
                   <div>
                     {isUnderMin && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse" data-status={'Non-Compliant'}>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 animate-pulse" data-status={'Non-Compliant'}>
                         <i className="fa-solid fa-circle-exclamation text-[9px]"></i>
                         {t('NON-COMPLIANT (Minimum 18 Required)', 'NICHT ZUGELASSEN (Mind. 18 erforderlich)')}
                       </span>
                     )}
                     {isOverMax && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse" data-status={'Non-Compliant'}>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 animate-pulse" data-status={'Non-Compliant'}>
                         <i className="fa-solid fa-circle-exclamation text-[9px]"></i>
                         {t('OVER LIMIT (Max 50)', 'LIMIT ÜBERSCHRITTEN (Max. 50)')}
                       </span>
                     )}
                     {isCompliant && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <i className="fa-solid fa-check text-[9px]"></i>
                         {t('COMPLIANT', 'ZUGELASSEN')}
                       </span>
@@ -153,19 +150,19 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
                 </div>
               </div>
 
-              {/* Progress Bar (Kept only for Card 1) */}
-              <div className="w-full bg-black/40 rounded-full h-2 overflow-hidden border border-white/5 mt-3.5">
+              {/* Progress Bar */}
+              <div className="w-full bg-[#EFECE4] rounded-full h-2 overflow-hidden border border-[#E6E3DC] mt-3.5">
                 <div
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    !isCompliant ? 'bg-rose-400' : 'bg-emerald-400'
+                    !isCompliant ? 'bg-rose-600' : 'bg-emerald-600'
                   }`}
                   style={{ width: `${squadProgressPct}%` }}
                 />
               </div>
 
               {/* Bottom Row: Description */}
-              <div className="border-t border-white/[0.04] pt-3 mt-3">
-                <p className="text-xs text-zinc-400 leading-relaxed">
+              <div className={`border-t pt-3 mt-3 ${!isCompliant ? 'border-rose-200' : 'border-[#E6E3DC]'}`}>
+                <p className={`text-xs leading-relaxed ${!isCompliant ? 'text-rose-800' : 'text-[#4B5563]'}`}>
                   {isUnderMin
                     ? t('Your squad is below the mandatory roster floor of 18 players. Sign senior or academy players to avoid match penalties.', 'Der Kader unterschreitet die Pflichtgrenze von 18 Spielern. Verpflichte Spieler, um Strafen zu vermeiden.')
                     : isOverMax
@@ -176,36 +173,36 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
             </div>
 
             {/* Card 2: Squad Quality (OVR) */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5">
               {/* Top Row: Flex Between */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center text-sm shrink-0">
                     <i className="fa-solid fa-chart-line"></i>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white tracking-wide">
+                    <h3 className="text-sm font-bold text-[#18191F] tracking-wide">
                       {t('Squad Quality', 'Kaderstärke')}
                     </h3>
-                    <span className="block text-[11px] text-zinc-400">
-                      {t('League Average:', 'Liga-Schnitt:')} <span className="font-semibold text-zinc-300">{leagueAvgOvr} OVR</span>
+                    <span className="block text-[11px] text-[#6B7280]">
+                      {t('League Average:', 'Liga-Schnitt:')} <span className="font-semibold text-[#18191F] tabular-nums">{leagueAvgOvr} OVR</span>
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-white tabular-nums">
+                    <span className="text-2xl font-bold text-[#18191F] tabular-nums">
                       {baseOvr}
                     </span>
-                    <span className="text-xs text-zinc-500 font-semibold ml-1">OVR</span>
+                    <span className="text-xs text-[#6B7280] font-semibold ml-1">OVR</span>
                   </div>
 
                   {/* Status Badge */}
-                  <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg border ${
+                  <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg border tabular-nums ${
                     ovrDiff >= 0
-                      ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
-                      : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
                     {ovrDiff >= 0 ? `+${ovrDiff}` : ovrDiff} OVR
                   </span>
@@ -213,8 +210,8 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
               </div>
 
               {/* Bottom Row: Description */}
-              <div className="border-t border-white/[0.04] pt-3 mt-3">
-                <p className="text-xs text-zinc-400 leading-relaxed">
+              <div className="border-t border-[#E6E3DC] pt-3 mt-3">
+                <p className="text-xs text-[#4B5563] leading-relaxed">
                   {ovrDiff >= 3
                     ? t(`Your squad is +${ovrDiff} OVR above the league average. You are genuine title contenders.`, `Dein Kader liegt +${ovrDiff} GES über dem Liga-Schnitt. Ihr seid echte Meisterschaftskandidaten.`)
                     : ovrDiff >= 0
@@ -227,18 +224,18 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
             </div>
 
             {/* Card 3: Dressing Room Morale */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5">
               {/* Top Row: Flex Between */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center text-sm shrink-0">
                     <i className="fa-solid fa-heart-pulse"></i>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white tracking-wide">
+                    <h3 className="text-sm font-bold text-[#18191F] tracking-wide">
                       {t('Dressing Room Morale', 'Team-Moral')}
                     </h3>
-                    <span className="block text-[11px] text-zinc-400">
+                    <span className="block text-[11px] text-[#6B7280]">
                       {t('Atmosphere & Locker Room Cohesion', 'Atmosphäre & Kabinengefüge')}
                     </span>
                   </div>
@@ -246,19 +243,19 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-white tabular-nums">
+                    <span className="text-2xl font-bold text-[#18191F] tabular-nums">
                       {morale}
                     </span>
-                    <span className="text-xs text-zinc-500 font-semibold ml-1">/ 100</span>
+                    <span className="text-xs text-[#6B7280] font-semibold ml-1">/ 100</span>
                   </div>
 
                   {/* Status Badge */}
                   <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg border ${
                     morale >= 70
-                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : morale >= 40
-                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                      : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
                     {morale >= 80 ? t('Electric', 'Hervorragend') : morale >= 50 ? t('Stable', 'Stabil') : t('Fragile', 'Kritisch')}
                   </span>
@@ -266,8 +263,8 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
               </div>
 
               {/* Bottom Row: Description */}
-              <div className="border-t border-white/[0.04] pt-3 mt-3">
-                <p className="text-xs text-zinc-400 leading-relaxed">
+              <div className="border-t border-[#E6E3DC] pt-3 mt-3">
+                <p className="text-xs text-[#4B5563] leading-relaxed">
                   {morale >= 80
                     ? t('>80%: High resilience in crunch matches and critical moments.', '>80%: Hohe Resilienz und Kampfkraft in engen Spitzenspielen.')
                     : morale >= 50
@@ -280,18 +277,18 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
             </div>
 
             {/* Card 4: Wage Efficiency */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5">
               {/* Top Row: Flex Between */}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm shrink-0">
                     <i className="fa-solid fa-coins"></i>
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white tracking-wide">
+                    <h3 className="text-sm font-bold text-[#18191F] tracking-wide">
                       {t('Wage Efficiency', 'Gehaltseffizienz')}
                     </h3>
-                    <span className="block text-[11px] text-zinc-400">
+                    <span className="block text-[11px] text-[#6B7280]">
                       {t('Payroll & Squad Overhead', 'Gehaltsetat & Kaderkosten')}
                     </span>
                   </div>
@@ -299,21 +296,21 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-white tabular-nums">
+                    <span className="text-2xl font-bold text-[#18191F] tabular-nums">
                       {formatMoney(pureWages, country)}
                     </span>
                   </div>
 
                   {/* Status Badge */}
-                  <span className="text-xs font-mono font-black px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <span className="text-xs font-mono font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
                     {t('Payroll', 'Gehaltsetat')}
                   </span>
                 </div>
               </div>
 
               {/* Bottom Row: Description */}
-              <div className="border-t border-white/[0.04] pt-3 mt-3">
-                <p className="text-xs text-zinc-400 leading-relaxed">
+              <div className="border-t border-[#E6E3DC] pt-3 mt-3">
+                <p className="text-xs text-[#4B5563] leading-relaxed">
                   {t(
                     'If squad size exceeds 25, excess fringe players will automatically depart at season\'s end to reduce bloat.',
                     'Bei mehr als 25 Spielern verlassen überzählige Reservisten den Klub am Saisonende automatisch zur Entlastung.'
@@ -325,14 +322,14 @@ export const SquadRegistrationModal: React.FC<SquadRegistrationModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0">
-          <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-            <i className="fa-solid fa-shield-halved text-emerald-400 text-xs"></i>
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between gap-3 shrink-0">
+          <span className="text-[11px] text-[#6B7280] flex items-center gap-1.5">
+            <i className="fa-solid fa-shield-halved text-emerald-700 text-xs"></i>
             {t('Validated automatically during season simulation', 'Wird während der Saisonsimulation automatisch geprüft')}
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white border border-white/10 shadow-sm transition-all cursor-pointer"
+            className="px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-[#18191F] hover:bg-[#2A2C35] text-white shadow-sm transition-all cursor-pointer shrink-0"
           >
             {t('Close', 'Schließen')}
           </button>

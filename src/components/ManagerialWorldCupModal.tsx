@@ -192,7 +192,7 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
       exit={{ opacity: 0 }}
       transition={{ duration: 0.12, ease: 'linear' }}
       onClick={onClose}
-      className="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-[70] backdrop-blur-2xl cursor-pointer overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/50 flex items-center justify-center p-3 sm:p-4 z-[70] backdrop-blur-sm cursor-pointer overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
@@ -200,24 +200,20 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl bg-[#12141c]/95 backdrop-blur-3xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden cursor-default text-left text-white"
+        className="relative w-full max-w-3xl bg-white rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.2)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden cursor-default text-left text-[#18191F]"
       >
-        {/* Subtle Ambient Glows */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
-
         {/* Header */}
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-white/[0.06] bg-white/[0.01] flex items-center justify-between relative z-10 shrink-0">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between relative z-10 shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center text-lg shadow-lg shadow-amber-500/20 shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-lg shrink-0">
               <i className="fas fa-trophy"></i>
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap text-[11px] font-semibold text-zinc-400">
-                <span className="uppercase tracking-wider text-amber-400 font-bold">
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap text-[11px] font-semibold text-[#6B7280]">
+                <span className="uppercase tracking-wider text-amber-800 font-bold">
                   Managerial Archive
                 </span>
-                <span aria-hidden="true" className="text-zinc-600">·</span>
+                <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
                 <span>International Stage</span>
                 <BroadcastBadge
                   country={state.club?.country || 'USA'}
@@ -225,7 +221,7 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
                   isModActive={isModActive}
                 />
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+              <h2 className="text-lg sm:text-xl font-black text-[#18191F] tracking-tight truncate">
                 World Cup History
               </h2>
             </div>
@@ -234,16 +230,16 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-semibold text-zinc-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-semibold text-[#18191F] transition flex items-center gap-1.5 cursor-pointer active:scale-95"
               title="Return to Club Profile Dossier"
             >
-              <i className="fa-solid fa-arrow-left text-[11px] text-amber-400"></i>
+              <i className="fa-solid fa-arrow-left text-[11px] text-amber-700"></i>
               <span className="hidden sm:inline">Back to Club</span>
             </button>
             <button
               onClick={onClose}
               aria-label="Close modal"
-              className="w-9 h-9 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white transition cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center text-[#4B5563] hover:text-[#18191F] transition cursor-pointer"
             >
               <i className="fas fa-times text-xs"></i>
             </button>
@@ -254,68 +250,68 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
         <div className="p-5 sm:p-6 overflow-y-auto overscroll-contain space-y-4 custom-scrollbar relative z-10 flex-1 min-h-0">
           {/* Key Career Stats Bento */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="bg-white/[0.03] rounded-2xl p-3.5 border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1">
+            <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
                 World Cups Won
               </div>
-              <div className="text-2xl font-black text-amber-400 font-mono tabular-nums flex items-center justify-center gap-1.5">
+              <div className="text-2xl font-black text-amber-700 font-mono tabular-nums flex items-center justify-center gap-1.5">
                 <span>{trophies}</span>
                 <span className="text-sm font-sans">🏆</span>
               </div>
             </div>
 
-            <div className="bg-white/[0.03] rounded-2xl p-3.5 border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1">
+            <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
                 Campaigns
               </div>
-              <div className="text-2xl font-black text-white font-mono tabular-nums">
+              <div className="text-2xl font-black text-[#18191F] font-mono tabular-nums">
                 {tournamentsPlayed}
               </div>
             </div>
 
-            <div className="bg-white/[0.03] rounded-2xl p-3.5 border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1">
+            <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
                 Win Rate
               </div>
-              <div className="text-2xl font-black text-emerald-400 font-mono tabular-nums">
+              <div className="text-2xl font-black text-emerald-700 font-mono tabular-nums">
                 {winRate}%
               </div>
             </div>
 
-            <div className="bg-white/[0.03] rounded-2xl p-3.5 border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1">
+            <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
                 Best Finish
               </div>
-              <div className="text-xs sm:text-sm font-black text-amber-300 truncate mt-1.5">
+              <div className="text-xs sm:text-sm font-black text-amber-800 truncate mt-1.5">
                 {bestFinish}
               </div>
             </div>
           </div>
 
           {/* All-time record banner */}
-          <div className="bg-white/[0.02] rounded-2xl px-4 py-3 border border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-zinc-400 font-medium">All-Time Match Record</span>
+          <div className="bg-[#FAF9F6] rounded-2xl px-4 py-3 border border-[#E6E3DC] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-[#4B5563] font-semibold">All-Time Match Record</span>
             <div className="flex items-center gap-2 font-mono font-bold tabular-nums">
-              <span className="text-emerald-400">{wins}W</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
-              <span className="text-zinc-300">{draws}D</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
-              <span className="text-rose-400">{losses}L</span>
-              <span aria-hidden="true" className="text-zinc-700 mx-1">|</span>
-              <span className="text-white">{gf} : {ga} ({gd >= 0 ? `+${gd}` : gd} GD)</span>
+              <span className="text-emerald-700">{wins}W</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+              <span className="text-[#4B5563]">{draws}D</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+              <span className="text-rose-700">{losses}L</span>
+              <span aria-hidden="true" className="text-[#C7C4BC] mx-1">|</span>
+              <span className="text-[#18191F]">{gf} : {ga} ({gd >= 0 ? `+${gd}` : gd} GD)</span>
             </div>
           </div>
 
           {/* Tab Switcher: Your Campaigns vs All-Time World Cup History */}
-          <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
-            <div className="flex items-center gap-1.5 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
+          <div className="flex items-center justify-between gap-2 border-b border-[#E6E3DC] pb-2.5">
+            <div className="flex items-center gap-1.5 bg-[#EFECE4] p-1 rounded-xl border border-[#E6E3DC]">
               <button
                 type="button"
                 onClick={() => setActiveTab('campaigns')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   activeTab === 'campaigns'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-[#18191F] text-white shadow-xs'
+                    : 'text-[#4B5563] hover:text-[#18191F]'
                 }`}
               >
                 Your Campaigns ({tournamentsPlayed})
@@ -325,8 +321,8 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
                 onClick={() => setActiveTab('almanac')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   activeTab === 'almanac'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-[#18191F] text-white shadow-xs'
+                    : 'text-[#4B5563] hover:text-[#18191F]'
                 }`}
               >
                 All World Cup Winners ({worldCupAlmanacList.length})
@@ -336,29 +332,29 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
 
           {activeTab === 'campaigns' ? (
             <div>
-              <div className="text-[11px] uppercase font-bold tracking-wider text-zinc-400 mb-2.5 flex items-center justify-between">
+              <div className="text-[11px] uppercase font-bold tracking-wider text-[#6B7280] mb-2.5 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <i className="fas fa-list-check text-amber-400"></i>
+                  <i className="fas fa-list-check text-amber-600"></i>
                   <span>Tournament Campaigns Managed</span>
                 </span>
-                <span className="font-mono text-zinc-500 tabular-nums">{tournamentsPlayed} Total</span>
+                <span className="font-mono text-[#6B7280] tabular-nums">{tournamentsPlayed} Total</span>
               </div>
 
               {campaigns.length === 0 ? (
-                <div className="bg-white/[0.02] rounded-2xl p-8 border border-white/[0.06] text-center space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mx-auto text-xl">
+                <div className="bg-[#FAF9F6] rounded-2xl p-8 border border-[#E6E3DC] text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] mx-auto text-xl">
                     <i className="fas fa-globe"></i>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white mb-1">No International Campaigns Yet</h3>
-                    <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                    <h3 className="text-base font-bold text-[#18191F] mb-1">No International Campaigns Yet</h3>
+                    <p className="text-xs text-[#6B7280] max-w-md mx-auto leading-relaxed">
                       Every 4 years (2026, 2030, 2034...), national federations invite top-flight sporting directors (Tier 1 &amp; 80+ reputation) to take charge of a nation in the World Cup.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('almanac')}
-                    className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold transition cursor-pointer"
                   >
                     Browse All-Time World Cup Winners ({worldCupAlmanacList.length})
                   </button>
@@ -370,36 +366,36 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
                       key={idx}
                       className={`rounded-2xl p-4 border transition ${
                         c.wonTrophy
-                          ? 'bg-gradient-to-r from-amber-500/[0.10] via-white/[0.03] to-transparent border-amber-500/35 shadow-sm'
-                          : 'bg-white/[0.02] border-white/[0.06]'
+                          ? 'bg-amber-50 border-amber-300'
+                          : 'bg-[#FAF9F6] border-[#E6E3DC]'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
-                            c.wonTrophy ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300' : 'bg-white/[0.04] border border-white/[0.08] text-white'
+                            c.wonTrophy ? 'bg-white border border-amber-300 text-amber-700' : 'bg-white border border-[#E6E3DC] text-[#18191F]'
                           }`}>
                             {c.wonTrophy ? '🏆' : '⚽'}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className="text-sm font-black text-white">{c.teamName}</span>
-                              <span className="text-xs font-mono text-amber-400 font-bold tabular-nums">{c.year}</span>
+                              <span className="text-sm font-black text-[#18191F]">{c.teamName}</span>
+                              <span className="text-xs font-mono text-amber-800 font-bold tabular-nums">{c.year}</span>
                               <BroadcastBadge
                                 country={c.teamName.includes('Brazil') ? 'BRA' : c.teamName.includes('England') ? 'ENG' : c.teamName.includes('Germany') ? 'GER' : c.teamName.includes('France') ? 'FRA' : (state.club?.country || 'USA')}
                                 competitionId="world cup"
                                 isModActive={isModActive}
                               />
                             </div>
-                            <div className="text-[11px] text-zinc-400 font-mono tabular-nums flex items-center gap-1.5 flex-wrap">
+                            <div className="text-[11px] text-[#6B7280] font-mono tabular-nums flex items-center gap-1.5 flex-wrap">
                               <span>{c.matchesPlayed} MP</span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
-                              <span className="text-emerald-400">{c.matchesWon}W</span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
-                              <span className="text-zinc-300">{c.matchesDrawn}D</span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
-                              <span className="text-rose-400">{c.matchesLost}L</span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+                              <span className="text-emerald-700">{c.matchesWon}W</span>
+                              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+                              <span className="text-[#4B5563]">{c.matchesDrawn}D</span>
+                              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+                              <span className="text-rose-700">{c.matchesLost}L</span>
+                              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
                               <span>Goals {c.goalsFor}:{c.goalsAgainst}</span>
                             </div>
                           </div>
@@ -408,8 +404,8 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
                         <div className="text-right shrink-0">
                           <span className={`text-xs font-black uppercase tracking-wider ${
                             c.wonTrophy
-                              ? 'text-amber-300'
-                              : 'text-zinc-400'
+                              ? 'text-amber-800'
+                              : 'text-[#4B5563]'
                           }`}>
                             {c.bestFinish}
                           </span>
@@ -422,58 +418,58 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
             </div>
           ) : (
             <div className="space-y-2.5">
-              <div className="text-[11px] uppercase font-bold tracking-wider text-zinc-400 mb-2 flex items-center justify-between">
+              <div className="text-[11px] uppercase font-bold tracking-wider text-[#6B7280] mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <i className="fas fa-globe text-amber-400"></i>
+                  <i className="fas fa-globe text-amber-600"></i>
                   <span>National Team World Cup Roll of Honour</span>
                 </span>
-                <span className="font-mono text-zinc-500 tabular-nums">{worldCupAlmanacList.length} Editions</span>
+                <span className="font-mono text-[#6B7280] tabular-nums">{worldCupAlmanacList.length} Editions</span>
               </div>
               {worldCupAlmanacList.map(wc => (
                 <div
                   key={wc.id}
                   className={`rounded-2xl p-3.5 border transition flex items-center justify-between gap-3 ${
                     wc.isUserClub
-                      ? 'bg-gradient-to-r from-amber-500/[0.12] via-white/[0.03] to-transparent border-amber-400/40'
-                      : 'bg-white/[0.02] border-white/[0.06]'
+                      ? 'bg-amber-50 border-amber-300'
+                      : 'bg-[#FAF9F6] border-[#E6E3DC]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-sm font-mono font-black text-amber-400 tabular-nums w-11 shrink-0">
+                    <span className="text-sm font-mono font-black text-amber-800 tabular-nums w-11 shrink-0">
                       {wc.year}
                     </span>
-                    <div className="w-9 h-9 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-base shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-white border border-[#E6E3DC] flex items-center justify-center text-base shrink-0">
                       {wc.flag || '🌍'}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-black text-white">{wc.clubName}</span>
+                        <span className="text-sm font-black text-[#18191F]">{wc.clubName}</span>
                         {wc.isUserClub && (
-                          <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[9px] font-black uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-[#18191F] text-white text-[9px] font-black uppercase">
                             YOU
                           </span>
                         )}
                         {wc.isPastManagerClub && (
-                          <span className="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[9px] font-black uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-black uppercase">
                             EX
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-400 truncate">
-                        Coach: <span className="text-zinc-200">{wc.coachName}</span>
+                      <div className="text-[11px] text-[#6B7280] truncate">
+                        Coach: <span className="text-[#18191F] font-medium">{wc.coachName}</span>
                         {wc.hostCountry ? ` · Host: ${wc.hostFlag || ''} ${wc.hostCountry}` : ''}
                       </div>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     {wc.finalScore && wc.runnerUp ? (
-                      <div className="text-xs font-bold text-amber-300 tabular-nums">
-                        {wc.finalScore} <span className="text-zinc-400 font-normal">vs {wc.runnerUp}</span>
+                      <div className="text-xs font-bold text-amber-800 tabular-nums">
+                        {wc.finalScore} <span className="text-[#6B7280] font-normal">vs {wc.runnerUp}</span>
                       </div>
                     ) : (
-                      <div className="text-xs font-bold text-amber-300">World Champions 🏆</div>
+                      <div className="text-xs font-bold text-amber-800">World Champions 🏆</div>
                     )}
-                    <div className="text-[10px] text-zinc-500">
+                    <div className="text-[10px] text-[#6B7280]">
                       {wc.isHistoricalLore ? 'Historical Lore' : 'Simulated Edition'}
                     </div>
                   </div>
@@ -484,10 +480,10 @@ export const ManagerialWorldCupModal: React.FC<ManagerialWorldCupModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-white/[0.06] bg-white/[0.01] flex justify-end shrink-0 relative z-10">
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 border-t border-[#E6E3DC] bg-[#FAF9F6] flex justify-end shrink-0 relative z-10">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer"
           >
             Close Archive
           </button>

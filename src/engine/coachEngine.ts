@@ -488,7 +488,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Tactical Chessboard Maestro',
     labelDe: 'Taktischer Schachbrett-Meister',
     icon: 'fa-chess',
-    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-400/30',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
     defaultFormations: ['3-4-2-1 Inverted', '4-3-3 Hybrid', '4-2-3-1 Overload'],
     bioTemplatesEn: [
       'Obsessive student of positional play. Spends sleepless nights diagramming pressing triggers and overload channels.',
@@ -503,7 +503,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Psychological Mastermind',
     labelDe: 'Tiefenpsychologischer Meister',
     icon: 'fa-brain',
-    badgeClass: 'bg-purple-500/15 text-purple-300 border-purple-400/30',
+    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
     defaultFormations: ['4-3-3 Free Role', '4-2-2-2 Box', '3-5-2 Expressive'],
     bioTemplatesEn: [
       'Believes football is won between the ears. Master of emotional resonance, ego de-escalation, and creating unbreakable dressing room trust.',
@@ -518,7 +518,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Award-Winning Champion',
     labelDe: 'Titeldekorierter Erfolgstrainer',
     icon: 'fa-award',
-    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-400/30',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
     defaultFormations: ['4-3-3 Championship', '4-2-3-1 Dominant', '3-4-3 Continental'],
     bioTemplatesEn: [
       'Serial winner adorned with domestic and continental silverware. Commands unshakeable authority and delivers in high-stakes deciders.',
@@ -533,7 +533,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Low-Tier Veteran',
     labelDe: 'Unterhaus-Routinier',
     icon: 'fa-shield-halved',
-    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     defaultFormations: ['4-4-2 Trench', '5-3-2 Resilient', '4-1-4-1 Low Block'],
     bioTemplatesEn: [
       'Hardened in the cold rain of lower-division football. Uncompromising pragmatist who knows how to survive on a shoestring budget.',
@@ -548,7 +548,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Youth Visionary',
     labelDe: 'Nachwuchs-Visionär',
     icon: 'fa-seedling',
-    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-400/30',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
     defaultFormations: ['4-3-3 Dynamic', '3-4-2-1 High Tempo', '4-2-3-1 Youth'],
     bioTemplatesEn: [
       'Pioneer of modern talent pathways. Fearlessly hands first-team debuts to teenagers and molds raw prospects into world-class stars.',
@@ -563,7 +563,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Iron Disciplinarian',
     labelDe: 'Harter Schleifer',
     icon: 'fa-dumbbell',
-    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-400/30',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200',
     defaultFormations: ['4-4-2 Compact', '5-4-1 Wall', '4-3-2-1 Fortress'],
     bioTemplatesEn: [
       'Zero excuses, zero complacency. Strict fitness standards, iron-clad defensive assignments, and relentless 90-minute stamina.',
@@ -578,7 +578,7 @@ export const COACH_ARCHETYPE_CONFIG: Record<CoachArchetype, {
     labelEn: 'Pragmatic Grinder',
     labelDe: 'Pragmatischer Arbeiter',
     icon: 'fa-gear',
-    badgeClass: 'bg-zinc-500/15 text-zinc-300 border-zinc-400/30',
+    badgeClass: 'bg-[#F6F5F1] text-[#52525B] border-[#E6E3DC]',
     defaultFormations: ['4-2-3-1 Solid', '4-3-3 Balanced', '4-4-2 Flat'],
     bioTemplatesEn: [
       'No fuss, no ego, pure work. Adapts to squad limitations and reliably hits club targets season after season.',

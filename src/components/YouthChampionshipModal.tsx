@@ -378,30 +378,26 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[60] flex flex-col items-center justify-center p-2.5 sm:p-4 text-left overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/50 backdrop-blur-sm z-[60] flex flex-col items-center justify-center p-2.5 sm:p-4 text-left overflow-y-auto overscroll-contain"
     >
       <motion.div 
         initial={{ scale: 0.98, opacity: 0, y: 20 }} 
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.98, opacity: 0, y: 20 }}
         transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-[#12141c]/95 backdrop-blur-3xl border border-white/[0.08] w-full max-w-2xl rounded-[28px] sm:rounded-[32px] shadow-[0_32px_96px_rgba(0,0,0,0.8)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden relative"
+        className="bg-white text-[#18191F] border border-[#E6E3DC] w-full max-w-2xl rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.2)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden relative"
       >
-        {/* Subtle Ambient Stadium Glow */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-amber-500/[0.03] blur-[80px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-500/[0.03] blur-[80px] pointer-events-none"></div>
-
-        {/* Frosted Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0 relative z-10">
+        {/* Header */}
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-400/30 flex items-center justify-center text-amber-400 text-lg shadow-inner shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-lg shadow-sm shrink-0">
               <i className="fas fa-trophy"></i>
             </div>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400/90 mb-0.5">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-0.5">
                 {t('National U19 Championship', 'Nationale U19 Meisterschaft')}
               </div>
-              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-tight">
+              <h2 className="text-lg sm:text-2xl font-black text-[#18191F] tracking-tight leading-tight">
                 {phaseTitle}
               </h2>
             </div>
@@ -409,18 +405,18 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
           <div className="flex items-center gap-3">
             {/* Minimalist Phase Progression */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500">
-              <span className={phase === 'qf' ? 'text-amber-400' : phase === 'sf' || phase === 'final' || phase === 'result' ? 'text-zinc-300' : ''}>QF</span>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#9A9890]">
+              <span className={phase === 'qf' ? 'text-amber-700' : phase === 'sf' || phase === 'final' || phase === 'result' ? 'text-[#18191F]' : ''}>QF</span>
               <span>·</span>
-              <span className={phase === 'sf' ? 'text-amber-400' : phase === 'final' || phase === 'result' ? 'text-zinc-300' : ''}>SF</span>
+              <span className={phase === 'sf' ? 'text-amber-700' : phase === 'final' || phase === 'result' ? 'text-[#18191F]' : ''}>SF</span>
               <span>·</span>
-              <span className={phase === 'final' ? 'text-amber-400' : phase === 'result' ? 'text-zinc-300' : ''}>Final</span>
+              <span className={phase === 'final' ? 'text-amber-700' : phase === 'result' ? 'text-[#18191F]' : ''}>Final</span>
             </div>
 
             <button 
               aria-label="Close modal" 
               onClick={() => { claimRewardsIfNeeded(tournamentWon); onClose(tournamentWon); }} 
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/[0.08] cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-full bg-[#F5F4F0] hover:bg-[#EAE7E0] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] cursor-pointer shrink-0"
             >
               <i className="fas fa-xmark text-xs"></i>
             </button>
@@ -433,10 +429,10 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
           <AnimatePresence mode="wait">
             {phase === 'intro' && (
               <motion.div key="intro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center pt-2 pb-6 text-center">
-                <h3 className="text-xl font-black text-white tracking-tight mb-1.5 uppercase">
+                <h3 className="text-xl font-black text-[#18191F] tracking-tight mb-1.5 uppercase">
                   {t('The Elite 8 Academies', 'Die Elite 8 Akademien')}
                 </h3>
-                <p className="text-xs text-zinc-400 font-normal leading-relaxed max-w-md mb-6">
+                <p className="text-xs text-[#6B7280] font-normal leading-relaxed max-w-md mb-6">
                   {t("The national U19 title is on the line. Here are the 8 qualified academies competing in this year's knockout tournament.", 'Der nationale U19-Titel steht auf dem Spiel. Hier sind die qualifizierten Mannschaften des diesjährigen Turniers.')}
                 </p>
 
@@ -448,12 +444,12 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
                       animate={{ opacity: 1, scale: 1 }} 
                       transition={{ delay: idx * 0.05 }}
                       key={t.id} 
-                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 ${t.isPlayer ? 'bg-emerald-500/[0.08] border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-white/[0.02] border-white/[0.06]'}`}
+                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center gap-2 ${t.isPlayer ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-[#FAF9F6] border-[#E6E3DC]'}`}
                     >
                       <ClubLogo name={t.baseName} id={t.id} color={t.color} logo={t.logo} fallbackLogo={t.fallbackLogo} isModActive={isModActive} className="w-10 h-10 object-contain drop-shadow-sm" fallbackClassName="w-10 h-10 text-xs rounded-xl flex items-center justify-center font-bold text-white shrink-0" />
                       <div>
-                        <div className={`text-[11px] font-bold leading-tight truncate w-full max-w-[80px] ${t.isPlayer ? 'text-emerald-400' : 'text-zinc-200'}`}>{t.name}</div>
-                        <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{t.ovr} OVR</div>
+                        <div className={`text-[11px] font-bold leading-tight truncate w-full max-w-[80px] ${t.isPlayer ? 'text-emerald-700' : 'text-[#18191F]'}`}>{t.name}</div>
+                        <div className="text-[10px] text-[#6B7280] font-mono mt-0.5 tabular-nums">{t.ovr} OVR</div>
                       </div>
                     </motion.div>
                   ))}
@@ -461,20 +457,20 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
                 {/* Tournament Stakes & Prize Grid */}
                 <div className="grid grid-cols-2 gap-3 w-full">
-                  <div className="bg-white/[0.02] backdrop-blur-md rounded-2xl p-4 border border-white/[0.06] text-left">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1">
-                      <i className="fas fa-coins text-amber-400"></i>
+                  <div className="bg-[#FAF9F6] rounded-2xl p-4 border border-[#E6E3DC] text-left">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
+                      <i className="fas fa-coins text-amber-600"></i>
                       <span>{t('Prize Purse', 'Prämie')}</span>
                     </div>
-                    <div className="text-base font-black font-mono text-emerald-400">+{formatMoney(prizeMoney)}</div>
+                    <div className="text-base font-black font-mono text-emerald-700 tabular-nums">+{formatMoney(prizeMoney)}</div>
                   </div>
 
-                  <div className="bg-white/[0.02] backdrop-blur-md rounded-2xl p-4 border border-white/[0.06] text-left">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1">
-                      <i className="fas fa-bolt text-sky-400"></i>
+                  <div className="bg-[#FAF9F6] rounded-2xl p-4 border border-[#E6E3DC] text-left">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-[#6B7280] tracking-wider mb-1">
+                      <i className="fas fa-bolt text-sky-700"></i>
                       <span>{t('Cohort Leap', 'Talent-Sprung')}</span>
                     </div>
-                    <div className="text-base font-black font-mono text-sky-400">+2 OVR</div>
+                    <div className="text-base font-black font-mono text-sky-700 tabular-nums">+2 OVR</div>
                   </div>
                 </div>
               </motion.div>
@@ -486,33 +482,33 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
                 {/* HERO CARD: Player Match */}
                 {playerMatch && (
                   <div className="space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5 px-1 justify-center sm:justify-start">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 flex items-center gap-1.5 px-1 justify-center sm:justify-start">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
                       {t('Your Fixture', 'Dein Spiel')}
                     </div>
-                    <div className={`relative overflow-hidden rounded-[24px] border ${playerMatch.winner.isPlayer ? 'bg-gradient-to-br from-emerald-500/10 via-black/40 to-black/40 border-emerald-500/30' : 'bg-gradient-to-br from-rose-500/10 via-black/40 to-black/40 border-rose-500/30'}`}>
+                    <div className={`relative overflow-hidden rounded-[24px] border ${playerMatch.winner.isPlayer ? 'bg-emerald-50/70 border-emerald-200' : 'bg-rose-50/70 border-rose-200'}`}>
                       <div className="p-5 sm:p-6 flex flex-col gap-4 relative z-10">
-                        <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                        <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-[#6B7280]">
                           <span>{playerMatch.locationText}</span>
-                          <span>{(playerMatch.att ?? 0).toLocaleString()} Fans</span>
+                          <span className="tabular-nums">{(playerMatch.att ?? 0).toLocaleString()} Fans</span>
                         </div>
 
                         <div className="flex items-center justify-between w-full">
                           {/* Player T1 */}
                           <div className="flex-1 flex flex-col items-center gap-2">
-                            <ClubLogo name={playerMatch.t1.baseName} id={playerMatch.t1.id} color={playerMatch.t1.color} logo={playerMatch.t1.logo} fallbackLogo={playerMatch.t1.fallbackLogo} isModActive={isModActive} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg" fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm rounded-2xl flex items-center justify-center font-bold text-white" />
-                            <div className={`text-xs sm:text-sm font-bold truncate max-w-[100px] sm:max-w-[140px] text-center ${playerMatch.t1.isPlayer ? 'text-emerald-400' : 'text-white'}`}>{playerMatch.t1.name}</div>
+                            <ClubLogo name={playerMatch.t1.baseName} id={playerMatch.t1.id} color={playerMatch.t1.color} logo={playerMatch.t1.logo} fallbackLogo={playerMatch.t1.fallbackLogo} isModActive={isModActive} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-sm" fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm rounded-2xl flex items-center justify-center font-bold text-white" />
+                            <div className={`text-xs sm:text-sm font-bold truncate max-w-[100px] sm:max-w-[140px] text-center ${playerMatch.t1.isPlayer ? 'text-emerald-800' : 'text-[#18191F]'}`}>{playerMatch.t1.name}</div>
                           </div>
 
                           {/* Scoreboard */}
                           <div className="shrink-0 flex flex-col items-center justify-center min-w-[90px]">
-                            <div className="bg-black/50 border border-white/10 rounded-2xl px-4 py-2 flex items-center justify-center gap-2 shadow-inner">
-                              <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight ${playerMatch.winner.id === playerMatch.t1.id ? 'text-white' : 'text-zinc-500'}`}>{playerMatch.t1Score}</span>
-                              <span className="text-zinc-600 font-bold text-lg leading-none">–</span>
-                              <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight ${playerMatch.winner.id === playerMatch.t2.id ? 'text-white' : 'text-zinc-500'}`}>{playerMatch.t2Score}</span>
+                            <div className="bg-white border border-[#E6E3DC] rounded-2xl px-4 py-2 flex items-center justify-center gap-2 shadow-sm">
+                              <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight ${playerMatch.winner.id === playerMatch.t1.id ? 'text-[#18191F]' : 'text-[#9A9890]'}`}>{playerMatch.t1Score}</span>
+                              <span className="text-[#C7C4BC] font-bold text-lg leading-none">–</span>
+                              <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight ${playerMatch.winner.id === playerMatch.t2.id ? 'text-[#18191F]' : 'text-[#9A9890]'}`}>{playerMatch.t2Score}</span>
                             </div>
                             {playerMatch.isPenalties && (
-                              <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                              <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full tabular-nums">
                                 {playerMatch.t1PenScore} - {playerMatch.t2PenScore} Pens
                               </div>
                             )}
@@ -520,14 +516,14 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
                           {/* Player T2 */}
                           <div className="flex-1 flex flex-col items-center gap-2">
-                            <ClubLogo name={playerMatch.t2.baseName} id={playerMatch.t2.id} color={playerMatch.t2.color} logo={playerMatch.t2.logo} fallbackLogo={playerMatch.t2.fallbackLogo} isModActive={isModActive} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg" fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm rounded-2xl flex items-center justify-center font-bold text-white" />
-                            <div className={`text-xs sm:text-sm font-bold truncate max-w-[100px] sm:max-w-[140px] text-center ${playerMatch.t2.isPlayer ? 'text-emerald-400' : 'text-white'}`}>{playerMatch.t2.name}</div>
+                            <ClubLogo name={playerMatch.t2.baseName} id={playerMatch.t2.id} color={playerMatch.t2.color} logo={playerMatch.t2.logo} fallbackLogo={playerMatch.t2.fallbackLogo} isModActive={isModActive} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-sm" fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm rounded-2xl flex items-center justify-center font-bold text-white" />
+                            <div className={`text-xs sm:text-sm font-bold truncate max-w-[100px] sm:max-w-[140px] text-center ${playerMatch.t2.isPlayer ? 'text-emerald-800' : 'text-[#18191F]'}`}>{playerMatch.t2.name}</div>
                           </div>
                         </div>
 
                         {playerMatch.dramaText && (
-                          <div className="text-center mt-2 pt-3 border-t border-white/[0.06] text-xs font-bold text-amber-300">
-                            <i className="fa-solid fa-fire mr-1.5 text-amber-400"></i> {playerMatch.dramaText}
+                          <div className="text-center mt-2 pt-3 border-t border-black/10 text-xs font-bold text-amber-800">
+                            <i className="fa-solid fa-fire mr-1.5 text-amber-600"></i> {playerMatch.dramaText}
                           </div>
                         )}
                       </div>
@@ -538,30 +534,30 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
                 {/* OTHER FIXTURES GRID */}
                 {otherMatches.length > 0 && (
                   <div className="space-y-2 flex flex-col items-center sm:items-stretch">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1 w-full text-center sm:text-left">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280] px-1 w-full text-center sm:text-left">
                       {t('Other Fixtures', 'Weitere Begegnungen')}
                     </div>
                     <div className={`grid gap-3 w-full ${otherMatches.length === 1 ? 'grid-cols-1 place-items-center' : 'grid-cols-1 sm:grid-cols-2'}`}>
                       {otherMatches.map((m, i) => (
-                        <div key={i} className={`bg-white/[0.02] border border-white/[0.04] rounded-[20px] p-3.5 flex flex-col justify-center w-full ${otherMatches.length === 1 ? 'max-w-md' : ''}`}>
+                        <div key={i} className={`bg-[#FAF9F6] border border-[#E6E3DC] rounded-[20px] p-3.5 flex flex-col justify-center w-full ${otherMatches.length === 1 ? 'max-w-md' : ''}`}>
                           <div className="flex justify-between items-center w-full">
                             <div className="flex-1 flex items-center gap-2 min-w-0">
                               <ClubLogo name={m.t1.baseName} id={m.t1.id} color={m.t1.color} logo={m.t1.logo} fallbackLogo={m.t1.fallbackLogo} isModActive={isModActive} className="w-5 h-5 object-contain shrink-0" fallbackClassName="w-5 h-5 text-[8px] rounded-md flex items-center justify-center font-bold text-white shrink-0" />
-                              <span className={`text-[11px] font-bold truncate ${m.winner.id === m.t1.id ? 'text-white' : 'text-zinc-500'}`}>{m.t1.name}</span>
+                              <span className={`text-[11px] font-bold truncate ${m.winner.id === m.t1.id ? 'text-[#18191F]' : 'text-[#9A9890]'}`}>{m.t1.name}</span>
                             </div>
-                            <div className="px-2 font-mono text-[11px] font-bold text-zinc-300 shrink-0">{m.t1Score}</div>
+                            <div className="px-2 font-mono text-[11px] font-bold text-[#18191F] shrink-0 tabular-nums">{m.t1Score}</div>
                           </div>
                           
                           <div className="flex justify-between items-center w-full mt-1.5">
                             <div className="flex-1 flex items-center gap-2 min-w-0">
                               <ClubLogo name={m.t2.baseName} id={m.t2.id} color={m.t2.color} logo={m.t2.logo} fallbackLogo={m.t2.fallbackLogo} isModActive={isModActive} className="w-5 h-5 object-contain shrink-0" fallbackClassName="w-5 h-5 text-[8px] rounded-md flex items-center justify-center font-bold text-white shrink-0" />
-                              <span className={`text-[11px] font-bold truncate ${m.winner.id === m.t2.id ? 'text-white' : 'text-zinc-500'}`}>{m.t2.name}</span>
+                              <span className={`text-[11px] font-bold truncate ${m.winner.id === m.t2.id ? 'text-[#18191F]' : 'text-[#9A9890]'}`}>{m.t2.name}</span>
                             </div>
-                            <div className="px-2 font-mono text-[11px] font-bold text-zinc-300 shrink-0">{m.t2Score}</div>
+                            <div className="px-2 font-mono text-[11px] font-bold text-[#18191F] shrink-0 tabular-nums">{m.t2Score}</div>
                           </div>
 
                           {m.isPenalties && (
-                            <div className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider mt-2 pt-2 border-t border-white/[0.02]">
+                            <div className="text-[9px] text-amber-800 font-bold uppercase tracking-wider mt-2 pt-2 border-t border-[#E6E3DC] tabular-nums">
                               {m.winner.baseName} wins on pens ({m.t1PenScore}-{m.t2PenScore})
                             </div>
                           )}
@@ -577,36 +573,36 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
               <motion.div key="result" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-6 text-center">
                 {tournamentWon ? (
                   <>
-                    <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-400/40 flex items-center justify-center text-amber-400 text-3xl shadow-[0_0_30px_rgba(245,158,11,0.2)] mb-4">
+                    <div className="w-20 h-20 rounded-[24px] bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 text-3xl shadow-sm mb-4">
                       <i className="fas fa-trophy"></i>
                     </div>
-                    <h3 className="text-2xl font-black text-white tracking-tight uppercase mb-1">
+                    <h3 className="text-2xl font-black text-[#18191F] tracking-tight uppercase mb-1">
                       {t('National Champions!', 'Deutscher Meister!')}
                     </h3>
-                    <p className="text-xs text-zinc-400 max-w-sm mb-6">
+                    <p className="text-xs text-[#6B7280] max-w-sm mb-6">
                       {t('Your youth academy has conquered the nation! The squad celebrates with pride and glory.', 'Deine Jugendakademie hat den nationalen Titel geholt! Der gesamte Verein feiert diesen historischen Erfolg.')}
                     </p>
 
                     <div className="grid grid-cols-2 gap-3 w-full max-w-sm mb-2">
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/80 mb-0.5">{t('Prize Awarded', 'Prämie')}</div>
-                        <div className="text-lg font-black font-mono text-emerald-400">+{formatMoney(prizeMoney)}</div>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-center">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-0.5">{t('Prize Awarded', 'Prämie')}</div>
+                        <div className="text-lg font-black font-mono text-emerald-700 tabular-nums">+{formatMoney(prizeMoney)}</div>
                       </div>
-                      <div className="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-3.5 text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-sky-400/80 mb-0.5">{t('Cohort Boost', 'Talent-Sprung')}</div>
-                        <div className="text-lg font-black font-mono text-sky-400">+2 OVR</div>
+                      <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3.5 text-center">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5">{t('Cohort Boost', 'Talent-Sprung')}</div>
+                        <div className="text-lg font-black font-mono text-sky-700 tabular-nums">+2 OVR</div>
                       </div>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-zinc-500/20 to-zinc-500/10 border border-zinc-500/30 flex items-center justify-center text-zinc-400 text-3xl mb-4">
+                    <div className="w-20 h-20 rounded-[24px] bg-[#FAF9F6] border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] text-3xl mb-4">
                       <i className="fas fa-shield-halved"></i>
                     </div>
-                    <h3 className="text-2xl font-black text-white tracking-tight uppercase mb-1">
+                    <h3 className="text-2xl font-black text-[#18191F] tracking-tight uppercase mb-1">
                       {reachedFinal ? t('National Runner-Up!', 'Deutscher Vizemeister!') : t('Tournament Concluded', 'Turnier Beendet')}
                     </h3>
-                    <p className="text-xs text-zinc-400 max-w-sm">
+                    <p className="text-xs text-[#6B7280] max-w-sm">
                       {reachedFinal 
                         ? t('A valiant effort in the national final! Your academy players took silver medals and gained priceless tournament experience.', 'Ein beherzter Auftritt im nationalen Finale! Deine Talente sicherten sich die Silbermedaille und wertvolle Erfahrung.')
                         : playerStillIn 
@@ -621,9 +617,9 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-5 border-t border-white/[0.06] bg-white/[0.01] flex items-center justify-between sm:justify-end gap-3 shrink-0 relative z-10">
+        <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between sm:justify-end gap-3 shrink-0 relative z-10">
           {phase !== 'intro' && (
-            <div className="text-[11px] font-medium text-zinc-500">
+            <div className="text-[11px] font-medium text-[#6B7280]">
               {phase === 'result' ? (tournamentWon ? t('Championship Title Won', 'Meistertitel errungen') : t('Tournament finished', 'Turnier abgeschlossen')) : t('Round simulation complete', 'Runde simuliert')}
             </div>
           )}
@@ -633,7 +629,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
               <button
                 type="button"
                 onClick={handleNextPhase}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <span>{t('Kick Off Tournament', 'Turnier starten')}</span>
                 <i className="fas fa-arrow-right text-[11px]"></i>
@@ -642,7 +638,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
               <button
                 type="button"
                 onClick={handleNextPhase}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <span>{t('Play Semi-Finals', 'Zum Halbfinale')}</span>
                 <i className="fas fa-arrow-right text-[11px]"></i>
@@ -651,16 +647,16 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
               <button
                 type="button"
                 onClick={handleNextPhase}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <span>{t('Play Championship Final', 'Zum Finale')}</span>
-                <i className="fas fa-trophy text-[11px]"></i>
+                <i className="fas fa-trophy text-[11px] text-amber-300"></i>
               </button>
             ) : phase === 'final' ? (
               <button
                 type="button"
                 onClick={handleNextPhase}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(245,158,11,0.25)] flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <span>{t('View Tournament Result', 'Zum Ergebnis')}</span>
                 <i className="fas fa-arrow-right text-[11px]"></i>
@@ -669,7 +665,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
               <button
                 type="button"
                 onClick={handleNextPhase}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(16,185,129,0.25)] flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <span>{tournamentWon ? t('Claim Trophy & Rewards', 'Trophäe entgegennehmen') : t('Complete & Return', 'Zurück zur Akademie')}</span>
                 <i className="fas fa-check text-[11px]"></i>

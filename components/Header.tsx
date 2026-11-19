@@ -99,6 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-sky-300 bg-sky-500/15 border border-sky-400/30'
               }`}
               title={viewMode !== 'game' ? 'Return to Career Dugout' : tr('Start Over', 'Neustart')}
+              aria-label={viewMode !== 'game' ? 'Return to Career Dugout' : tr('Start Over', 'Neustart')}
             >
               <i className={`fa-solid ${viewMode !== 'game' ? 'fa-arrow-left text-sky-400' : 'fa-rotate-right text-zinc-400'} text-xs`}></i>
               <span className="hidden sm:inline">{viewMode !== 'game' ? 'Dugout' : tr('Start Over', 'Neustart')}</span>
@@ -139,6 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-zinc-300 hover:text-white hover:bg-white/[0.06] border border-white/[0.06]'
               }`}
               title="Submit Crash Report, Bug Fix, or Feature Request"
+              aria-label="Feedback"
             >
               <i className={`fa-solid ${unreadCrashCount > 0 ? 'fa-bug text-rose-400 animate-pulse' : 'fa-comment-dots text-emerald-400'} text-xs`}></i>
               <span className="hidden md:inline">Feedback</span>

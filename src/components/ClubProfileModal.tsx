@@ -5,6 +5,7 @@ import { calculateClubReputation, COUNTRIES, getLeagueInfo, getMaxTier, isCanadi
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
 import { calculateClubLeagueHistory, isTopOvrClub } from '../engine/clubProgressionEngine';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface ClubProfileModalProps {
   state: GameState;
@@ -64,7 +65,19 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
     ? isModActiveProp 
     : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
 
-  const defaultClub = ALL_CLUBS.find(c => c.id === state.club.id || String(c.id) === String(state.club.id));
+  const resolvedDisplay = resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: state.club.name || 'Club',
+      country: state.club.country,
+      color: state.club.color,
+      logo: state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    isModActive,
+    clubsDb
+  );
+  const defaultClub = ALL_CLUBS.find(c => c.id === (resolvedDisplay.id ?? state.club.id) || String(c.id) === String(resolvedDisplay.id ?? state.club.id));
   const liveDbClub = isModActive 
     ? (clubsDb?.find(c => c.id === state.club.id || String(c.id) === String(state.club.id)) || 
        clubsDb?.find(c => c.name.toLowerCase().trim() === state.club.name.toLowerCase().trim()) ||
@@ -72,10 +85,10 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
     : defaultClub;
 
   const resolvedClub = liveDbClub || state.club;
-  const clubName = isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name);
-  const clubLogo = isModActive ? (liveDbClub?.logo || state.club.logo) : undefined;
-  const clubFallbackLogo = isModActive ? (liveDbClub?.fallbackLogo || state.club.fallbackLogo) : undefined;
-  const clubColor = state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
+  const clubName = resolvedDisplay.name || (isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name));
+  const clubLogo = resolvedDisplay.logo;
+  const clubFallbackLogo = resolvedDisplay.fallbackLogo;
+  const clubColor = resolvedDisplay.color || state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
   const clubCountry = state.club.country || (isModActive ? liveDbClub?.country : defaultClub?.country) || 'GER';
   const hexColor = clubColor.startsWith('#') ? clubColor : `#${clubColor}`;
 
@@ -130,7 +143,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-2xl overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-4 bg-[#18191F]/45 backdrop-blur-sm overflow-y-auto overscroll-contain"
       onClick={onClose}
     >
       <motion.div
@@ -138,22 +151,22 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-[#12141c]/95 text-white w-full max-w-xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] overflow-hidden relative z-10 flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto backdrop-blur-3xl shrink-0"
+        className="bg-white text-[#18191F] w-full max-w-xl rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] overflow-hidden relative z-10 flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0"
         onClick={e => e.stopPropagation()}
       >
         {/* Subtle Club Accent Ambient Glow */}
         <div
-          className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px] pointer-events-none opacity-20 transition-opacity"
+          className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[100px] pointer-events-none opacity-[0.08] transition-opacity"
           style={{ backgroundColor: hexColor }}
         />
 
         {/* Boardroom Header */}
-        <div className="relative px-6 pt-6 pb-4 border-b border-white/[0.08] flex items-start justify-between">
+        <div className="relative px-6 pt-6 pb-4 bg-[#FAF9F6] border-b border-[#E6E3DC] flex items-start justify-between">
           <div className="flex items-center gap-4 min-w-0">
-            {/* Club Crest with glowing plate */}
-            <div className="relative shrink-0 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2.5 shadow-xl overflow-hidden">
+            {/* Protected Club Crest Plate */}
+            <div className="relative shrink-0 flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-[#E6E3DC] p-2.5 shadow-sm overflow-hidden">
               <div
-                className="absolute inset-0 opacity-20 pointer-events-none blur-sm"
+                className="absolute inset-0 opacity-[0.08] pointer-events-none blur-sm"
                 style={{ backgroundColor: hexColor }}
               />
               <ClubLogo
@@ -163,28 +176,28 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                 logo={clubLogo}
                 fallbackLogo={clubFallbackLogo}
                 isModActive={isModActive}
-                className="w-full h-full object-contain drop-shadow-md relative z-10"
+                className="w-full h-full object-contain drop-shadow-sm relative z-10"
                 fallbackClassName="w-full h-full rounded-xl flex items-center justify-center font-black text-white text-xl"
               />
             </div>
 
             {/* Club Title & Unboxed Metadata */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-sky-400 uppercase">
+              <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wider text-sky-700 uppercase">
                 <span>{leagueInfo?.name || `Tier ${state.club.tier}`}</span>
-                <span aria-hidden="true" className="text-zinc-600">·</span>
-                <span className="text-zinc-300">
+                <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+                <span className="text-[#4B5563]">
                   {isCanadianMLSClub(clubName, state.club.id, clubCountry) 
                     ? 'Canada 🇨🇦 (MLS)' 
                     : `${countryInfo?.name || clubCountry} ${countryInfo?.flag || '🇩🇪'}`}
                 </span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight break-words leading-tight mt-0.5">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#18191F] tracking-tight break-words leading-tight mt-0.5">
                 {clubName}
               </h2>
-              <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
-                <span className="font-semibold text-zinc-300">{tierInfo.title}</span>
-                <span aria-hidden="true" className="text-zinc-600">·</span>
+              <div className="flex items-center gap-2 mt-1 text-xs text-[#6B7280]">
+                <span className="font-semibold text-[#18191F]">{tierInfo.title}</span>
+                <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
                 <span>{isDe ? 'Vereins-Dossier & Historie' : 'Boardroom Dossier & Trajectory'}</span>
               </div>
             </div>
@@ -194,27 +207,29 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
             type="button"
             aria-label={isDe ? 'Schliessen' : 'Close'}
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center transition shrink-0 ml-2 cursor-pointer active:scale-95"
+            className="w-8 h-8 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition shrink-0 ml-2 cursor-pointer active:scale-95"
           >
             <i className="fa-solid fa-xmark text-sm"></i>
           </button>
         </div>
 
-        {/* Apple-inspired Segmented Tab Control */}
-        <div className="px-6 pt-3 pb-1 shrink-0">
-          <div className="bg-white/[0.04] p-1 rounded-2xl border border-white/[0.06] flex gap-1">
+        {/* Segmented Tab Control */}
+        <div className="px-6 pt-3 pb-2 bg-[#FAF9F6] border-b border-[#E6E3DC] shrink-0">
+          <div className="bg-[#EFECE4] p-1 rounded-2xl border border-[#E6E3DC] flex gap-1">
             <button
               type="button"
               onClick={() => handleTabChange('league')}
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'league'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/30 shadow-sm'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#4B5563] hover:text-[#18191F] hover:bg-white/70'
               }`}
             >
               <i className="fa-solid fa-chart-line text-[11px]"></i>
               <span>{isDe ? 'Liga-Entwicklung' : 'League Development'}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/[0.08] text-zinc-300 font-mono">
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+                activeTab === 'league' ? 'bg-white/20 text-white' : 'bg-white text-[#18191F] border border-[#E6E3DC]'
+              }`}>
                 {leagueHistory.length}
               </span>
             </button>
@@ -223,8 +238,8 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
               onClick={() => handleTabChange('dossier')}
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'dossier'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/30 shadow-sm'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#4B5563] hover:text-[#18191F] hover:bg-white/70'
               }`}
             >
               <i className="fa-solid fa-shield-halved text-[11px]"></i>
@@ -234,25 +249,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
         </div>
 
         {/* Scrollable Dossier Body */}
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 custom-scrollbar">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-white p-4 sm:p-6 space-y-4 custom-scrollbar">
           {activeTab === 'league' ? (
             /* ================= LEAGUE FINISHES LINE CHART VIEW ================= */
             <div className="space-y-4">
               {/* League Trajectory Overview Capsule */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-sm">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                       {isDe ? 'Liga-Entwicklung & Platzierungen' : 'League Development & Finishes'}
                     </div>
-                    <div className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2 mt-0.5">
+                    <div className="text-base sm:text-lg font-bold text-[#18191F] tracking-tight flex items-center gap-2 flex-wrap mt-0.5">
                       <span>{isStableGiant ? (isDe ? 'Stabiler Spitzenverein' : 'Stable Elite Powerhouse') : (isDe ? 'Dynamischer Ligawettbewerber' : 'Dynamic Division Contender')}</span>
                       {isStableGiant ? (
-                        <span className="text-[10px] font-medium text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/25">
+                        <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                           {isDe ? 'Konstant Top 4' : 'Consistent Top 4'}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-500/25">
+                        <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
                           {minHistoryTier === maxHistoryTier
                             ? `Tier ${minHistoryTier}`
                             : isDe
@@ -262,40 +277,40 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       )}
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/25 flex items-center justify-center text-sky-400 text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-sm shrink-0">
                     <i className="fa-solid fa-chart-line"></i>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-white/[0.06] text-center">
-                  <div className="p-2 rounded-xl bg-white/[0.02]">
-                    <div className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
+                <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-[#E6E3DC] text-center">
+                  <div className="p-2 rounded-xl bg-white border border-[#E6E3DC]">
+                    <div className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider">
                       {isDe ? 'Aktuelle Liga' : 'Current Tier'}
                     </div>
-                    <div className="text-sm font-bold text-white mt-0.5 font-mono">
+                    <div className="text-sm font-bold text-[#18191F] mt-0.5 font-mono tabular-nums">
                       Tier {state.club.tier}
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-white/[0.02]">
-                    <div className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
+                  <div className="p-2 rounded-xl bg-white border border-[#E6E3DC]">
+                    <div className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider">
                       {isDe ? 'Beste Platzierung' : 'Peak Finish'}
                     </div>
-                    <div className="text-sm font-bold text-amber-400 mt-0.5 font-mono">
+                    <div className="text-sm font-bold text-amber-700 mt-0.5 font-mono tabular-nums">
                       #{Math.min(...leagueHistory.map(r => r.position))} {Math.min(...leagueHistory.map(r => r.position)) === 1 ? '🏆' : ''}
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-white/[0.02]">
-                    <div className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">
+                  <div className="p-2 rounded-xl bg-white border border-[#E6E3DC]">
+                    <div className="text-[10px] font-medium text-[#6B7280] uppercase tracking-wider">
                       {isDe ? 'Erfasste Jahre' : 'Seasons'}
                     </div>
-                    <div className="text-sm font-bold text-sky-400 mt-0.5 font-mono">
+                    <div className="text-sm font-bold text-sky-700 mt-0.5 font-mono tabular-nums">
                       {leagueHistory.length}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Apple-style Interactive Line Chart Card */}
+              {/* Interactive Line Chart Card */}
               {(() => {
                 const activeIdx = selectedSeasonIdx !== null && selectedSeasonIdx < leagueHistory.length
                   ? selectedSeasonIdx
@@ -365,26 +380,26 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                 const gridLines = (() => {
                   if (tierCount === 1) {
                     return minTier === 1 ? [
-                      { label: '1st', pos: 1, tier: 1, color: 'text-amber-400/80', border: 'stroke-amber-400/25' },
-                      { label: '4th', pos: 4, tier: 1, color: 'text-sky-400/80', border: 'stroke-sky-400/20' },
-                      { label: '10th', pos: 10, tier: 1, color: 'text-zinc-500', border: 'stroke-white/[0.08]' },
-                      { label: '16th', pos: 16, tier: 1, color: 'text-rose-500/80', border: 'stroke-rose-500/25' },
+                      { label: '1st', pos: 1, tier: 1, color: 'text-amber-700', border: 'stroke-amber-500/35' },
+                      { label: '4th', pos: 4, tier: 1, color: 'text-sky-700', border: 'stroke-sky-500/30' },
+                      { label: '10th', pos: 10, tier: 1, color: 'text-[#6B7280]', border: 'stroke-[#E6E3DC]' },
+                      { label: '16th', pos: 16, tier: 1, color: 'text-rose-700', border: 'stroke-rose-500/35' },
                     ] : [
-                      { label: `T${minTier} 1st`, pos: 1, tier: minTier, color: 'text-emerald-400 font-bold', border: 'stroke-emerald-400/30' },
-                      { label: `T${minTier} 5th`, pos: 5, tier: minTier, color: 'text-zinc-500', border: 'stroke-white/[0.06]' },
-                      { label: `T${minTier} 10th`, pos: 10, tier: minTier, color: 'text-zinc-600', border: 'stroke-white/[0.04]' },
+                      { label: `T${minTier} 1st`, pos: 1, tier: minTier, color: 'text-emerald-700 font-bold', border: 'stroke-emerald-500/35' },
+                      { label: `T${minTier} 5th`, pos: 5, tier: minTier, color: 'text-[#6B7280]', border: 'stroke-[#E6E3DC]' },
+                      { label: `T${minTier} 10th`, pos: 10, tier: minTier, color: 'text-[#9A9890]', border: 'stroke-[#EFECE4]' },
                     ];
                   }
 
                   if (tierCount === 2) {
                     return [
-                      { label: `T${minTier} 1st`, pos: 1, tier: minTier, color: minTier === 1 ? 'text-amber-400/80' : 'text-emerald-400 font-bold', border: 'stroke-amber-400/25' },
-                      { label: `T${minTier} 4th`, pos: 4, tier: minTier, color: 'text-sky-400/80', border: 'stroke-sky-400/20' },
-                      { label: `T${minTier} 10th`, pos: 10, tier: minTier, color: 'text-zinc-500', border: 'stroke-white/[0.08]' },
-                      { label: `T${minTier} 16th`, pos: 16, tier: minTier, color: 'text-rose-500/80', border: 'stroke-rose-500/25' },
-                      { label: `T${maxTier} 1st`, pos: 1, tier: maxTier, color: 'text-emerald-400 font-bold', border: 'stroke-emerald-400/30' },
-                      { label: `T${maxTier} 5th`, pos: 5, tier: maxTier, color: 'text-zinc-500', border: 'stroke-white/[0.06]' },
-                      { label: `T${maxTier} 10th`, pos: 10, tier: maxTier, color: 'text-zinc-600', border: 'stroke-white/[0.04]' },
+                      { label: `T${minTier} 1st`, pos: 1, tier: minTier, color: minTier === 1 ? 'text-amber-700' : 'text-emerald-700 font-bold', border: 'stroke-amber-500/35' },
+                      { label: `T${minTier} 4th`, pos: 4, tier: minTier, color: 'text-sky-700', border: 'stroke-sky-500/30' },
+                      { label: `T${minTier} 10th`, pos: 10, tier: minTier, color: 'text-[#6B7280]', border: 'stroke-[#E6E3DC]' },
+                      { label: `T${minTier} 16th`, pos: 16, tier: minTier, color: 'text-rose-700', border: 'stroke-rose-500/35' },
+                      { label: `T${maxTier} 1st`, pos: 1, tier: maxTier, color: 'text-emerald-700 font-bold', border: 'stroke-emerald-500/35' },
+                      { label: `T${maxTier} 5th`, pos: 5, tier: maxTier, color: 'text-[#6B7280]', border: 'stroke-[#E6E3DC]' },
+                      { label: `T${maxTier} 10th`, pos: 10, tier: maxTier, color: 'text-[#9A9890]', border: 'stroke-[#EFECE4]' },
                     ];
                   }
 
@@ -402,16 +417,16 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       label: `${tag} 1st`,
                       pos: 1,
                       tier: t,
-                      color: isTopFlight ? 'text-amber-400/80' : 'text-emerald-400/90 font-bold',
-                      border: isTopFlight ? 'stroke-amber-400/25' : 'stroke-emerald-400/20',
+                      color: isTopFlight ? 'text-amber-700' : 'text-emerald-700 font-bold',
+                      border: isTopFlight ? 'stroke-amber-500/35' : 'stroke-emerald-500/30',
                     });
                     if (isTopFlight && tierCount <= 5) {
                       lines.push({
                         label: `${tag} 4th`,
                         pos: 4,
                         tier: t,
-                        color: 'text-sky-400/70',
-                        border: 'stroke-sky-400/15',
+                        color: 'text-sky-700',
+                        border: 'stroke-sky-500/25',
                       });
                     }
                   }
@@ -440,71 +455,71 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                 const isSafe = !isChamp && !isPromoted && !isTop4 && !isRelegated && (activeRecord?.position >= 13 && activeRecord?.position <= 15);
 
                 let statusBadgeText = isDe ? 'Mittelfeld' : 'Mid-Table';
-                let statusBadgeStyle = 'bg-white/[0.06] text-zinc-300 border-white/[0.08]';
+                let statusBadgeStyle = 'bg-[#EFECE4] text-[#4B5563] border-[#E6E3DC]';
                 if (isChamp) {
                   if (safeTier === 1) {
                     statusBadgeText = isDe ? 'Meister 🏆' : 'League Champions 🏆';
-                    statusBadgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-400/30';
+                    statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
                   } else {
                     statusBadgeText = isDe ? `Meister & Aufstieg 🏆 ⬆` : `Tier ${safeTier} Champions & Promoted 🏆 ⬆`;
-                    statusBadgeStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30';
+                    statusBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                   }
                 } else if (isPromoted) {
                   const targetTier = Math.max(1, safeTier - 1);
                   const targetLeague = getLeagueInfo(targetTier, clubCountry);
                   const targetName = targetLeague?.tag || `Tier ${targetTier}`;
                   statusBadgeText = isDe ? `Aufstieg in ${targetName} ⬆` : `Promoted to ${targetName} ⬆`;
-                  statusBadgeStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30';
+                  statusBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                 } else if (isTop4) {
                   statusBadgeText = isDe ? 'Top 4 / Europa' : 'Top 4 / Continental';
-                  statusBadgeStyle = 'bg-sky-500/20 text-sky-300 border-sky-400/30';
+                  statusBadgeStyle = 'bg-sky-50 text-sky-700 border-sky-200';
                 } else if (isRelegated) {
                   statusBadgeText = isDe ? 'Abstieg' : 'Relegated';
-                  statusBadgeStyle = 'bg-rose-500/20 text-rose-300 border-rose-400/30';
+                  statusBadgeStyle = 'bg-rose-50 text-rose-700 border-rose-200';
                 } else if (isSafe) {
                   statusBadgeText = isDe ? 'Klassenerhalt' : 'Safe';
-                  statusBadgeStyle = 'bg-amber-500/15 text-amber-200 border-amber-500/25';
+                  statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
                 }
 
                 return (
-                  <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden backdrop-blur-md">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden">
                     {/* Header with active inspected record highlight */}
-                    <div className="flex items-center justify-between pb-3 mb-2 border-b border-white/[0.06] flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-white bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-lg border border-sky-400/30">
+                    <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#E6E3DC] flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono tabular-nums font-bold bg-sky-50 text-sky-700 px-2 py-0.5 rounded-lg border border-sky-200">
                           {activeRecord?.year}
                         </span>
-                        <span className="text-xs font-bold text-white font-mono">
+                        <span className="text-xs font-bold text-[#18191F] font-mono tabular-nums">
                           #{activeRecord?.position} {isDe ? 'Platz' : 'Place'}
                         </span>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusBadgeStyle}`}>
                           {statusBadgeText}
                         </span>
-                        <span className="text-[11px] text-zinc-400 truncate max-w-[130px] sm:max-w-[180px]">
+                        <span className="text-[11px] text-[#6B7280] truncate max-w-[130px] sm:max-w-[180px]">
                           Tier {safeTier} · {safeLeagueName}
                         </span>
                       </div>
 
-                      <div className="text-[11px] tabular-nums font-semibold text-zinc-300">
+                      <div className="text-[11px] tabular-nums font-semibold text-[#4B5563]">
                         {activeRecord?.points} Pts · {activeRecord?.ovr} OVR
                       </div>
                     </div>
 
                     {/* SVG Line Chart */}
-                    <div className="w-full relative">
+                    <div className="w-full relative bg-white rounded-xl border border-[#E6E3DC] p-2">
                       <svg viewBox={hasLowerTier ? "0 0 460 238" : "0 0 460 215"} className="w-full h-auto overflow-visible select-none">
                         <defs>
                           <linearGradient id="finishGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.32" />
-                            <stop offset="70%" stopColor="#38bdf8" stopOpacity="0.08" />
-                            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+                            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.22" />
+                            <stop offset="70%" stopColor="#0284c7" stopOpacity="0.06" />
+                            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
                           </linearGradient>
                           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feGaussianBlur stdDeviation="2" result="blur" />
                             <feComposite in="SourceGraphic" in2="blur" operator="over" />
                           </filter>
                           <filter id="promoGlow" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="3.5" result="blur" />
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
                             <feComposite in="SourceGraphic" in2="blur" operator="over" />
                           </filter>
                         </defs>
@@ -547,7 +562,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                             y1={points[0].y}
                             x2={paddingLeft + width}
                             y2={points[0].y}
-                            className="stroke-sky-400/40"
+                            className="stroke-sky-600/50"
                             strokeDasharray="4 4"
                             strokeWidth="2"
                           />
@@ -558,7 +573,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                           <path
                             d={linePath}
                             fill="none"
-                            className="stroke-sky-400 stroke-[3]"
+                            className="stroke-sky-600 stroke-[3]"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             filter="url(#glow)"
@@ -577,17 +592,17 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                           const isNodeRelegated = !isNodeChamp && pt.d.position >= 16;
                           const isSelected = pt.idx === activeIdx;
                           
-                          let nodeColor = '#38bdf8';
+                          let nodeColor = '#0284c7';
                           if (isNodeChamp) {
-                            nodeColor = nodeTier === 1 ? '#f59e0b' : '#10b981';
+                            nodeColor = nodeTier === 1 ? '#d97706' : '#059669';
                           } else if (isNodePromoted) {
-                            nodeColor = '#10b981';
+                            nodeColor = '#059669';
                           } else if (isNodeRelegated) {
-                            nodeColor = '#f43f5e';
+                            nodeColor = '#e11d48';
                           } else if (nodeTier > 1) {
-                            nodeColor = '#34d399';
+                            nodeColor = '#10b981';
                           } else if (!isNodeTop4) {
-                            nodeColor = '#e4e4e7';
+                            nodeColor = '#4b5563';
                           }
 
                           const nodeRadius = isSelected 
@@ -629,7 +644,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 cy={pt.y}
                                 r={haloRadius}
                                 fill={nodeColor}
-                                opacity={isSelected ? "0.4" : (isNodePromoted ? "0.35" : "0.15")}
+                                opacity={isSelected ? "0.28" : (isNodePromoted ? "0.25" : "0.12")}
                                 filter={isNodePromoted ? "url(#promoGlow)" : undefined}
                                 className="transition-all duration-200"
                               />
@@ -640,7 +655,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 cy={pt.y}
                                 r={nodeRadius}
                                 fill={nodeColor}
-                                stroke={isNodePromoted ? "#064e3b" : "#12141c"}
+                                stroke={isNodePromoted ? "#065f46" : "#FFFFFF"}
                                 strokeWidth={tierCount > 5 ? "1.8" : "2.5"}
                                 className="transition-all duration-200"
                               />
@@ -652,13 +667,13 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 textAnchor="middle"
                                 className={`text-[10px] tabular-nums font-bold transition-opacity ${
                                   isNodePromoted 
-                                    ? 'fill-emerald-300 font-extrabold'
+                                    ? 'fill-emerald-700 font-extrabold'
                                     : isSelected 
-                                    ? 'fill-white opacity-100 font-bold' 
-                                    : 'fill-zinc-300 opacity-80'
+                                    ? 'fill-[#18191F] opacity-100 font-bold' 
+                                    : 'fill-[#4B5563] opacity-90'
                                 }`}
                               >
-                                {isNodePromoted && <tspan fill="#34d399">↑ </tspan>}#{pt.d.position}
+                                {isNodePromoted && <tspan fill="#059669">↑ </tspan>}#{pt.d.position}
                               </text>
 
                               {/* X-Axis Year label */}
@@ -666,7 +681,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 x={pt.x}
                                 y={hasLowerTier ? 228 : 206}
                                 textAnchor="middle"
-                                className={`text-[10px] tabular-nums font-medium transition-colors ${isSelected ? 'fill-sky-400 font-bold' : 'fill-zinc-400'}`}
+                                className={`text-[10px] tabular-nums font-medium transition-colors ${isSelected ? 'fill-sky-700 font-bold' : 'fill-[#6B7280]'}`}
                               >
                                 {pt.d.year}
                               </text>
@@ -677,28 +692,28 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                     </div>
 
                     {/* Legend / Key Footer */}
-                    <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[10px] text-zinc-400 flex-wrap gap-2">
+                    <div className="mt-3 pt-3 border-t border-[#E6E3DC] flex items-center justify-between text-[10px] text-[#6B7280] flex-wrap gap-2">
                       <div className="flex items-center gap-3">
                         <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                           <span>{isDe ? 'Meister' : 'Champions'}</span>
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
                           <span>{isDe ? 'Aufstieg (↑)' : 'Promoted (↑)'}</span>
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                          <span className="w-2 h-2 rounded-full bg-sky-600"></span>
                           <span>{isDe ? 'Top 4' : 'Top 4'}</span>
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                          <span className="w-2 h-2 rounded-full bg-rose-600"></span>
                           <span>{isDe ? 'Abstieg' : 'Relegated'}</span>
                         </span>
                       </div>
 
                       {activeRecord?.isManagerTenure && (
-                        <div className="text-[10px] text-sky-300 font-medium flex items-center gap-1">
+                        <div className="text-[10px] text-sky-700 font-semibold flex items-center gap-1">
                           <i className="fa-solid fa-user-tie text-[9px]"></i>
                           <span>{isDe ? 'Unter deiner Regie' : 'Director Tenure'}</span>
                         </div>
@@ -757,30 +772,30 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                 const isCurrentlyHere = Boolean(state.club.id === resolvedClub.id || (resolvedClub.name && state.club.name.toLowerCase().trim() === resolvedClub.name.toLowerCase().trim()));
 
                 return (
-                  <div className="bg-gradient-to-r from-sky-950/40 via-purple-950/20 to-black/40 border border-sky-400/25 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="bg-[#FAF9F6] border border-sky-200 rounded-2xl p-4 shadow-sm space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-300 border border-sky-400/30 flex items-center justify-center text-xs">
+                        <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center text-xs shrink-0">
                           <i className="fa-solid fa-user-tie"></i>
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-white tracking-tight">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-[#18191F] tracking-tight">
                               {isDe ? 'Deine Historie bei diesem Verein' : 'Your Managerial Heritage at this Club'}
                             </span>
                             {stints.length > 1 && (
-                              <span className="text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
                                 {stints.length} {isDe ? 'Amtszeiten' : 'Distinct Spells'}
                               </span>
                             )}
                             {isCurrentlyHere && (
-                              <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
                                 <span>{isDe ? 'Aktueller Verein' : 'Active Club'}</span>
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] text-zinc-400">
+                          <div className="text-[10px] text-[#6B7280]">
                             {isCurrentlyHere
                               ? (stints.length > 1 ? (isDe ? 'Rückkehr als Sportdirektor nach vorheriger Amtszeit' : 'Returned as Sporting Director · Second spell at the club') : (isDe ? 'Laufende Amtszeit' : 'Current Sporting Director Tenure'))
                               : (isDe ? 'Ehemaliger Verein deiner Trainerlaufbahn' : 'Former club directed earlier in your career')}
@@ -789,15 +804,15 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       </div>
 
                       <div className="flex items-center gap-2 text-right">
-                        <div className="bg-black/30 px-2.5 py-1 rounded-xl border border-white/5">
-                          <div className="text-[9px] text-zinc-400 font-semibold uppercase">{isDe ? 'Spiele & Bilanz' : 'Record'}</div>
-                          <div className="text-xs font-mono font-bold text-white">
-                            {totalW}W-{totalD}D-{totalL}L <span className="text-sky-300 font-normal">({winRate}%)</span>
+                        <div className="bg-white px-2.5 py-1 rounded-xl border border-[#E6E3DC]">
+                          <div className="text-[9px] text-[#6B7280] font-semibold uppercase">{isDe ? 'Spiele & Bilanz' : 'Record'}</div>
+                          <div className="text-xs font-mono tabular-nums font-bold text-[#18191F]">
+                            {totalW}W-{totalD}D-{totalL}L <span className="text-sky-700 font-normal">({winRate}%)</span>
                           </div>
                         </div>
-                        <div className="bg-black/30 px-2.5 py-1 rounded-xl border border-white/5">
-                          <div className="text-[9px] text-zinc-400 font-semibold uppercase">{isDe ? 'Bester Platz' : 'Best Finish'}</div>
-                          <div className="text-xs font-mono font-bold text-amber-300">
+                        <div className="bg-white px-2.5 py-1 rounded-xl border border-[#E6E3DC]">
+                          <div className="text-[9px] text-[#6B7280] font-semibold uppercase">{isDe ? 'Bester Platz' : 'Best Finish'}</div>
+                          <div className="text-xs font-mono tabular-nums font-bold text-amber-700">
                             #{bestFinish} {bestFinish === 1 ? '🏆' : ''}
                           </div>
                         </div>
@@ -806,25 +821,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
 
                     {/* Stints list if user left and returned */}
                     {stints.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#E6E3DC]">
                         {stints.map((st, idx) => (
-                          <div key={idx} className="bg-black/25 rounded-xl p-2.5 border border-white/5 flex items-center justify-between text-xs">
+                          <div key={idx} className="bg-white rounded-xl p-2.5 border border-[#E6E3DC] flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold text-[10px]">
+                              <span className="w-5 h-5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center font-bold text-[10px] tabular-nums">
                                 {idx + 1}
                               </span>
                               <div>
-                                <div className="font-bold text-white text-[11px]">
+                                <div className="font-bold text-[#18191F] text-[11px] tabular-nums">
                                   {isDe ? `Amtszeit ${idx + 1}:` : `Spell ${idx + 1}:`} {st.startYear === st.endYear ? st.startYear : `${st.startYear}–${st.endYear}`}
                                 </div>
-                                <div className="text-[9px] text-zinc-400">
+                                <div className="text-[9px] text-[#6B7280] tabular-nums">
                                   {st.count} {st.count === 1 ? (isDe ? 'Saison' : 'Season') : (isDe ? 'Saisons' : 'Seasons')} · {st.wins}W-{st.draws}D-{st.losses}L
                                 </div>
                               </div>
                             </div>
                             {st.trophies > 0 && (
-                              <span className="text-[10px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                                <i className="fa-solid fa-trophy text-[9px]"></i>
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-1 tabular-nums">
+                                <i className="fa-solid fa-trophy text-[9px] text-amber-600"></i>
                                 <span>{st.trophies} {isDe ? 'Titel' : 'Titles'}</span>
                               </span>
                             )}
@@ -837,18 +852,18 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
               })()}
 
               {/* Season-by-Season Chronicle Table */}
-              <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-4 shadow-sm space-y-2">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 shadow-sm space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5 uppercase tracking-wider">
-                    <i className="fa-solid fa-timeline text-sky-400 text-[10px]"></i>
+                  <span className="text-[11px] font-bold text-[#18191F] flex items-center gap-1.5 uppercase tracking-wider">
+                    <i className="fa-solid fa-timeline text-sky-700 text-[10px]"></i>
                     <span>{isDe ? 'Saison-Chronik des Vereins' : 'Club Season Chronicle'}</span>
                   </span>
-                  <span className="text-[10px] text-zinc-500">
+                  <span className="text-[10px] text-[#6B7280] tabular-nums">
                     {leagueHistory.length} {isDe ? 'Saisons erfasst' : 'Recorded Seasons'}
                   </span>
                 </div>
 
-                <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y divide-white/[0.04]">
+                <div className="max-h-60 overflow-y-auto custom-scrollbar divide-y divide-[#E6E3DC]">
                   {[...leagueHistory].sort((a, b) => b.year - a.year).map((r) => {
                     const isChamp = r.position === 1;
                     const isPromo = r.tier > 1 && r.position <= 3;
@@ -858,25 +873,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       <div
                         key={r.year}
                         className={`py-2 px-2.5 rounded-xl flex items-center justify-between gap-3 text-xs transition ${
-                          r.isManagerTenure ? 'bg-sky-500/[0.07] border border-sky-400/20 my-1' : 'hover:bg-white/[0.02]'
+                          r.isManagerTenure ? 'bg-sky-50/80 border border-sky-200 my-1' : 'hover:bg-white'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="font-mono font-bold text-zinc-300 text-[11px] shrink-0">
+                          <span className="font-mono tabular-nums font-bold text-[#4B5563] text-[11px] shrink-0">
                             {r.year}
                           </span>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
-                            isChamp ? 'bg-amber-400 text-black' : isPromo ? 'bg-emerald-500/20 text-emerald-300' : isReleg ? 'bg-rose-500/20 text-rose-300' : 'bg-white/10 text-zinc-300'
+                          <span className={`text-[10px] font-mono tabular-nums font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
+                            isChamp ? 'bg-amber-100 text-amber-900 border border-amber-300' : isPromo ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isReleg ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-[#EFECE4] text-[#4B5563]'
                           }`}>
                             #{r.position}
                           </span>
                           <div className="min-w-0">
-                            <div className="text-[11px] font-semibold text-white truncate flex items-center gap-1.5">
+                            <div className="text-[11px] font-semibold text-[#18191F] truncate flex items-center gap-1.5">
                               <span>Tier {r.tier}</span>
-                              <span className="text-zinc-500">·</span>
-                              <span className="text-zinc-300 truncate">{r.leagueName}</span>
+                              <span className="text-[#C7C4BC]">·</span>
+                              <span className="text-[#4B5563] truncate">{r.leagueName}</span>
                             </div>
-                            <div className="text-[9px] text-zinc-400 font-mono">
+                            <div className="text-[9px] text-[#6B7280] font-mono tabular-nums">
                               {r.points} pts · {r.wins || 0}W-{r.draws || 0}D-{r.losses || 0}L
                             </div>
                           </div>
@@ -884,17 +899,17 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
 
                         <div className="flex items-center gap-2 shrink-0">
                           {r.wonTrophy && (
-                            <span className="text-[9px] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <i className="fa-solid fa-trophy text-[8px]"></i>
+                            <span className="text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <i className="fa-solid fa-trophy text-[8px] text-amber-600"></i>
                               <span>{isDe ? 'Titel' : 'Champs'}</span>
                             </span>
                           )}
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                             r.isManagerTenure
-                              ? 'bg-sky-500/20 text-sky-300 border-sky-400/30'
-                              : 'bg-white/5 text-zinc-500 border-white/5'
+                              ? 'bg-sky-50 text-sky-700 border-sky-200'
+                              : 'bg-white text-[#6B7280] border-[#E6E3DC]'
                           }`}>
-                            <i className={`fa-solid ${r.isManagerTenure ? 'fa-user-tie text-sky-400' : 'fa-landmark text-zinc-500'} text-[8px]`}></i>
+                            <i className={`fa-solid ${r.isManagerTenure ? 'fa-user-tie text-sky-700' : 'fa-landmark text-[#9A9890]'} text-[8px]`}></i>
                             <span>{r.isManagerTenure ? (isDe ? 'Unter dir' : 'Your Tenure') : (isDe ? 'Interim' : 'Interim Era')}</span>
                           </span>
                         </div>
@@ -908,16 +923,16 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
             /* ================= DOSSIER & PRESTIGE VIEW ================= */
             <div className="space-y-4">
               {/* Unified Standing, Infrastructure & Heritage Card */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 relative overflow-hidden">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] mb-0.5">
                       {isDe ? 'Globale Strahlkraft & Ansehen' : 'Global Standing & Prestige'}
                     </div>
-                    <div className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                    <div className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight">
                       {tierInfo.title}
                     </div>
-                    <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                    <p className="text-xs text-[#4B5563] leading-relaxed mt-1">
                       {tierInfo.desc}
                     </p>
                   </div>
@@ -929,7 +944,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                         cx="48"
                         cy="48"
                         r={radius}
-                        className="stroke-white/[0.06] fill-none"
+                        className="stroke-[#E6E3DC] fill-none"
                         strokeWidth="6"
                       />
                       <circle
@@ -945,10 +960,10 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-black text-white tabular-nums tracking-tight leading-none">
+                      <span className="text-xl font-black text-[#18191F] tabular-nums tracking-tight leading-none">
                         {clubRep}
                       </span>
-                      <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mt-0.5">
+                      <span className="text-[9px] font-semibold text-[#6B7280] uppercase tracking-wider mt-0.5">
                         / 100
                       </span>
                     </div>
@@ -956,44 +971,44 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                 </div>
 
                 {/* Clean Divided 5-Metric Strip (No nested boxes or wrapping labels) */}
-                <div className="mt-4 pt-3.5 border-t border-white/[0.06] grid grid-cols-5 divide-x divide-white/[0.06] text-center">
+                <div className="mt-4 pt-3.5 border-t border-[#E6E3DC] grid grid-cols-5 divide-x divide-[#E6E3DC] text-center">
                   <div className="px-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] whitespace-nowrap">
                       {isDe ? 'Kader' : 'OVR'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
+                    <div className="text-sm sm:text-base font-black text-[#18191F] mt-0.5 font-mono tabular-nums">
                       {safeBaseOvr}
                     </div>
                   </div>
                   <div className="px-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] whitespace-nowrap">
                       {isDe ? 'Stadion' : 'Capacity'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
+                    <div className="text-sm sm:text-base font-black text-[#18191F] mt-0.5 font-mono tabular-nums">
                       {(resolvedClub.stadium || state.club.stadium || 0).toLocaleString()}
                     </div>
                   </div>
                   <div className="px-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] whitespace-nowrap">
                       {isDe ? 'Akademie' : 'Academy'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-emerald-400 mt-0.5 font-mono tabular-nums">
-                      Lvl {resolvedClub.academyLevel || state.club.academyLevel || 1}<span className="text-zinc-500 text-xs font-normal">/5</span>
+                    <div className="text-sm sm:text-base font-black text-emerald-700 mt-0.5 font-mono tabular-nums">
+                      Lvl {resolvedClub.academyLevel || state.club.academyLevel || 1}<span className="text-[#9A9890] text-xs font-normal">/5</span>
                     </div>
                   </div>
                   <div className="px-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] whitespace-nowrap">
                       {isDe ? 'Medizin' : 'Medical'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-sky-400 mt-0.5 font-mono tabular-nums">
-                      Lvl {resolvedClub.medicalLevel || state.club.medicalLevel || 1}<span className="text-zinc-500 text-xs font-normal">/5</span>
+                    <div className="text-sm sm:text-base font-black text-sky-700 mt-0.5 font-mono tabular-nums">
+                      Lvl {resolvedClub.medicalLevel || state.club.medicalLevel || 1}<span className="text-[#9A9890] text-xs font-normal">/5</span>
                     </div>
                   </div>
                   <div className="px-1.5">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 whitespace-nowrap">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] whitespace-nowrap">
                       {isDe ? 'Fans' : 'Fanbase'}
                     </div>
-                    <div className="text-sm sm:text-base font-black text-white mt-0.5 font-mono tabular-nums">
+                    <div className="text-sm sm:text-base font-black text-[#18191F] mt-0.5 font-mono tabular-nums">
                       {formatFanbase(resolvedClub.fanBase || state.club.fanBase)}
                     </div>
                   </div>
@@ -1001,25 +1016,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
 
                 {/* Historical Lore & Club Ethos */}
                 {narrative && (
-                  <div className="mt-3.5 pt-3.5 border-t border-white/[0.06] flex items-start gap-2.5">
-                    <i className="fa-solid fa-quote-left text-zinc-500 text-xs mt-0.5 shrink-0"></i>
-                    <p className="text-xs text-zinc-300 italic leading-relaxed">
+                  <div className="mt-3.5 pt-3.5 border-t border-[#E6E3DC] flex items-start gap-2.5">
+                    <i className="fa-solid fa-quote-left text-[#9A9890] text-xs mt-0.5 shrink-0"></i>
+                    <p className="text-xs text-[#4B5563] italic leading-relaxed">
                       {narrative}
                     </p>
                   </div>
                 )}
 
                 {/* Compact Strategic Governance Drivers */}
-                <div className="mt-3.5 pt-3.5 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="mt-3.5 pt-3.5 border-t border-[#E6E3DC] grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-400/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center shrink-0 mt-0.5">
                       <i className="fa-solid fa-user-plus text-[11px]"></i>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-zinc-200 font-semibold text-xs">
+                      <div className="text-[#18191F] font-semibold text-xs">
                         {isDe ? 'Transfer-Anziehung' : 'Transfer Pull'}
                       </div>
-                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">
+                      <p className="text-[11px] text-[#6B7280] leading-snug mt-0.5">
                         {clubRep >= 75
                           ? (isDe ? 'Internationale Stars und 5-Sterne-Talente unterschreiben sofort.' : 'Elite international stars and 5-star prodigies readily sign.')
                           : (isDe ? 'Erfordert kluges Scouting und attraktive Verträge.' : 'Signings require savvy scouting and competitive incentives.')}
@@ -1028,14 +1043,14 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                   </div>
 
                   <div className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-400/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
                       <i className="fa-solid fa-handshake text-[11px]"></i>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-zinc-200 font-semibold text-xs">
+                      <div className="text-[#18191F] font-semibold text-xs">
                         {isDe ? 'Sponsoren-Erlöse' : 'Commercial Yields'}
                       </div>
-                      <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">
+                      <p className="text-[11px] text-[#6B7280] leading-snug mt-0.5">
                         {isDe
                           ? 'Maximiert Trikotsponsoring und weltweite Merchandising-Erlöse.'
                           : 'Maximizes kit sponsorship deals and global merchandise reach.'}
@@ -1046,25 +1061,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
               </div>
 
               {/* Corporate Restructuring & Club Identities */}
-              <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-3.5">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 space-y-3.5">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
-                    <div className="text-[10px] uppercase font-semibold text-sky-400 tracking-wider flex items-center gap-1.5">
+                    <div className="text-[10px] uppercase font-semibold text-sky-700 tracking-wider flex items-center gap-1.5">
                       <i className="fa-solid fa-sitemap text-[10px]"></i>
                       <span>{isDe ? 'Vereinsstruktur' : 'Corporate Restructuring'}</span>
                     </div>
-                    <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">
+                    <h3 className="text-base sm:text-lg font-bold text-[#18191F] tracking-tight mt-0.5">
                       {isDe ? 'Vereins-Identität & Geschäftsmodell' : 'Club Identity & Business Model'}
                     </h3>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.08] px-3 py-1.5 rounded-xl shrink-0 text-xs">
-                    <span className="text-zinc-400 font-medium">Available:</span>
-                    <span className="font-mono font-bold text-sky-300 tabular-nums">
+                  <div className="flex items-center gap-2 bg-white border border-[#E6E3DC] px-3 py-1.5 rounded-xl shrink-0 text-xs">
+                    <span className="text-[#6B7280] font-medium">Available:</span>
+                    <span className="font-mono font-bold text-sky-700 tabular-nums">
                       {currentDp} DP
                     </span>
-                    <span className="text-zinc-600" aria-hidden="true">·</span>
-                    <span className="text-[11px] text-zinc-500 font-mono tabular-nums">20 DP cost</span>
+                    <span className="text-[#C7C4BC]" aria-hidden="true">·</span>
+                    <span className="text-[11px] text-[#6B7280] font-mono tabular-nums">20 DP cost</span>
                   </div>
                 </div>
 
@@ -1075,7 +1090,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       title: 'Balanced Model',
                       subtitle: isDe ? 'Ausgewogenes Standardmodell' : 'Standard Balanced Framework',
                       icon: 'fa-scale-balanced',
-                      iconStyle: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/25',
+                      iconStyle: 'bg-[#EFECE4] text-[#4B5563] border-[#E6E3DC]',
                       pros: isDe
                         ? 'Ausgewogenes Risiko-Ertrags-Verhältnis in allen Abteilungen'
                         : 'Balanced risk-reward across all club departments',
@@ -1088,7 +1103,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       title: 'Wonderkid Factory',
                       subtitle: isDe ? 'Talentschmiede & Jugend-Export' : 'Youth Academy & Talent Export',
                       icon: 'fa-seedling',
-                      iconStyle: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+                      iconStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200',
                       pros: '+15% Academy Odds · +35% Player Sale Profit',
                       cons: 'Auto-sells highest OVR player at season end',
                     },
@@ -1097,7 +1112,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       title: 'Galactico Enterprise',
                       subtitle: isDe ? 'Weltstars & Kommerzielle Strahlkraft' : 'Superstars & Commercial Stature',
                       icon: 'fa-crown',
-                      iconStyle: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+                      iconStyle: 'bg-amber-50 text-amber-700 border-amber-200',
                       pros: '1.5× Fan & Commercial Growth · +1 OVR on Stars',
                       cons: 'Must sign 1 player > Squad Avg yearly or face board penalty',
                     },
@@ -1106,7 +1121,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       title: 'Moneyball Syndicate',
                       subtitle: isDe ? 'Datengetriebene Effizienz & Synergie' : 'Data-Driven Efficiency & Synergy',
                       icon: 'fa-chart-line',
-                      iconStyle: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
+                      iconStyle: 'bg-sky-50 text-sky-700 border-sky-200',
                       pros: 'Only 5% Flop Rate on Regular Transfers · +4 OVR Synergy',
                       cons: 'Locked out of Key & Galactico star signings',
                     },
@@ -1115,7 +1130,7 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                       title: 'Heritage Fortress',
                       subtitle: isDe ? 'Tradition, Vereinstreue & Stabilität' : 'Tradition, Loyalty & Stability',
                       icon: 'fa-shield-halved',
-                      iconStyle: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
+                      iconStyle: 'bg-purple-50 text-purple-700 border-purple-200',
                       pros: 'Morale decay halved · +20% Wage Relief (Loyalty)',
                       cons: 'Regular market transfers cost 2× budget',
                     },
@@ -1128,8 +1143,8 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                         key={card.id}
                         className={`p-3.5 rounded-xl border transition-all text-left relative ${
                           isActive
-                            ? 'bg-sky-500/[0.07] border-sky-400/40'
-                            : 'bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.035]'
+                            ? 'bg-white border-sky-400 ring-1 ring-sky-200 shadow-sm'
+                            : 'bg-white border-[#E6E3DC] hover:border-[#C7C4BC]'
                         }`}
                       >
                         <div className="space-y-2.5">
@@ -1140,17 +1155,17 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 <i className={`fa-solid ${card.icon} text-xs`}></i>
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold text-xs sm:text-sm text-white tracking-tight leading-snug">
+                                <div className="font-bold text-xs sm:text-sm text-[#18191F] tracking-tight leading-snug">
                                   {card.title}
                                 </div>
-                                <div className="text-[11px] text-zinc-400 leading-tight">
+                                <div className="text-[11px] text-[#6B7280] leading-tight">
                                   {card.subtitle}
                                 </div>
                               </div>
                             </div>
 
                             {isActive ? (
-                              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 shrink-0 flex items-center gap-1.5">
+                              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 flex items-center gap-1.5">
                                 <i className="fa-solid fa-check text-[9px]"></i>
                                 <span>{isDe ? 'Aktiv' : 'Active'}</span>
                               </span>
@@ -1173,25 +1188,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                                 disabled={!canAfford}
                                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                                   canAfford
-                                    ? 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/30 cursor-pointer active:scale-95'
-                                    : 'bg-white/[0.04] text-zinc-500 border border-white/[0.06] cursor-not-allowed'
+                                    ? 'bg-[#18191F] hover:bg-[#2A2C35] text-white cursor-pointer active:scale-95'
+                                    : 'bg-[#EFECE4] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed'
                                 }`}
                               >
                                 <span>{isDe ? 'Aktivieren' : 'Enact'}</span>
-                                <span className="text-zinc-500" aria-hidden="true">·</span>
-                                <span className="font-mono text-[10px] opacity-80">20 DP</span>
+                                <span className="opacity-60" aria-hidden="true">·</span>
+                                <span className="font-mono text-[10px] opacity-90 tabular-nums">20 DP</span>
                               </button>
                             )}
                           </div>
 
                           {/* Structured 2-Column Pros & Trade-offs */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-4 pt-2 border-t border-white/[0.05] text-[11px] leading-snug">
-                            <div className="flex items-start gap-2 text-zinc-200">
-                              <span className="text-emerald-400 font-mono font-bold shrink-0 leading-snug">+</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-4 pt-2 border-t border-[#E6E3DC] text-[11px] leading-snug">
+                            <div className="flex items-start gap-2 text-[#18191F]">
+                              <span className="text-emerald-700 font-mono font-bold shrink-0 leading-snug">+</span>
                               <span>{card.pros}</span>
                             </div>
-                            <div className="flex items-start gap-2 text-zinc-400">
-                              <span className="text-rose-400 font-mono font-bold shrink-0 leading-snug">−</span>
+                            <div className="flex items-start gap-2 text-[#4B5563]">
+                              <span className="text-rose-700 font-mono font-bold shrink-0 leading-snug">−</span>
                               <span>{card.cons}</span>
                             </div>
                           </div>
@@ -1216,25 +1231,25 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                     onClose();
                     onOpenWorldCupHistory?.();
                   }}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-xl border border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/15 transition cursor-pointer text-xs group active:scale-[0.99] shadow-sm"
+                  className="flex items-center justify-between py-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100/70 transition cursor-pointer text-xs group active:scale-[0.99] shadow-sm"
                   title="Click to view full World Cup Managerial History Archive"
                 >
                   <div className="flex items-center gap-2.5 overflow-hidden">
-                    <div className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded text-[10px] font-bold font-mono shrink-0">
+                    <div className="px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[10px] font-bold font-mono shrink-0">
                       WC
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400 text-xs shrink-0 group-hover:scale-110 transition-transform">
+                    <div className="w-6 h-6 rounded-full bg-white border border-amber-200 flex items-center justify-center text-amber-700 text-xs shrink-0 group-hover:scale-110 transition-transform">
                       <i className="fa-solid fa-globe text-[11px]"></i>
                     </div>
                     <div className="flex flex-col justify-center min-w-0">
-                      <div className="font-semibold text-white truncate text-xs flex items-center gap-1.5 py-0.5 leading-normal">
+                      <div className="font-semibold text-[#18191F] truncate text-xs flex items-center gap-1.5 py-0.5 leading-normal">
                         <span>{state.worldCupLastTeam || (isDe ? 'Nationalmannschaft' : 'World Cup')}</span>
                         {(state.worldCupTrophies || state.internationalTrophies || 0) > 0 && (
-                          <span className="text-yellow-400 text-[10px]" title="World Cup Champion">🏆</span>
+                          <span className="text-amber-600 text-[10px]" title="World Cup Champion">🏆</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 leading-none">
+                      <div className="flex items-center gap-1.5 text-[10px] text-[#6B7280]">
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 leading-none">
                           World Cup
                         </span>
                         <span className="truncate">
@@ -1246,20 +1261,20 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
 
                   <div className="flex items-center gap-2 sm:gap-3 text-right shrink-0">
                     <div className="text-right">
-                      <div className="text-xs font-bold text-amber-300 font-mono">
+                      <div className="text-xs font-bold text-amber-800 font-mono tabular-nums">
                         {state.worldCupMatchesPlayed || 0} {isDe ? 'Spiele' : 'GP'}
                       </div>
-                      <div className="text-[10px] text-emerald-400 font-mono">
+                      <div className="text-[10px] text-emerald-700 font-mono tabular-nums">
                         {state.worldCupMatchesWon || 0}W-{state.worldCupMatchesDrawn || 0}D-{state.worldCupMatchesLost || 0}L
                       </div>
                     </div>
                     {(state.worldCupTrophies || state.internationalTrophies || 0) > 0 && (
-                      <div className="text-xs font-black text-yellow-400 pl-2 border-l border-white/10 flex items-center gap-1">
+                      <div className="text-xs font-black text-amber-700 pl-2 border-l border-amber-200 flex items-center gap-1 tabular-nums">
                         <span>{state.worldCupTrophies || state.internationalTrophies}</span>
                         <span className="text-[10px]">🏆</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-1 pl-2 border-l border-white/10 text-[10px] font-semibold text-amber-300/80 group-hover:text-amber-300">
+                    <div className="flex items-center gap-1 pl-2 border-l border-amber-200 text-[10px] font-semibold text-amber-800">
                       <span className="hidden sm:inline">Archive</span>
                       <i className="fa-solid fa-arrow-right text-[9px] group-hover:translate-x-0.5 transition-transform"></i>
                     </div>
@@ -1271,11 +1286,11 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
         </div>
 
         {/* Boardroom Footer */}
-        <div className="p-4 border-t border-white/[0.08] bg-white/[0.02] flex items-center justify-end">
+        <div className="p-4 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 bg-white/[0.08] hover:bg-white/[0.14] text-white font-semibold text-xs rounded-xl border border-white/[0.08] transition active:scale-95 cursor-pointer shadow-sm"
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-xs rounded-xl transition active:scale-95 cursor-pointer shadow-sm"
           >
             {isDe ? 'Schliessen' : 'Close'}
           </button>

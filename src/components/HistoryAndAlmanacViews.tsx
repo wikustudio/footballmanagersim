@@ -19,6 +19,7 @@ import {
   TrophyChartScope,
 } from '../utils/championsAlmanac';
 import { ClubLogo } from './ClubLogo';
+import { CompetitionLogo } from './CompetitionLogo';
 
 export interface ChampionsAlmanacViewProps {
   state: GameState;
@@ -357,15 +358,15 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
   ]);
 
   return (
-    <div className="space-y-4" data-testid="champions-almanac-view">
+    <div className="space-y-3 sm:space-y-4" data-testid="champions-almanac-view">
       {/* Filter Controls Bar: Country, Tier, Year + Separate Competition Filter */}
-      <div className="rounded-xl border border-slate-800 bg-[#12151f] p-3.5 sm:p-4 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="rounded-2xl border border-[#E6E3DC] bg-[#FAF9F6] p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
           {/* 1. Country Filter */}
           <div>
             <label
               htmlFor="almanac-country-select"
-              className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1"
+              className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1"
             >
               Country
             </label>
@@ -374,7 +375,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
               aria-label="Country"
               value={country}
               onChange={e => handleCountryChange(e.target.value)}
-              className="w-full rounded-lg bg-[#181c29] border border-slate-700/80 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+              className="w-full rounded-xl bg-white border border-[#E6E3DC] px-3 py-2 text-xs font-bold text-[#18191F] focus:outline-none focus:border-[#18191F]"
             >
               {Object.entries(COUNTRIES).map(([code, info]) => (
                 <option key={code} value={code}>
@@ -388,7 +389,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
           <div>
             <label
               htmlFor="almanac-tier-select"
-              className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1"
+              className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1"
             >
               Tier
             </label>
@@ -398,7 +399,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
               value={tierFilter}
               onChange={e => handleTierChange(e.target.value)}
               disabled={competitionFilter !== 'league' && competitionFilter !== 'all'}
-              className="w-full rounded-lg bg-[#181c29] border border-slate-700/80 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-400 disabled:opacity-50"
+              className="w-full rounded-xl bg-white border border-[#E6E3DC] px-3 py-2 text-xs font-bold text-[#18191F] focus:outline-none focus:border-[#18191F] disabled:opacity-50"
             >
               {Array.from({ length: maxTierForCountry }, (_, idx) => {
                 const t = idx + 1;
@@ -416,7 +417,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
           <div>
             <label
               htmlFor="almanac-year-select"
-              className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1"
+              className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1"
             >
               Year
             </label>
@@ -428,7 +429,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                 setYearFilter(e.target.value);
                 setVisibleLimit(50);
               }}
-              className="w-full rounded-lg bg-[#181c29] border border-slate-700/80 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+              className="w-full rounded-xl bg-white border border-[#E6E3DC] px-3 py-2 text-xs font-bold text-[#18191F] focus:outline-none focus:border-[#18191F]"
             >
               <option value="all">All Years</option>
               {allYearsList.map(yr => (
@@ -441,8 +442,8 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
         </div>
 
         {/* 4. Separate Competition Filter */}
-        <div className="pt-2.5 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mr-1">
+        <div className="pt-2.5 border-t border-[#E6E3DC] flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mr-1">
             Competition:
           </span>
           {(
@@ -476,10 +477,10 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                   setCompetitionFilter(item.id);
                   setVisibleLimit(40);
                 }}
-                className={`px-2.5 py-1 rounded-md text-xs font-bold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   active
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'bg-[#181c29] text-slate-300 border border-slate-700/80 hover:border-slate-600 hover:text-white'
+                    ? 'bg-[#18191F] text-white shadow-sm'
+                    : 'bg-white text-[#4B5563] border border-[#E6E3DC] hover:border-[#18191F]/30 hover:text-[#18191F]'
                 }`}
               >
                 {item.label}
@@ -490,21 +491,21 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
       </div>
 
       {/* Simple List Table */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#12151f] overflow-hidden shadow-xl">
+      <div className="rounded-2xl border border-[#E6E3DC] bg-white overflow-hidden shadow-sm">
         {displayedRows.length === 0 ? (
           <div className="p-8 text-center">
             {almanacRecords.length === 0 ? (
               <>
-                <p className="text-sm font-bold text-slate-200">
+                <p className="text-sm font-bold text-[#18191F]">
                   Inaugural {careerStartYear} Season Underway
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[#6B7280] mt-1">
                   Complete the {careerStartYear} campaign to crown the first champions in the Almanac.
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-bold text-slate-300">No champions found for the selected filters.</p>
+                <p className="text-sm font-bold text-[#18191F]">No champions found for the selected filters.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -512,7 +513,7 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                     setYearFilter('all');
                     setCompetitionFilter('league');
                   }}
-                  className="mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-500/30 cursor-pointer"
+                  className="mt-3 px-3 py-1.5 rounded-lg bg-[#18191F] text-white text-xs font-bold hover:bg-[#2A2C35] cursor-pointer"
                 >
                   Reset Filters
                 </button>
@@ -523,14 +524,14 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-800/80 bg-[#181c29] text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                  <th className="py-3 sm:py-3.5 px-3 sm:px-5 w-14 sm:w-24">YEAR</th>
-                  <th className="py-3 sm:py-3.5 px-2.5 sm:px-5">{championColumnTitle}</th>
-                  <th className="py-3 sm:py-3.5 px-2.5 sm:px-5">COMPETITION</th>
-                  <th className="py-3 sm:py-3.5 px-3 sm:px-5 text-right text-slate-100">POINTS</th>
+                <tr className="border-b border-[#E6E3DC] bg-[#F6F5F1] text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-[#6B7280]">
+                  <th className="py-2 sm:py-3 px-2.5 sm:px-5 w-12 sm:w-24">YEAR</th>
+                  <th className="py-2 sm:py-3 px-2 sm:px-5">{championColumnTitle}</th>
+                  <th className="py-2 sm:py-3 px-2 sm:px-5 hidden sm:table-cell">COMPETITION</th>
+                  <th className="py-2 sm:py-3 px-2.5 sm:px-5 text-right text-[#18191F]">POINTS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#E6E3DC]">
                 {displayedRows.map(row => {
                   const w = row.winner;
                   const pts =
@@ -541,23 +542,23 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                   return (
                     <tr
                       key={`${row.year}-${w.id}`}
-                      className={`transition-colors hover:bg-[#181d2b] ${
-                        w.isUserClub ? 'bg-amber-500/5' : ''
+                      className={`transition-colors hover:bg-[#FAF9F6] ${
+                        w.isUserClub ? 'bg-amber-50/70' : ''
                       }`}
                     >
                       {/* YEAR */}
-                      <td className="py-3 sm:py-4 px-3 sm:px-5 whitespace-nowrap">
-                        <span className="text-[#eab308] font-bold text-xs sm:text-base tabular-nums">
+                      <td className="py-2 sm:py-3.5 px-2.5 sm:px-5 whitespace-nowrap">
+                        <span className="text-amber-700 font-bold text-xs sm:text-base tabular-nums">
                           {row.year}
                         </span>
                       </td>
 
                       {/* CHAMPION (Club Crest / National Flag + Bold Name + Coach Subtitle) */}
-                      <td className="py-3 sm:py-4 px-2.5 sm:px-5">
+                      <td className="py-2 sm:py-3.5 px-2 sm:px-5">
                         <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
                           {w.isNationalTeam ? (
                             <div
-                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-sm sm:text-base shrink-0 shadow-sm"
+                              className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#F6F5F1] border border-amber-300 flex items-center justify-center text-xs sm:text-base shrink-0"
                               title={w.clubName}
                             >
                               {w.flag || '🌍'}
@@ -569,55 +570,85 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                               logo={w.clubLogo}
                               color={w.clubColor}
                               isModActive={isModActive}
-                              className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0"
-                              fallbackClassName="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs flex items-center justify-center font-bold text-white shrink-0"
+                              className="w-6 h-6 sm:w-8 sm:h-8 object-contain shrink-0"
+                              fallbackClassName="w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs flex items-center justify-center font-bold text-white shrink-0"
                             />
                           )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                              <span className="text-xs sm:text-base font-bold text-white leading-snug">
+                              <span className="text-xs sm:text-sm font-bold text-[#18191F] leading-snug">
                                 {w.clubName}
                               </span>
                               {w.isUserClub && (
-                                <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 text-[9px] font-black uppercase">
+                                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black uppercase">
                                   YOU
                                 </span>
                               )}
                               {w.isPastManagerClub && (
-                                <span className="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[9px] font-black uppercase">
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 text-[9px] font-black uppercase">
                                   EX
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] sm:text-xs text-slate-400 mt-0.5 leading-snug">
-                              <span className="text-slate-500">Coach:</span> {coachName}
+                            <div className="text-[11px] text-[#6B7280] mt-0.5 leading-snug truncate">
+                              <span>{coachName}</span>
+                              <span className="sm:hidden"> · {w.competitionName}</span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* COMPETITION (Gold middle column) */}
-                      <td className="py-3 sm:py-4 px-2.5 sm:px-5 sm:whitespace-nowrap">
-                        <div className="text-[#eab308] font-semibold text-xs sm:text-sm">
-                          {w.competitionName}
+                      {/* COMPETITION */}
+                      <td className="py-2 sm:py-3.5 px-2 sm:px-5 sm:whitespace-nowrap hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          <CompetitionLogo
+                            kind={
+                              w.category === 'league'
+                                ? 'league'
+                                : w.competitionId === 'domestic-cup' || w.id.includes('domcup')
+                                ? 'cup'
+                                : w.isNationalTeam || w.id.includes('worldcup')
+                                ? 'world_cup'
+                                : 'continental'
+                            }
+                            competitionId={
+                              w.id.includes('cont1')
+                                ? 'cl'
+                                : w.id.includes('cont2')
+                                ? 'el'
+                                : w.id.includes('global')
+                                ? 'cwc'
+                                : w.competitionId
+                            }
+                            country={country}
+                            tier={w.tier ?? 1}
+                            isModActive={isModActive}
+                            alt={w.competitionName}
+                            className="w-5 h-5 object-contain shrink-0"
+                          />
+                          <div>
+                            <div className="text-amber-800 font-semibold text-xs sm:text-sm">
+                              {w.competitionName}
+                            </div>
+                            {w.tier != null ? (
+                              <div className="text-[11px] text-[#6B7280]">
+                                Tier {w.tier}
+                                {row.isHistoricalLore ? ' · History' : ' · Season'}
+                              </div>
+                            ) : w.isNationalTeam ? (
+                              <div className="text-[11px] text-[#6B7280] leading-snug break-words">
+                                {w.hostFlag ? `${w.hostFlag} ` : ''}
+                                {w.hostCountry ? `Host: ${w.hostCountry}` : 'National Teams'}
+                                {w.finalScore && w.runnerUp ? ` · ${w.finalScore} vs ${w.runnerUp}` : ''}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        {w.tier != null ? (
-                          <div className="text-[11px] text-slate-500">
-                            Tier {w.tier}
-                            {row.isHistoricalLore ? ' • Lore' : ' • Live'}
-                          </div>
-                        ) : w.isNationalTeam ? (
-                          <div className="text-[11px] text-slate-400 leading-snug break-words">
-                            {w.hostFlag ? `${w.hostFlag} ` : ''}
-                            {w.hostCountry ? `Host: ${w.hostCountry}` : 'National Teams'}
-                            {w.finalScore && w.runnerUp ? ` • ${w.finalScore} vs ${w.runnerUp}` : ''}
-                          </div>
-                        ) : null}
                       </td>
 
                       {/* POINTS (League Points; — for Knockout Cups) */}
                       <td
-                        className="py-3 sm:py-4 px-3 sm:px-5 text-right whitespace-nowrap tabular-nums"
+                        className="py-2 sm:py-3.5 px-2.5 sm:px-5 text-right whitespace-nowrap tabular-nums"
                         title={
                           w.category === 'league'
                             ? `${pts} pts${
@@ -630,15 +661,15 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
                       >
                         {w.category === 'league' ? (
                           <span className="inline-flex items-baseline justify-end gap-1">
-                            <span className="text-emerald-400 font-bold text-sm sm:text-base">
+                            <span className="text-emerald-700 font-bold text-xs sm:text-base">
                               {pts}
                             </span>
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
                               pts
                             </span>
                           </span>
                         ) : (
-                          <span className="text-slate-500 font-semibold text-sm">—</span>
+                          <span className="text-[#9CA3AF] font-semibold text-sm">—</span>
                         )}
                       </td>
                     </tr>
@@ -651,23 +682,23 @@ export const ChampionsAlmanacView: React.FC<ChampionsAlmanacViewProps> = ({
 
         {/* Pagination / Load More Footer */}
         {flattenedRows.length > visibleLimit && (
-          <div className="p-3.5 bg-[#181c29] border-t border-slate-800/80 flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-400">
-              Showing <strong className="text-white">{displayedRows.length}</strong> of{' '}
-              <strong className="text-white">{flattenedRows.length}</strong> entries
+          <div className="p-3 sm:p-3.5 bg-[#FAF9F6] border-t border-[#E6E3DC] flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs text-[#6B7280] tabular-nums">
+              Showing <strong className="text-[#18191F]">{displayedRows.length}</strong> of{' '}
+              <strong className="text-[#18191F]">{flattenedRows.length}</strong> entries
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setVisibleLimit(prev => prev + 40)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F6F5F1] text-[#18191F] text-xs font-bold border border-[#E6E3DC] cursor-pointer"
               >
                 Show +40 More
               </button>
               <button
                 type="button"
                 onClick={() => setVisibleLimit(flattenedRows.length)}
-                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-[#18191F] hover:bg-[#2A2C35] text-white text-xs font-bold cursor-pointer"
               >
                 Show All ({flattenedRows.length})
               </button>
@@ -845,19 +876,19 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
   const countryMeta = COUNTRIES[country as keyof typeof COUNTRIES];
 
   return (
-    <div className="space-y-4" data-testid="trophy-leaders-chart-view">
+    <div className="space-y-3 sm:space-y-4" data-testid="trophy-leaders-chart-view">
       {/* Filter Controls Bar */}
-      <div className="rounded-xl border border-slate-800 bg-[#12151f] p-3.5 sm:p-4 space-y-3">
+      <div className="rounded-2xl border border-[#E6E3DC] bg-[#FAF9F6] p-3 sm:p-4 space-y-3">
         {/* Top Row: Scope Switcher (Country & Tier vs International Competition) + Era Accounting Mode */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-          <div className="flex items-center gap-1.5 bg-[#181c29] p-1 rounded-lg border border-slate-700/80">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 pb-3 border-b border-[#E6E3DC]">
+          <div className="flex items-center gap-1 bg-[#EFECE4] p-1 rounded-xl border border-[#E6E3DC]">
             <button
               type="button"
               onClick={() => setScope('country_tier')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 scope === 'country_tier'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               By Country & Tier
@@ -865,10 +896,10 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
             <button
               type="button"
               onClick={() => setScope('international')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 scope === 'international'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               By International Competition
@@ -876,14 +907,14 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
           </div>
 
           {/* Era Accounting Toggle: Historic All-Time vs Fresh from Start Year */}
-          <div className="flex items-center gap-1.5 bg-[#181c29] p-1 rounded-lg border border-slate-700/80">
+          <div className="flex items-center gap-1 bg-[#EFECE4] p-1 rounded-xl border border-[#E6E3DC]">
             <button
               type="button"
               onClick={() => setAccountingMode('fresh_from_start')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 effectiveAccounting === 'fresh_from_start'
-                  ? 'bg-sky-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#18191F]'
               }`}
               title={`Count only live simulated seasons from your ${chartResult.careerStartYear} starting point`}
             >
@@ -892,10 +923,10 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
             <button
               type="button"
               onClick={() => setAccountingMode('all_time')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 effectiveAccounting === 'all_time'
-                  ? 'bg-amber-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#18191F] text-white shadow-sm'
+                  : 'text-[#6B7280] hover:text-[#18191F]'
               }`}
               title="Count all historical lore titles (1950+) combined with live simulated seasons"
             >
@@ -910,7 +941,7 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
             <div>
               <label
                 htmlFor="trophy-chart-country-select"
-                className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1"
+                className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1"
               >
                 Country
               </label>
@@ -919,7 +950,7 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                 aria-label="Chart Country"
                 value={country}
                 onChange={e => handleCountryChange(e.target.value)}
-                className="w-full rounded-lg bg-[#181c29] border border-slate-700/80 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                className="w-full rounded-xl bg-white border border-[#E6E3DC] px-3 py-2 text-xs font-bold text-[#18191F] focus:outline-none focus:border-[#18191F]"
               >
                 {Object.entries(COUNTRIES).map(([code, info]) => (
                   <option key={code} value={code}>
@@ -932,7 +963,7 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
             <div>
               <label
                 htmlFor="trophy-chart-tier-select"
-                className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1"
+                className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1"
               >
                 Tier / Domestic Competition
               </label>
@@ -948,7 +979,7 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                     onSelectTier?.(parsed);
                   }
                 }}
-                className="w-full rounded-lg bg-[#181c29] border border-slate-700/80 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                className="w-full rounded-xl bg-white border border-[#E6E3DC] px-3 py-2 text-xs font-bold text-[#18191F] focus:outline-none focus:border-[#18191F]"
               >
                 {Array.from({ length: maxTierForCountry }, (_, idx) => {
                   const t = idx + 1;
@@ -970,11 +1001,11 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
           <div>
             <label
               htmlFor="trophy-chart-intl-select"
-              className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5"
+              className="block text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-1.5"
             >
               International Competition
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {INTERNATIONAL_COMPETITION_OPTIONS.map(opt => {
                 const active = intlCompId === opt.id;
                 return (
@@ -984,14 +1015,14 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                     onClick={() => setIntlCompId(opt.id)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                       active
-                        ? 'bg-amber-500 text-slate-950 shadow-sm'
-                        : 'bg-[#181c29] text-slate-300 border border-slate-700/80 hover:border-slate-600 hover:text-white'
+                        ? 'bg-[#18191F] text-white shadow-sm'
+                        : 'bg-white text-[#4B5563] border border-[#E6E3DC] hover:border-[#18191F]/30 hover:text-[#18191F]'
                     }`}
                   >
                     <span>{opt.label}</span>
                     <span
                       className={`text-[10px] font-normal ${
-                        active ? 'text-slate-900' : 'text-slate-400'
+                        active ? 'text-white/75' : 'text-[#6B7280]'
                       }`}
                     >
                       · {opt.regionLabel}
@@ -1005,30 +1036,69 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
       </div>
 
       {/* Top 5 Teams Bar Chart Card */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#12151f] p-4 sm:p-6 shadow-xl space-y-5">
+      <div className="rounded-2xl border border-[#E6E3DC] bg-white p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
         {/* Chart Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-slate-800/80">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-amber-400">
-              {scope === 'country_tier'
-                ? `${countryMeta?.flag || ''} ${countryMeta?.name || country} · ${
-                    domesticCompId.startsWith('tier-')
-                      ? `Tier ${selectedTierNum}`
-                      : domesticCompId === 'regional-cup'
-                      ? 'Regional Cup'
-                      : 'Domestic Cup'
-                  }`
-                : intlCompId === 'world-cup'
-                ? 'National Team Global Silverware'
-                : 'International Club Silverware'}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#E6E3DC]">
+          <div className="flex items-center gap-3 min-w-0">
+            {scope === 'country_tier' ? (
+              <CompetitionLogo
+                kind={domesticCompId === 'domestic-cup' ? 'cup' : 'league'}
+                country={country}
+                tier={domesticCompId === 'domestic-cup' ? 1 : selectedTierNum}
+                isModActive={isModActive}
+                alt={chartResult.competitionName}
+                className="w-9 h-9 object-contain shrink-0"
+                data-testid="trophy-chart-comp-logo"
+              />
+            ) : (
+              <CompetitionLogo
+                kind={intlCompId === 'world-cup' ? 'world_cup' : 'continental'}
+                competitionId={
+                  intlCompId === 'champions-cup' || intlCompId === 'libertadores' || intlCompId === 'concacaf' || intlCompId === 'afc'
+                    ? 'cl'
+                    : intlCompId === 'euro-cup' || intlCompId === 'sudamericana' || intlCompId === 'leagues-cup' || intlCompId === 'afc-cup'
+                    ? 'el'
+                    : intlCompId === 'global-club-cup'
+                    ? 'cwc'
+                    : 'wc'
+                }
+                country={
+                  intlCompId === 'libertadores' || intlCompId === 'sudamericana'
+                    ? 'BRA'
+                    : intlCompId === 'concacaf' || intlCompId === 'leagues-cup'
+                    ? 'USA'
+                    : intlCompId === 'afc' || intlCompId === 'afc-cup'
+                    ? 'JPN'
+                    : 'GER'
+                }
+                isModActive={isModActive}
+                alt={chartResult.competitionName}
+                className="w-9 h-9 object-contain shrink-0"
+                data-testid="trophy-chart-comp-logo"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-amber-700">
+                {scope === 'country_tier'
+                  ? `${countryMeta?.flag || ''} ${countryMeta?.name || country} · ${
+                      domesticCompId.startsWith('tier-')
+                        ? `Tier ${selectedTierNum}`
+                        : domesticCompId === 'regional-cup'
+                        ? 'Regional Cup'
+                        : 'Domestic Cup'
+                    }`
+                  : intlCompId === 'world-cup'
+                  ? 'National Team Global Silverware'
+                  : 'International Club Silverware'}
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-[#18191F] tracking-tight mt-0.5 truncate">
+                Top 5 Trophy Leaders — {chartResult.competitionName}
+              </h3>
             </div>
-            <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
-              Top 5 Trophy Leaders — {chartResult.competitionName}
-            </h3>
           </div>
 
-          <div className="text-left sm:text-right text-xs text-slate-400 tabular-nums">
-            <div className="font-semibold text-slate-200">
+          <div className="text-left sm:text-right text-xs text-[#6B7280] tabular-nums">
+            <div className="font-semibold text-[#18191F]">
               {effectiveAccounting === 'fresh_from_start'
                 ? `Built Fresh Since ${chartResult.careerStartYear}`
                 : `All-Time History (${chartResult.startYearCounted || 1950}–${
@@ -1045,10 +1115,10 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
         {/* Empty State (e.g. Fresh Start before Season 1 is completed) */}
         {chartResult.topTeams.length === 0 ? (
           <div className="py-10 px-4 text-center space-y-3">
-            <div className="text-sm font-bold text-slate-200">
+            <div className="text-sm font-bold text-[#18191F]">
               Building Fresh from {chartResult.careerStartYear} — No Seasons Completed Yet
             </div>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs text-[#6B7280] max-w-md mx-auto leading-relaxed">
               Because your career started in {chartResult.careerStartYear}, this chart builds fresh
               from {chartResult.careerStartYear} onwards. Complete your first season to crown the
               inaugural champions, or switch to All-Time mode to include pre-start history.
@@ -1057,34 +1127,34 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
               <button
                 type="button"
                 onClick={() => setAccountingMode('all_time')}
-                className="px-3.5 py-2 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-[#18191F] text-white text-xs font-bold hover:bg-[#2A2C35] transition-colors cursor-pointer"
               >
                 Load All-Time History (1950–{chartResult.careerStartYear - 1})
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {chartResult.topTeams.map(team => {
               const barColorClass =
                 team.rank === 1
-                  ? 'from-amber-400 to-yellow-500'
+                  ? 'from-amber-400 to-amber-500'
                   : team.isUserClub
-                  ? 'from-sky-400 to-blue-500'
+                  ? 'from-sky-500 to-blue-600'
                   : team.rank === 2
-                  ? 'from-slate-300 to-slate-400'
+                  ? 'from-slate-400 to-slate-500'
                   : team.rank === 3
                   ? 'from-amber-600 to-amber-700'
-                  : 'from-slate-500 to-slate-600';
+                  : 'from-slate-400 to-slate-500';
 
               const rankTextClass =
                 team.rank === 1
-                  ? 'text-amber-400 font-black'
+                  ? 'text-amber-700 font-black'
                   : team.rank === 2
-                  ? 'text-slate-200 font-bold'
+                  ? 'text-[#374151] font-bold'
                   : team.rank === 3
-                  ? 'text-amber-500 font-bold'
-                  : 'text-slate-400 font-bold';
+                  ? 'text-amber-800 font-bold'
+                  : 'text-[#6B7280] font-bold';
 
               const previewYears = team.yearsWon.slice(0, 12);
               const extraYears = Math.max(0, team.yearsWon.length - previewYears.length);
@@ -1093,23 +1163,23 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                 <div
                   key={`${team.rank}-${team.clubId || team.clubName}`}
                   data-testid={`trophy-leader-row-${team.rank}`}
-                  className={`p-3.5 rounded-xl border transition-colors ${
+                  className={`p-3 sm:p-3.5 rounded-xl border transition-colors ${
                     team.isUserClub
-                      ? 'bg-sky-500/10 border-sky-400/40'
+                      ? 'bg-sky-50 border-sky-200'
                       : team.rank === 1
-                      ? 'bg-[#181c29] border-amber-500/30'
-                      : 'bg-[#161a26] border-slate-800/80'
+                      ? 'bg-amber-50/70 border-amber-200'
+                      : 'bg-[#FAF9F6] border-[#E6E3DC]'
                   }`}
                 >
                   {/* Top Row: Rank, Club Logo & Name, Trophy Count */}
-                  <div className="flex items-center justify-between gap-3 mb-2.5">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       <span className={`w-6 text-sm tabular-nums shrink-0 ${rankTextClass}`}>
                         #{team.rank}
                       </span>
                       {team.isNationalTeam ? (
                         <div
-                          className="w-7 h-7 rounded-full bg-slate-800/90 border border-amber-400/40 flex items-center justify-center text-sm shrink-0 shadow-sm"
+                          className="w-7 h-7 rounded-full bg-white border border-amber-300 flex items-center justify-center text-sm shrink-0 shadow-xs"
                           title={team.clubName}
                         >
                           {team.flag || '🌍'}
@@ -1126,42 +1196,42 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                         />
                       )}
                       <div className="min-w-0 flex items-center gap-2 flex-wrap">
-                        <span className="text-sm sm:text-base font-bold text-white truncate">
+                        <span className="text-sm sm:text-base font-bold text-[#18191F] truncate">
                           {team.clubName}
                         </span>
                         {scope === 'international' && team.country && !team.isNationalTeam && (
-                          <span className="text-xs text-slate-400 font-medium">
+                          <span className="text-xs text-[#6B7280] font-medium">
                             · {team.country}
                           </span>
                         )}
                         {team.isUserClub && (
-                          <span className="px-1.5 py-0.5 rounded bg-sky-400 text-slate-950 text-[9px] font-black uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-[#18191F] text-white text-[9px] font-black uppercase">
                             YOU
                           </span>
                         )}
                         {team.isPastManagerClub && (
-                          <span className="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 text-[9px] font-black uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-black uppercase">
                             EX
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-                      <span className="text-base sm:text-lg font-black text-amber-400">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2 shrink-0 tabular-nums">
+                      <span className="text-base sm:text-lg font-black text-amber-700">
                         {team.count}
                       </span>
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#4B5563]">
                         {team.count === 1 ? 'Trophy' : 'Trophies'}
                       </span>
-                      <span className="text-xs text-slate-500 hidden sm:inline">
+                      <span className="text-xs text-[#6B7280] hidden sm:inline">
                         · {team.shareOfTotal}%
                       </span>
                     </div>
                   </div>
 
                   {/* Proportional Horizontal Bar */}
-                  <div className="w-full h-3.5 rounded-lg bg-[#0d1017] border border-slate-800/90 overflow-hidden p-0.5">
+                  <div className="w-full h-3 sm:h-3.5 rounded-lg bg-[#EAE7E0] border border-[#E6E3DC] overflow-hidden p-0.5">
                     <div
                       className={`h-full rounded-md bg-gradient-to-r ${barColorClass} transition-all duration-300`}
                       style={{ width: `${team.percentageOfMax}%` }}
@@ -1169,16 +1239,16 @@ export const TrophyLeadersChartView: React.FC<TrophyLeadersChartViewProps> = ({
                   </div>
 
                   {/* Years Won Caption */}
-                  <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-400 tabular-nums">
+                  <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[#6B7280] tabular-nums">
                     <div className="truncate">
-                      <span className="text-slate-500 font-semibold mr-1.5">Years Won:</span>
+                      <span className="text-[#4B5563] font-semibold mr-1.5">Years Won:</span>
                       <span>{previewYears.join(', ')}</span>
                       {extraYears > 0 && (
-                        <span className="text-slate-500 ml-1">+{extraYears} more</span>
+                        <span className="text-[#6B7280] ml-1">+{extraYears} more</span>
                       )}
                     </div>
                     {team.liveCount > 0 && team.historicCount > 0 && (
-                      <div className="shrink-0 text-slate-400">
+                      <div className="shrink-0 text-[#4B5563] font-medium">
                         {team.liveCount} Live · {team.historicCount} Lore
                       </div>
                     )}

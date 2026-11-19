@@ -52,28 +52,32 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
     switch (tone) {
       case 'emerald':
         return {
-          border: 'border-emerald-500/35 hover:border-emerald-400/70',
-          bg: 'bg-emerald-500/[0.06] hover:bg-emerald-500/[0.11]',
-          accent: 'text-emerald-400',
+          border: 'border-emerald-200 hover:border-emerald-400',
+          bg: 'bg-emerald-50/70 hover:bg-emerald-50',
+          accent: 'text-emerald-700',
+          hoverTitle: 'group-hover:text-emerald-800',
         };
       case 'sky':
         return {
-          border: 'border-sky-500/35 hover:border-sky-400/70',
-          bg: 'bg-sky-500/[0.06] hover:bg-sky-500/[0.11]',
-          accent: 'text-sky-400',
+          border: 'border-sky-200 hover:border-sky-400',
+          bg: 'bg-sky-50/70 hover:bg-sky-50',
+          accent: 'text-sky-700',
+          hoverTitle: 'group-hover:text-sky-800',
         };
       case 'amber':
         return {
-          border: 'border-amber-500/35 hover:border-amber-400/70',
-          bg: 'bg-amber-500/[0.06] hover:bg-amber-500/[0.11]',
-          accent: 'text-amber-400',
+          border: 'border-amber-200 hover:border-amber-400',
+          bg: 'bg-amber-50/70 hover:bg-amber-50',
+          accent: 'text-amber-800',
+          hoverTitle: 'group-hover:text-amber-900',
         };
       case 'rose':
       default:
         return {
-          border: 'border-rose-500/35 hover:border-rose-400/70',
-          bg: 'bg-rose-500/[0.06] hover:bg-rose-500/[0.11]',
-          accent: 'text-rose-400',
+          border: 'border-rose-200 hover:border-rose-400',
+          bg: 'bg-rose-50/70 hover:bg-rose-50',
+          accent: 'text-rose-700',
+          hoverTitle: 'group-hover:text-rose-800',
         };
     }
   };
@@ -87,35 +91,31 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.12 }}
-      className="fixed inset-0 z-[9998] bg-black/75 backdrop-blur-2xl flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto overscroll-contain text-left"
+      className="fixed inset-0 z-[9998] bg-[#18191F]/40 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto overscroll-contain text-left"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] my-auto bg-[#12141c]/90 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-y-auto custom-scrollbar flex flex-col"
+        className="w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] my-auto bg-white border border-[#E6E3DC] rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.16)] relative overflow-y-auto custom-scrollbar flex flex-col"
       >
-        {/* Subtle Ambient Accent Glow */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between gap-3 relative z-10">
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between gap-3 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-amber-400 text-base shadow-inner shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 text-base shrink-0">
               <i className={`fa-solid ${dilemma.icon}`} />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <div className="text-[10px] font-semibold tracking-wide text-amber-700 mb-0.5">
                 {lang === 'de' ? dilemma.categoryDe : dilemma.categoryEn}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
                 {lang === 'de' ? dilemma.titleDe : dilemma.titleEn}
               </h2>
             </div>
           </div>
-          <div className="text-right shrink-0 text-xs font-extrabold tracking-tight text-zinc-400 tabular-nums">
+          <div className="text-right shrink-0 text-xs font-extrabold tracking-tight text-[#6B6A64] tabular-nums bg-white border border-[#E6E3DC] px-2.5 py-1 rounded-xl">
             MD {currentMd}/{totalMd}
           </div>
         </div>
@@ -123,38 +123,38 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
         {/* Body */}
         <div className="p-4 sm:p-6 space-y-4 relative z-10">
           {/* Live Halfway Telemetry Banner */}
-          <div className="grid grid-cols-4 gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-3 text-center">
+          <div className="grid grid-cols-4 gap-2 bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl p-3 text-center">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64] mb-0.5">
                 {lang === 'de' ? 'Platz' : 'Live Pos'}
               </div>
-              <div className="text-sm font-extrabold tracking-tight text-white tabular-nums">
+              <div className="text-sm font-extrabold tracking-tight text-[#18191F] tabular-nums">
                 #{halfwaySnapshot?.runningPosition || 9}
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64] mb-0.5">
                 {lang === 'de' ? 'Punkte' : 'Points'}
               </div>
-              <div className="text-sm font-extrabold tracking-tight text-emerald-400 tabular-nums">
+              <div className="text-sm font-extrabold tracking-tight text-emerald-700 tabular-nums">
                 {halfwaySnapshot?.runningPoints || 0} PTS
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64] mb-0.5">
                 {lang === 'de' ? 'Kader-GES' : 'Squad OVR'}
               </div>
-              <div className="text-sm font-extrabold tracking-tight text-sky-400 tabular-nums">
+              <div className="text-sm font-extrabold tracking-tight text-sky-700 tabular-nums">
                 {Math.round(gameState.club.baseOvr)} OVR
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B6A64] mb-0.5">
                 {lang === 'de' ? 'Budget' : 'Treasury'}
               </div>
               <div
                 className={`text-sm font-extrabold tracking-tight tabular-nums ${
-                  gameState.budget < 0 ? 'text-rose-400' : 'text-amber-300'
+                  gameState.budget < 0 ? 'text-rose-700' : 'text-[#18191F]'
                 }`}
               >
                 {formatBudget(gameState.budget)}
@@ -163,12 +163,12 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
           </div>
 
           {/* Scenario Narrative */}
-          <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-4">
-            <p className="text-xs text-zinc-300 leading-relaxed">
+          <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl p-4">
+            <p className="text-xs sm:text-[13px] text-[#52525B] leading-relaxed">
               {lang === 'de' ? dilemma.descDe : dilemma.descEn}
             </p>
-            <div className="mt-2.5 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5 text-[11px] text-zinc-400">
-              <i className="fa-solid fa-bolt text-amber-400 text-[10px]" />
+            <div className="mt-2.5 pt-2.5 border-t border-[#E6E3DC] flex items-center gap-1.5 text-[11px] text-[#6B6A64]">
+              <i className="fa-solid fa-bolt text-amber-600 text-[10px]" />
               <span>
                 {lang === 'de'
                   ? `Deine Entscheidung berechnet sofort die Rückrunde (Spieltage ${currentMd + 1}–${totalMd}) neu.`
@@ -190,10 +190,10 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-xs font-extrabold tracking-tight text-white shrink-0">
+                  <span className="w-6 h-6 rounded-lg bg-white border border-[#E6E3DC] flex items-center justify-center text-xs font-extrabold tracking-tight text-[#18191F] shrink-0">
                     A
                   </span>
-                  <span className="font-bold text-sm text-white group-hover:text-emerald-300 transition-colors">
+                  <span className={`font-bold text-sm text-[#18191F] transition-colors ${toneA.hoverTitle}`}>
                     {lang === 'de' ? dilemma.optionA.labelDe : dilemma.optionA.labelEn}
                   </span>
                 </div>
@@ -201,7 +201,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
                   {lang === 'de' ? dilemma.optionA.badgeDe : dilemma.optionA.badgeEn}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 pl-8.5 leading-snug">
+              <p className="text-xs text-[#52525B] pl-8.5 leading-snug">
                 {lang === 'de' ? dilemma.optionA.subDe : dilemma.optionA.subEn}
               </p>
             </button>
@@ -217,10 +217,10 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-xs font-extrabold tracking-tight text-white shrink-0">
+                  <span className="w-6 h-6 rounded-lg bg-white border border-[#E6E3DC] flex items-center justify-center text-xs font-extrabold tracking-tight text-[#18191F] shrink-0">
                     B
                   </span>
-                  <span className="font-bold text-sm text-white group-hover:text-amber-300 transition-colors">
+                  <span className={`font-bold text-sm text-[#18191F] transition-colors ${toneB.hoverTitle}`}>
                     {lang === 'de' ? dilemma.optionB.labelDe : dilemma.optionB.labelEn}
                   </span>
                 </div>
@@ -228,7 +228,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
                   {lang === 'de' ? dilemma.optionB.badgeDe : dilemma.optionB.badgeEn}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 pl-8.5 leading-snug">
+              <p className="text-xs text-[#52525B] pl-8.5 leading-snug">
                 {lang === 'de' ? dilemma.optionB.subDe : dilemma.optionB.subEn}
               </p>
             </button>

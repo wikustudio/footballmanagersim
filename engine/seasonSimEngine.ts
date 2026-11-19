@@ -738,6 +738,8 @@ export function calculateProbabilisticSeason(
   const currentSkillsKey = (state.managerSkills || []).slice().sort().join(',');
   const currentStadium = state.club?.stadium || 0;
   const currentStadiumPolicy = state.stadiumPolicy || 'balanced';
+  const currentPressureBoost = state.pressureBoostOvr || 0;
+  const currentMediaPressure = state.mediaPressure ?? 0;
 
   // If we already have a valid pendingSeasonState for this exact year/tier and full state signature hasn't changed, return it
   const existing = options?.lockFirstHalfFrom || state.pendingSeasonState;
@@ -758,7 +760,9 @@ export function calculateProbabilisticSeason(
     (existing._meta?.hasBounceAtCalculation ?? currentHasBounce) === currentHasBounce &&
     (existing._meta?.skillsKeyAtCalculation ?? currentSkillsKey) === currentSkillsKey &&
     (existing._meta?.stadiumAtCalculation ?? currentStadium) === currentStadium &&
-    (existing._meta?.stadiumPolicyAtCalculation ?? currentStadiumPolicy) === currentStadiumPolicy
+    (existing._meta?.stadiumPolicyAtCalculation ?? currentStadiumPolicy) === currentStadiumPolicy &&
+    (existing._meta?.pressureBoostAtCalculation ?? currentPressureBoost) === currentPressureBoost &&
+    (existing._meta?.mediaPressureAtCalculation ?? currentMediaPressure) === currentMediaPressure
   ) {
     return existing;
   }
@@ -815,6 +819,14 @@ export function calculateProbabilisticSeason(
   // Morale modifier on on-pitch performance
   if (currentMorale >= 85) philosophyOvrBonus += 1.0;
   else if (currentMorale < 45) philosophyOvrBonus -= 1.5;
+
+  // Media pressure & siege mentality modifier
+  if (currentPressureBoost !== 0) {
+    philosophyOvrBonus += currentPressureBoost;
+  }
+  if (currentMediaPressure >= 80 && !state.pressureChoiceThisSeason) {
+    philosophyOvrBonus -= 1.0;
+  }
 
   const getLeagueAdvantage = (myTac: string, metaTac: string) => {
     const p = myTac === 'Catenaccio' || myTac === 'Defensive' ? 'Park the Bus' : myTac;
@@ -1343,6 +1355,8 @@ export function calculateProbabilisticSeason(
       skillsKeyAtCalculation: currentSkillsKey,
       stadiumAtCalculation: currentStadium,
       stadiumPolicyAtCalculation: currentStadiumPolicy,
+      pressureBoostAtCalculation: currentPressureBoost,
+      mediaPressureAtCalculation: currentMediaPressure,
       midPos: existing?._meta?.midPos,
       midPts: existing?._meta?.midPts,
     },

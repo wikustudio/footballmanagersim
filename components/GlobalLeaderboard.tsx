@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Club, GameState, Language } from '../types';
 import { formatNum } from '../data/gameConstants';
 import { LeaderboardEntry } from '../lib/supabaseClient';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 export type { LeaderboardEntry };
 
@@ -9,6 +10,7 @@ interface GlobalLeaderboardProps {
   highscores: LeaderboardEntry[];
   gameState?: GameState | null;
   clubsDb?: Club[];
+  isModActive?: boolean;
   lang?: Language;
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
@@ -20,10 +22,14 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
   highscores,
   gameState,
   clubsDb = [],
+  isModActive: isModActiveProp,
   lang = 'en',
   onRefresh,
   isRefreshing = false
 }) => {
+  const effectiveModActive = isModActiveProp !== undefined
+    ? isModActiveProp
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
   const [activeTab, setActiveTab] = useState<TabType>('top_managers');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
@@ -31,9 +37,33 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
   // Current active career stats
   const currentCareerScore = gameState?.careerScore || 0;
   const currentManagerName = gameState?.managerName || 'Current Manager';
-  const currentClubName = gameState?.club?.name || 'Current Club';
+  const currentClubName = gameState?.club?.name
+    ? resolveHistoryClubDisplay(
+        {
+          id: gameState.club.id,
+          name: gameState.club.name,
+          country: gameState.club.country,
+          color: gameState.club.color,
+          logo: gameState.club.logo,
+          fallbackLogo: gameState.club.fallbackLogo,
+        },
+        effectiveModActive,
+        clubsDb
+      ).name
+    : 'Current Club';
   const currentTrophies = gameState?.totals?.trophies || 0;
   const currentSeasons = gameState?.history?.length || 0;
+
+  const normalizedHighscores = useMemo(() => {
+    return (highscores || []).map((entry) => ({
+      ...entry,
+      clubName: resolveHistoryClubDisplay(
+        { name: entry.clubName || 'Club' },
+        effectiveModActive,
+        clubsDb
+      ).name,
+    }));
+  }, [highscores, effectiveModActive, clubsDb]);
 
   // Filtered and sorted list based on active tab and search query
   const displayedList = useMemo(() => {
@@ -42,7 +72,7 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
     if (activeTab === 'top_managers') {
       // Deduplicate by manager to display each manager's all-time personal best career
       const bestByManager = new Map<string, LeaderboardEntry>();
-      for (const entry of highscores) {
+      for (const entry of normalizedHighscores) {
         const key = (entry.managerName || '').toLowerCase().trim();
         if (!key) continue;
         const existing = bestByManager.get(key);
@@ -53,9 +83,9 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
       list = Array.from(bestByManager.values());
     } else if (activeTab === 'all_runs') {
       // All recorded career runs worldwide
-      list = [...highscores];
+      list = [...normalizedHighscores];
     } else if (activeTab === 'my_career') {
-      list = highscores.filter(
+      list = normalizedHighscores.filter(
         (e) => (e.managerName || '').toLowerCase().trim() === currentManagerName.toLowerCase().trim()
       );
     }
@@ -72,7 +102,7 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
 
     // Sort descending by score and deliver top 50
     return list.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 50);
-  }, [activeTab, highscores, currentManagerName, searchQuery]);
+  }, [activeTab, normalizedHighscores, currentManagerName, searchQuery]);
 
   // Projected rank for active career among the Top 50
   const projectedRank = useMemo(() => {

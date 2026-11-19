@@ -40,19 +40,19 @@
     <meta name="twitter:image:alt" content="Football Manager Sim Career Mode Preview" />
     
     <!-- PWA & Mobile Web App Meta -->
-    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="theme-color" content="#F5F3EE" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="FootySim" />
     <meta name="application-name" content="Football Manager Sim" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Favicon (Main Game Emblem) -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <!-- Favicon (Aligned Brand Emblem) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
@@ -73,7 +73,7 @@
             "Symulator menedżera piłkarskiego"
           ],
           "url": "https://footballmanagersim.com/",
-          "softwareVersion": "2.6",
+          "softwareVersion": "3.0",
           "applicationCategory": "GameApplication",
           "operatingSystem": "Any (Web Browser, iOS, Android, macOS, Windows)",
           "gameGenre": ["Sports Simulation", "Football Management", "Strategy", "Career Mode"],
@@ -135,6 +135,34 @@
     }
     </script>
 
+    <!-- Cross-origin iframe storage guard (prevents SecurityError when third-party cookies/storage are blocked) -->
+    <script>
+      (function() {
+        function makeMemStorage() {
+          var s = {};
+          return {
+            get length() { return Object.keys(s).length; },
+            clear: function() { s = {}; },
+            getItem: function(k) { return Object.prototype.hasOwnProperty.call(s, k) ? s[k] : null; },
+            key: function(i) { var keys = Object.keys(s); return i >= 0 && i < keys.length ? keys[i] : null; },
+            removeItem: function(k) { delete s[k]; },
+            setItem: function(k, v) { s[k] = String(v); }
+          };
+        }
+        ['localStorage', 'sessionStorage'].forEach(function(prop) {
+          try {
+            var st = window[prop];
+            if (!st) throw new Error('missing');
+            st.getItem('__fms_probe__');
+          } catch (e) {
+            try {
+              Object.defineProperty(window, prop, { value: makeMemStorage(), configurable: true, writable: true });
+            } catch (e2) {}
+          }
+        });
+      })();
+    </script>
+
     <!-- Google Consent Mode v2 (EU GDPR & ePrivacy Compliant: Default Denied until consent) -->
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -179,44 +207,46 @@
       gtag('js', new Date());
       gtag('config', 'G-S92NGYEEEG');
     </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'" crossorigin="anonymous" />
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" crossorigin="anonymous" /></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" crossorigin="anonymous" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous" /></noscript>
   </head>
-  <body class="bg-black text-[#f5f5f7] min-h-screen font-sans antialiased selection:bg-system-blue selection:text-white">
+  <body class="bg-[#F5F3EE] text-[#18191F] min-h-screen font-sans antialiased selection:bg-[#18191F] selection:text-white">
     <div id="root">
       <!-- Instant pre-boot ambient shell to eliminate initial white/black flicker before hydration -->
-      <div id="fms-preboot-shell" style="min-height: 100vh; background-color: #0d0d0e; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;">
-        <div style="position: absolute; width: 350px; height: 350px; border-radius: 9999px; background: radial-gradient(circle, rgba(10,132,255,0.08) 0%, transparent 70%); filter: blur(50px); pointer-events: none;"></div>
+      <div id="fms-preboot-shell" style="min-height: 100vh; background-color: #F5F3EE; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;">
         <div style="position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 14px;">
-          <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="m4.93 4.93 4.24 4.24"></path>
-              <path d="m14.83 9.17 4.24-4.24"></path>
-              <path d="m14.83 14.83 4.24 4.24"></path>
-              <path d="m9.17 14.83-4.24 4.24"></path>
-              <circle cx="12" cy="12" r="4"></circle>
-            </svg>
+          <div style="width: 56px; height: 56px; border-radius: 16px; background: #18191F; border: 1px solid #E6E3DC; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 10px 26px rgba(24,25,31,0.12);">
+            <img src="/assets/a_footballsim_logo.jpg" alt="Football Manager Sim" width="56" height="56" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
           </div>
-          <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4);">
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6B6A64;">
             Football Manager Sim
           </div>
           <div id="fms-boot-recovery" style="display: none; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px;">
-            <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin: 0;">Loading taking longer than expected?</p>
-            <button onclick="localStorage.removeItem('fms_real_mod_active'); if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(r) { for (var i=0; i<r.length; i++) r[i].unregister(); window.location.reload(); }); } else { window.location.reload(); }" style="padding: 6px 14px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;">
+            <p style="font-size: 12px; color: #6B6A64; margin: 0;">Loading taking longer than expected?</p>
+            <button onclick="try { localStorage.removeItem('fms_real_mod_active'); } catch(e) {} try { if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(function(r) { for (var i=0; i<r.length; i++) r[i].unregister(); window.location.reload(); }).catch(function() { window.location.reload(); }); } else { window.location.reload(); } } catch(e) { window.location.reload(); }" style="padding: 6px 14px; background: #18191F; border: 1px solid #18191F; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;">
               Tap to Reload & Refresh Cache
             </button>
           </div>
         </div>
       </div>
       <script>
+        try {
+          if ('serviceWorker' in navigator && (location.hostname === 'localhost' || location.hostname.indexOf('ais-') !== -1 || location.hostname.indexOf('.run.app') !== -1)) {
+            navigator.serviceWorker.getRegistrations().then(function(r) {
+              for (var i = 0; i < r.length; i++) r[i].unregister();
+            }).catch(function() {});
+          }
+        } catch (e) {}
         setTimeout(function() {
           var rec = document.getElementById('fms-boot-recovery');
           if (rec && document.getElementById('fms-preboot-shell')) {
             rec.style.display = 'flex';
           }
-        }, 3000);
-        window.addEventListener('error', function() {
+        }, 12000);
+        window.addEventListener('error', function(evt) {
+          if (evt && evt.filename && evt.filename.indexOf('googletagmanager') !== -1) return;
           var rec = document.getElementById('fms-boot-recovery');
           if (rec && document.getElementById('fms-preboot-shell')) {
             rec.style.display = 'flex';
@@ -240,7 +270,7 @@
       </header>
     </div>
     <noscript>
-      <div style="padding: 2rem; text-align: center; color: #fff; background: #0a0a0c; font-family: sans-serif;">
+      <div style="padding: 2rem; text-align: center; color: #18191F; background: #F5F3EE; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;">
         <h2>Football Manager Sim</h2>
         <p>Please enable JavaScript in your browser to play the full 35-season football managerial career simulation.</p>
       </div>

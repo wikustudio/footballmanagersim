@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { GameState, Language } from '../types';
+import { Club, GameState, Language } from '../types';
 import { t } from '../data/translations';
 import { getLeagueInfo, isReserveClub } from '../data/gameConstants';
 import { generateMidSeasonEvent } from '../engine/midSeasonEngine';
 import { getCupName } from '../data/randomEvents';
 import { getContinentalCupNames } from '../utils/regionHelpers';
+import { getPressureLevelMeta } from '../engine/pressureEngine';
+import { buildLiveStandingsSnapshot } from '../engine/liveSimVisualEngine';
 
 interface MidSeasonModalProps {
   state: GameState;
   lang: Language;
+  clubsDb?: Club[];
   onClose: (eventToQueue?: any) => void;
   onSelectCamp?: (type: 'local' | 'spain' | 'dubai', cost: number) => void;
   onOpenCoachMarket?: (eventToQueue?: any) => void;
@@ -19,31 +22,41 @@ interface MidSeasonModalProps {
 export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({ 
   state, 
   lang, 
+  clubsDb,
   onClose,
   onOpenCoachMarket
 }) => {
   const [event] = useState(() => generateMidSeasonEvent(state));
+
+  const liveMidUserRow = useMemo(() => {
+    if (!clubsDb || clubsDb.length === 0) return undefined;
+    const totalMds = state.pendingSeasonState?.totalMatchdays || 34;
+    const halfwayMd = state.pendingSeasonState?.dilemmaMatchday || Math.floor(totalMds / 2);
+    const schedule = state.pendingSeasonState?.matchdaySchedule || state.pendingSeasonState?.schedule || [];
+    const halfwayOutcome = schedule[Math.max(0, halfwayMd - 1)];
+    const table = buildLiveStandingsSnapshot(state, clubsDb, halfwayMd, halfwayOutcome);
+    return table.find((r) => r.isUser);
+  }, [state, clubsDb]);
   
   const expectedRank = state.boardTargetFinish || (state.club.tier === 1 ? 8 : 12);
-  const midPos: number | undefined = (state.pendingSeasonState as any)?._meta?.midPos;
-  const midPts = state.midSeasonPts ?? 24;
+  const midPos: number | undefined = liveMidUserRow?.pos ?? (state.pendingSeasonState as any)?._meta?.midPos;
+  const midPts = liveMidUserRow?.pts ?? state.midSeasonPts ?? 24;
 
   const leagueInfo = getLeagueInfo(state.club.tier, state.club.country || 'GER');
   
-  // Prediction logic based on actual 1st-half standings (midPos / midPts)
   let predictionStr = t(lang, 'Mid-Table', 'Mittelfeld');
-  let predictionColor = 'text-yellow-400';
+  let predictionColor = 'text-amber-700';
   let performanceStr = t(lang, 'Meeting Expectations', 'Erwartungen erfüllt');
   
   if ((midPos !== undefined && midPos <= 3) || (midPos === undefined && midPts >= 33)) { 
     predictionStr = t(lang, 'Title Contenders', 'Titelkandidat'); 
-    predictionColor = 'text-emerald-400'; 
+    predictionColor = 'text-emerald-700'; 
   } else if ((midPos !== undefined && midPos <= 7) || (midPos === undefined && midPts >= 26)) { 
     predictionStr = t(lang, 'Upper Half', 'Obere Hälfte'); 
-    predictionColor = 'text-emerald-400'; 
+    predictionColor = 'text-emerald-700'; 
   } else if ((midPos !== undefined && midPos >= 15) || (midPos === undefined && midPts <= 17)) { 
     predictionStr = t(lang, 'Relegation Battle', 'Abstiegskampf'); 
-    predictionColor = 'text-rose-400'; 
+    predictionColor = 'text-rose-700'; 
   }
 
   const effectiveMidPos = midPos ?? (midPts >= 33 ? 2 : midPts >= 26 ? 6 : midPts <= 17 ? 16 : 10);
@@ -51,8 +64,8 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
     performanceStr = t(lang, 'Exceeding Expectations', 'Erwartungen übertroffen');
   } else if (effectiveMidPos > expectedRank + 2) {
     performanceStr = t(lang, 'Falling Short', 'Hinter Erwartungen');
-    if (predictionColor === 'text-yellow-400') {
-      predictionColor = 'text-rose-400';
+    if (predictionColor === 'text-amber-700') {
+      predictionColor = 'text-rose-700';
     }
   } else {
     performanceStr = t(lang, 'Meeting Expectations', 'Erwartungen erfüllt');
@@ -60,7 +73,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
 
   if (state.boardExpectsSuccess && predictionStr !== t(lang, 'Title Contenders', 'Titelkandidat')) {
     performanceStr = t(lang, 'Falling Short', 'Hinter Erwartungen');
-    predictionColor = 'text-rose-400';
+    predictionColor = 'text-rose-700';
   }
 
   const country = state.club.country || 'GER';
@@ -90,39 +103,39 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
       return {
         isActive: true,
         status: t(lang, 'Semi-Final', 'Halbfinale'),
-        color: 'bg-emerald-500/20 text-emerald-400',
-        badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+        color: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200'
       };
     }
     if (progress === 'FINAL') {
       return {
         isActive: true,
         status: t(lang, 'Final', 'Finale'),
-        color: 'bg-amber-500/20 text-amber-400',
-        badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+        color: 'bg-amber-50 text-amber-700 border border-amber-200',
+        badgeBg: 'bg-amber-50 text-amber-800 border-amber-200'
       };
     }
     if (progress === 'QF') {
       return {
         isActive: true,
         status: t(lang, 'In Contention', 'Im Rennen'),
-        color: 'bg-sky-500/20 text-sky-400',
-        badgeBg: 'bg-sky-500/10 text-sky-300 border-sky-500/20'
+        color: 'bg-sky-50 text-sky-700 border border-sky-200',
+        badgeBg: 'bg-sky-50 text-sky-700 border-sky-200'
       };
     }
     if (progress === 'eliminated_qf' || progress === 'eliminated') {
       return {
         isActive: false,
         status: t(lang, 'Eliminated (QF)', 'Ausgeschieden (VF)'),
-        color: 'bg-rose-500/20 text-rose-400',
-        badgeBg: 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        color: 'bg-rose-50 text-rose-700 border border-rose-200',
+        badgeBg: 'bg-rose-50 text-rose-700 border-rose-200'
       };
     }
     return {
       isActive: false,
       status: t(lang, 'Eliminated (Early)', 'Ausgeschieden (Vorrunde)'),
-      color: 'bg-zinc-500/20 text-zinc-400',
-      badgeBg: 'bg-zinc-500/10 text-zinc-400 border-white/10'
+      color: 'bg-white text-[#6B6A64] border border-[#E6E3DC]',
+      badgeBg: 'bg-white text-[#6B6A64] border-[#E6E3DC]'
     };
   };
 
@@ -134,8 +147,8 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
     icon: 'fa-list-ol',
     status: t(lang, 'In Progress', 'Laufend'),
     isActive: true,
-    color: 'bg-blue-500/20 text-blue-400',
-    badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+    color: 'bg-sky-50 text-sky-700 border border-sky-200',
+    badgeBg: 'bg-sky-50 text-sky-700 border-sky-200'
   });
 
   // 2. Domestic Cup
@@ -165,7 +178,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
       icon: 'fa-shield-halved',
       status: cupInfo.status,
       isActive: cupInfo.isActive,
-      color: cupInfo.isActive ? 'bg-amber-500/20 text-amber-400' : cupInfo.color,
+      color: cupInfo.isActive ? 'bg-amber-50 text-amber-700 border border-amber-200' : cupInfo.color,
       badgeBg: cupInfo.badgeBg
     });
   }
@@ -180,7 +193,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
       icon: 'fa-medal',
       status: cupInfo.status,
       isActive: cupInfo.isActive,
-      color: cupInfo.isActive ? 'bg-cyan-500/20 text-cyan-400' : cupInfo.color,
+      color: cupInfo.isActive ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : cupInfo.color,
       badgeBg: cupInfo.badgeBg
     });
   }
@@ -205,42 +218,38 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
       icon: 'fa-globe',
       status: cupInfo.isActive ? t(lang, 'Knockouts', 'K.-o.-Phase') : cupInfo.status,
       isActive: cupInfo.isActive,
-      color: cupInfo.isActive ? 'bg-indigo-500/20 text-indigo-400' : cupInfo.color,
-      badgeBg: cupInfo.isActive ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : cupInfo.badgeBg
+      color: cupInfo.isActive ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : cupInfo.color,
+      badgeBg: cupInfo.isActive ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : cupInfo.badgeBg
     });
   }
 
   const activeCount = compList.filter(c => c.isActive).length;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-2xl overflow-y-auto overscroll-contain">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-4 bg-[#18191F]/40 backdrop-blur-md overflow-y-auto overscroll-contain">
       <motion.div 
-        initial={{ scale: 0.95, y: 15 }} 
+        initial={{ scale: 0.96, y: 15 }} 
         animate={{ scale: 1, y: 0 }} 
-        exit={{ scale: 0.95, y: 15 }} 
+        exit={{ scale: 0.96, y: 15 }} 
         transition={{ duration: 0.15 }}
-        className="relative w-full max-w-[540px] bg-[#12141c]/95 text-white rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden"
+        className="relative w-full max-w-[540px] bg-white text-[#18191F] rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_70px_rgba(24,25,31,0.16)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden"
       >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-20 -right-20 w-56 h-56 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
         {/* Header */}
-        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-white/[0.08] bg-white/[0.02] flex justify-between items-center shrink-0 relative z-10">
+        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[#E6E3DC] bg-[#FAF9F6] flex justify-between items-center shrink-0 relative z-10">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400 mb-0.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-700 mb-0.5">
               {t(lang, 'Mid-Season Window', 'Winterpause')}
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{t(lang, 'Winter Break Overview', 'Winterpause Übersicht')}</h2>
-            <p className="text-xs text-zinc-400 font-medium">{t(lang, 'Board Progress & Squad Trajectory Report', 'Vorstands-Zwischenbericht & sportlicher Status')}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#18191F] tracking-tight">{t(lang, 'Winter Break Overview', 'Winterpause Übersicht')}</h2>
+            <p className="text-xs text-[#6B6A64] font-medium">{t(lang, 'Board Progress & Squad Trajectory Report', 'Vorstands-Zwischenbericht & sportlicher Status')}</p>
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-base border border-sky-400/25 shadow-inner shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-sky-50 text-sky-700 flex items-center justify-center text-base border border-sky-200 shrink-0">
               <i className="fas fa-snowflake"></i>
             </div>
             <button 
               onClick={() => onClose(event)} 
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#52525B] hover:text-[#18191F] transition-colors cursor-pointer"
               title={t(lang, 'Close', 'Schließen')}
             >
               <i className="fas fa-times text-xs"></i>
@@ -251,48 +260,48 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
         {/* Scrollable Content */}
         <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 relative z-10 custom-scrollbar flex-1 min-h-0">
           {/* Top Halfway KPI Strip (3 Compact Columns) */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-white/[0.03] p-3 rounded-2xl border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-0.5">
+          <div className="grid grid-cols-3 gap-2 tabular-nums">
+            <div className="bg-[#F6F5F1] p-3 rounded-2xl border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-semibold text-[#6B6A64] tracking-wider mb-0.5">
                 {t(lang, 'Mid-Season Points', 'Hinrunden-Punkte')}
               </div>
-              <div className="text-sm sm:text-base font-black text-white tabular-nums">
+              <div className="text-sm sm:text-base font-black text-[#18191F]">
                 {midPts} Pts {midPos ? `(#${midPos})` : ''}
               </div>
             </div>
-            <div className="bg-white/[0.03] p-3 rounded-2xl border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-0.5">
+            <div className="bg-[#F6F5F1] p-3 rounded-2xl border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-semibold text-[#6B6A64] tracking-wider mb-0.5">
                 {t(lang, 'Board Target', 'Saisonziel')}
               </div>
-              <div className="text-sm sm:text-base font-black text-sky-400 tabular-nums">
+              <div className="text-sm sm:text-base font-black text-sky-700">
                 Top {expectedRank}
               </div>
             </div>
-            <div className="bg-white/[0.03] p-3 rounded-2xl border border-white/[0.06] text-center">
-              <div className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-0.5">
+            <div className="bg-[#F6F5F1] p-3 rounded-2xl border border-[#E6E3DC] text-center">
+              <div className="text-[10px] uppercase font-semibold text-[#6B6A64] tracking-wider mb-0.5">
                 {t(lang, 'Trajectory', 'Tendenz')}
               </div>
               <div className={`text-xs sm:text-sm font-bold truncate ${predictionColor}`} title={`${predictionStr} (${performanceStr})`}>
                 {predictionStr}
               </div>
-              <div className="text-[9px] text-zinc-400 truncate mt-0.5">
+              <div className="text-[9px] text-[#6B6A64] truncate mt-0.5">
                 {performanceStr}
               </div>
             </div>
           </div>
 
           {/* Active Competitions */}
-          <div className="bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] backdrop-blur-md">
-            <h3 className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-2.5 flex items-center justify-between">
+          <div className="bg-[#F6F5F1] p-3.5 sm:p-4 rounded-2xl border border-[#E6E3DC]">
+            <h3 className="text-[10px] uppercase font-semibold text-[#6B6A64] tracking-wider mb-2.5 flex items-center justify-between">
               <span>{t(lang, 'Active Competitions', 'Aktive Wettbewerbe')}</span>
-              <span className="text-sky-400 font-semibold text-xs">{activeCount} {t(lang, 'Active', 'Aktiv')}</span>
+              <span className="text-sky-700 font-bold text-xs">{activeCount} {t(lang, 'Active', 'Aktiv')}</span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {compList.map((comp) => (
                 <div 
                   key={comp.id} 
                   className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
-                    comp.isActive ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-white/[0.01] border-white/[0.03] opacity-60'
+                    comp.isActive ? 'bg-white border-[#E6E3DC]' : 'bg-[#FAF9F6] border-[#E6E3DC] opacity-65'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate pr-1">
@@ -300,11 +309,11 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                       <i className={`fas ${comp.icon}`}></i>
                     </div>
                     <div className="truncate">
-                      <div className={`text-xs font-semibold truncate ${comp.isActive ? 'text-white' : 'text-zinc-400'}`}>{comp.name}</div>
-                      <div className="text-[9px] text-zinc-400 truncate">{comp.category}</div>
+                      <div className={`text-xs font-semibold truncate ${comp.isActive ? 'text-[#18191F]' : 'text-[#6B6A64]'}`}>{comp.name}</div>
+                      <div className="text-[9px] text-[#6B6A64] truncate">{comp.category}</div>
                     </div>
                   </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${comp.badgeBg}`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${comp.badgeBg}`}>
                     {comp.status}
                   </span>
                 </div>
@@ -313,20 +322,20 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
           </div>
 
           {/* Head Coach Report */}
-          <div className="bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-white/[0.06] backdrop-blur-md">
-            <h3 className="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider mb-2.5">{t(lang, 'Head Coach Report', 'Cheftrainer Bericht')}</h3>
+          <div className="bg-[#F6F5F1] p-3.5 sm:p-4 rounded-2xl border border-[#E6E3DC]">
+            <h3 className="text-[10px] uppercase font-semibold text-[#6B6A64] tracking-wider mb-2.5">{t(lang, 'Head Coach Report', 'Cheftrainer Bericht')}</h3>
             {state.currentCoach ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center border border-sky-400/25 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center border border-sky-200 shrink-0">
                     <i className="fas fa-user-tie text-xs"></i>
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">{state.currentCoach.name}</div>
-                    <div className="text-[10px] text-zinc-400">{state.currentCoach.style} System</div>
+                    <div className="text-xs font-bold text-[#18191F]">{state.currentCoach.name}</div>
+                    <div className="text-[10px] text-[#6B6A64]">{state.currentCoach.style} System</div>
                   </div>
                 </div>
-                <div className="mt-1 text-xs italic text-zinc-300 border-l-2 border-sky-400/50 pl-3 py-0.5">
+                <div className="mt-1 text-xs italic text-[#52525B] border-l-2 border-sky-600 pl-3 py-0.5">
                   {state.currentCoach.ovrBoost >= 1 ? (
                     t(lang, '"We have a solid foundation, but to secure our targets, we need to stay sharp through the winter break."', '"Wir haben ein solides Fundament, müssen aber über die Winterpause konzentriert bleiben."')
                   ) : state.currentCoach.ovrBoost < 0 ? (
@@ -337,13 +346,13 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 </div>
               </div>
             ) : state.midSeasonResignedCoach ? (
-              <div className="bg-rose-500/15 border border-rose-500/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-                    <i className="fa-solid fa-triangle-exclamation text-rose-400"></i>
+                  <div className="flex items-center gap-2 text-rose-700 font-bold text-xs uppercase tracking-wider">
+                    <i className="fa-solid fa-triangle-exclamation text-rose-600"></i>
                     <span>{t(lang, 'COACH THREW IN THE TOWEL!', 'TRAINER WIRFT DAS HANDTUCH!')}</span>
                   </div>
-                  <div className="text-[11px] text-rose-200/95 leading-relaxed">
+                  <div className="text-[11px] text-rose-900 leading-relaxed">
                     {t(
                       lang,
                       `Head Coach ${state.midSeasonResignedCoach.name} abruptly resigned at the break citing tactical clash (${state.tactic} vs ${state.midSeasonResignedCoach.style}) and trophy drought. (-20 Morale applied)`,
@@ -354,7 +363,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 {onOpenCoachMarket && (
                   <button
                     onClick={() => onOpenCoachMarket(event)}
-                    className="shrink-0 bg-rose-500/25 hover:bg-rose-500/35 text-rose-100 border border-rose-400/30 font-bold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
                     <span>{t(lang, 'Hire Coach', 'Trainer suchen')}</span>
@@ -362,13 +371,13 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 )}
               </div>
             ) : (
-              <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider">
-                    <i className="fa-solid fa-triangle-exclamation text-rose-400"></i>
+                  <div className="flex items-center gap-2 text-rose-700 font-bold text-xs uppercase tracking-wider">
+                    <i className="fa-solid fa-triangle-exclamation text-rose-600"></i>
                     <span>{t(lang, 'No Head Coach Appointed', 'Kein Cheftrainer im Amt')}</span>
                   </div>
-                  <div className="text-[11px] text-rose-200/90 leading-snug">
+                  <div className="text-[11px] text-rose-900 leading-snug">
                     {t(
                       lang,
                       'Appoint a Head Coach to maximize training synergy and tactical identity ahead of the 2nd half.',
@@ -379,7 +388,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 {onOpenCoachMarket && (
                   <button
                     onClick={() => onOpenCoachMarket(event)}
-                    className="shrink-0 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 font-bold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
                     <span>{t(lang, 'Hire Coach', 'Trainer suchen')}</span>
@@ -389,12 +398,44 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
             )}
           </div>
 
+          {/* Media & Board Pressure Alert (when expectations slip or pressure builds) */}
+          {(state.pressureContext?.scenario && state.pressureContext.scenario !== 'none' || (state.mediaPressure ?? 0) >= 35) && (() => {
+            const pScore = state.pressureContext?.pressureScore ?? state.mediaPressure ?? 0;
+            const pMeta = getPressureLevelMeta(pScore);
+            return (
+              <div className={`rounded-2xl p-3.5 border flex items-start gap-3 ${
+                pScore >= 75
+                  ? 'bg-rose-50 border-rose-200'
+                  : 'bg-orange-50 border-orange-200'
+              }`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs shrink-0 border ${pMeta.badgeClass}`}>
+                  <i className={`fas ${pMeta.icon}`}></i>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${pMeta.textClass}`}>
+                      {pMeta.label} · {pScore}/100
+                    </span>
+                    {state.pressureContext?.triggerMoment && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                        Press Briefing Next
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#18191F] font-medium mt-0.5 leading-snug">
+                    {state.pressureContext?.headline || 'Media scrutiny is building over league form.'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Bottom Info Strip */}
-          <div className="bg-sky-500/10 border border-sky-400/20 rounded-2xl p-3 sm:p-3.5 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs shrink-0 border border-sky-400/30">
+          <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3 sm:p-3.5 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white text-sky-700 flex items-center justify-center text-xs shrink-0 border border-sky-200">
               <i className="fa-solid fa-arrows-rotate"></i>
             </div>
-            <p className="text-[11px] sm:text-xs text-sky-200/90 leading-snug">
+            <p className="text-[11px] sm:text-xs text-sky-900 leading-snug">
               {t(
                 lang,
                 'January Window Open: +2 Regular & +1 Key Transfer slots unlocked. Optional Training Camp & Squad Bonding available in the dashboard.',
@@ -405,10 +446,10 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-white/[0.08] bg-white/[0.02] shrink-0 relative z-10 flex items-center justify-end">
+        <div className="p-3.5 sm:p-4 border-t border-[#E6E3DC] bg-[#FAF9F6] shrink-0 relative z-10 flex items-center justify-end">
           <button
             onClick={() => onClose(event)}
-            className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-sky-500/20 transition cursor-pointer flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#18191F] hover:bg-[#2A2B33] text-white rounded-xl font-semibold text-xs shadow-sm transition cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{t(lang, 'Continue', 'Weiter')}</span>
             <i className="fas fa-chevron-right text-[10px]"></i>

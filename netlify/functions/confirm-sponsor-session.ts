@@ -120,39 +120,43 @@ export const handler = async (event: any) => {
             .update(newSponsor)
             .eq('id', existing[0].id);
         } else {
-          if (isFreeCommunity) {
-            const { count: freeCount, error: freeCountErr } = await supabase
-              .from('press_sponsors')
-              .select('id', { count: 'exact', head: true })
-              .eq('is_active', true)
-              .eq('package_type', 'free_48h')
-              .gt('expires_at', now.toISOString());
+          const { data: activeRows, error: capErr } = await supabase
+            .from('press_sponsors')
+            .select('brand_name, package_type')
+            .eq('is_active', true)
+            .gt('expires_at', now.toISOString())
+            .limit(500);
 
-            if (!freeCountErr && typeof freeCount === 'number' && freeCount >= 2) {
-              return {
-                statusCode: 409,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
-                })
-              };
+          if (!capErr && Array.isArray(activeRows)) {
+            const uniqueFree = new Set<string>();
+            const uniquePaid = new Set<string>();
+            for (const r of activeRows) {
+              const k = String(r.brand_name || '').toLowerCase().trim();
+              if (!k) continue;
+              if (r.package_type === 'free_48h') uniqueFree.add(k);
+              else uniquePaid.add(k);
             }
-          } else {
-            const { count: paidCount, error: paidCountErr } = await supabase
-              .from('press_sponsors')
-              .select('id', { count: 'exact', head: true })
-              .eq('is_active', true)
-              .neq('package_type', 'free_48h')
-              .gt('expires_at', now.toISOString());
-
-            if (!paidCountErr && typeof paidCount === 'number' && paidCount >= 18) {
-              return {
-                statusCode: 409,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots).'
-                })
-              };
+            const normVerifiedBrand = String(verifiedBrand || '').toLowerCase().trim();
+            if (isFreeCommunity) {
+              if (!uniqueFree.has(normVerifiedBrand) && uniqueFree.size >= 2) {
+                return {
+                  statusCode: 409,
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
+                  })
+                };
+              }
+            } else {
+              if (!uniquePaid.has(normVerifiedBrand) && uniquePaid.size >= 18) {
+                return {
+                  statusCode: 409,
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots).'
+                  })
+                };
+              }
             }
           }
 

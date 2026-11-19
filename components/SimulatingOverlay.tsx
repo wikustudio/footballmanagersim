@@ -51,6 +51,8 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     const currentSkillsKey = (gameState.managerSkills || []).slice().sort().join(',');
     const currentStadium = gameState.club?.stadium || 0;
     const currentStadiumPolicy = gameState.stadiumPolicy || 'balanced';
+    const currentPressureBoost = gameState.pressureBoostOvr || 0;
+    const currentMediaPressure = gameState.mediaPressure ?? 0;
 
     if (!existing || !Array.isArray(existing.matchdaySchedule) || existing.matchdaySchedule.length === 0) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive);
@@ -67,7 +69,9 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
         (existing._meta.hasBounceAtCalculation ?? currentHasBounce) !== currentHasBounce ||
         (existing._meta.skillsKeyAtCalculation ?? currentSkillsKey) !== currentSkillsKey ||
         (existing._meta.stadiumAtCalculation ?? currentStadium) !== currentStadium ||
-        (existing._meta.stadiumPolicyAtCalculation ?? currentStadiumPolicy) !== currentStadiumPolicy)
+        (existing._meta.stadiumPolicyAtCalculation ?? currentStadiumPolicy) !== currentStadiumPolicy ||
+        (existing._meta.pressureBoostAtCalculation ?? currentPressureBoost) !== currentPressureBoost ||
+        (existing._meta.mediaPressureAtCalculation ?? currentMediaPressure) !== currentMediaPressure)
     ) {
       return calculateProbabilisticSeason(gameState, clubsDb, isModActive, {
         lockFirstHalfFrom: existing,
@@ -88,6 +92,8 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     gameState.managerSkills,
     gameState.club?.stadium,
     gameState.stadiumPolicy,
+    gameState.pressureBoostOvr,
+    gameState.mediaPressure,
     clubsDb,
     isModActive,
   ]);

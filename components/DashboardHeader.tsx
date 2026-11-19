@@ -5,6 +5,8 @@ import { getContinentalCupNames } from '../utils/regionHelpers';
 import { t as tr } from '../data/translations';
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
+import { getPressureLevelMeta } from '../engine/pressureEngine';
 
 interface DashboardHeaderProps {
   state: GameState;
@@ -32,6 +34,7 @@ interface DashboardHeaderProps {
   onOpenLeagueModal?: () => void;
   onOpenSquadRegistration?: () => void;
   onOpenPrestigeModal?: () => void;
+  onOpenPressureModal?: () => void;
 }
 
 function formatNum(num: number): string {
@@ -57,6 +60,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onOpenLeagueModal,
   onOpenSquadRegistration,
   onOpenPrestigeModal,
+  onOpenPressureModal,
   onShowTable,
 }) => {
   const isDe = lang === 'de';
@@ -67,17 +71,29 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     ? isModActiveProp 
     : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
 
-  const defaultClub = ALL_CLUBS.find(c => c.id === state.club.id || String(c.id) === String(state.club.id));
+  const resolvedDisplay = resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: state.club.name || 'Club',
+      country: state.club.country,
+      color: state.club.color,
+      logo: state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    isModActive,
+    clubsDb
+  );
+  const defaultClub = ALL_CLUBS.find(c => c.id === (resolvedDisplay.id ?? state.club.id) || String(c.id) === String(resolvedDisplay.id ?? state.club.id));
   const liveDbClub = isModActive 
     ? (clubsDb?.find(c => c.id === state.club.id || String(c.id) === String(state.club.id)) ||
        clubsDb?.find(c => c.name.toLowerCase().trim() === state.club.name.toLowerCase().trim()) ||
        defaultClub)
     : defaultClub;
 
-  const clubName = isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name);
-  const clubLogo = isModActive ? (liveDbClub?.logo || state.club.logo) : undefined;
-  const clubFallbackLogo = isModActive ? (liveDbClub?.fallbackLogo || state.club.fallbackLogo) : undefined;
-  const clubColor = state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
+  const clubName = resolvedDisplay.name || (isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name));
+  const clubLogo = resolvedDisplay.logo;
+  const clubFallbackLogo = resolvedDisplay.fallbackLogo;
+  const clubColor = resolvedDisplay.color || state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
   const clubCountry = state.club.country || (isModActive ? liveDbClub?.country : defaultClub?.country) || 'GER';
 
   const countryFlag = getClubFlag({ name: clubName, id: state.club.id, country: clubCountry });
@@ -148,8 +164,15 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
     const historyTrophiesSum = Object.values(counts).reduce((a: number, b: number) => a + b, 0);
     if (historyTrophiesSum === 0 && (state.trophyHistory || []).length > 0) {
+      const targetNames = new Set([currentName, effectiveName, defaultClub?.name].filter(Boolean).map(n => n!.toLowerCase().trim()));
       (state.trophyHistory || []).forEach((t) => {
-        if (t.clubName === currentName || t.clubName === effectiveName) {
+        const resolvedTrophyClub = t.clubName
+          ? resolveHistoryClubDisplay({ name: t.clubName, country: clubCountry }, isModActive, clubsDb, !isModActive)
+          : undefined;
+        const tLower = (t.clubName || '').toLowerCase().trim();
+        const rLower = (resolvedTrophyClub?.name || '').toLowerCase().trim();
+        const sameId = resolvedTrophyClub?.id != null && state.club.id != null && String(resolvedTrophyClub.id) === String(state.club.id);
+        if (sameId || targetNames.has(tLower) || (rLower && targetNames.has(rLower))) {
           const norm = (t.name || '').toLowerCase();
           if (norm.includes('elite') || norm.includes('cl') || norm.includes('champions league') || norm.includes('libertadores')) counts.cl += 1;
           else if (norm.includes('global') || norm.includes('cwc') || norm.includes('world')) counts.cwc += 1;
@@ -164,7 +187,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     }
 
     return counts;
-  }, [state.history, state.trophyHistory, clubName, state.club.name, state.club.id]);
+  }, [state.history, state.trophyHistory, clubName, state.club.name, state.club.id, clubCountry, isModActive, clubsDb, defaultClub?.name]);
 
   const totalClubSilverware = (Object.values(clubTrophyCounts) as number[]).reduce((a, b) => a + b, 0);
   const { cl: clTitle, el: elTitle, ecl: eclTitle } = getContinentalCupNames(clubCountry);
@@ -362,17 +385,35 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </div>
         </div>
 
-        {/* Box 3: Club Impact Ring */}
+        {/* Box 3: Club Impact & Media Pressure */}
         <div 
           onClick={onShowImpact}
           className="bg-white/[0.03] hover:bg-white/[0.06] rounded-2xl p-4 sm:p-6 border border-white/[0.06] backdrop-blur-md transition-all duration-300 relative group cursor-pointer flex items-center justify-between min-h-[120px] sm:min-h-[140px]"
           title="Club Impact, Board Trust & Dressing Room Pulse"
         >
-          <div className="flex flex-col h-full justify-between">
+          <div className="flex flex-col h-full justify-between min-w-0 pr-2">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">{t('Impact', 'Einfluss')}</div>
             <div className="text-3xl sm:text-4xl font-bold text-white tracking-tight leading-none tabular-nums">{impact}</div>
+            {onOpenPressureModal && (() => {
+              const pScore = state.mediaPressure ?? 15;
+              const pMeta = getPressureLevelMeta(pScore);
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPressureModal();
+                  }}
+                  title="Open Media & Board Pressure Briefing"
+                  className={`mt-1.5 inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border w-fit whitespace-nowrap shrink-0 cursor-pointer transition hover:brightness-110 ${pMeta.badgeClass}`}
+                >
+                  <i className={`fas ${pMeta.icon} text-[9px]`}></i>
+                  <span>Press {pScore}%</span>
+                </button>
+              );
+            })()}
           </div>
-          <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+          <div className="relative w-11 h-11 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
             <svg className="w-full h-full overflow-visible shrink-0" viewBox="0 0 64 64">
               <g transform="rotate(-90 32 32)">
               <circle cx="32" cy="32" r={impactRadius} className="stroke-white/[0.06] fill-none" strokeWidth="6" />
@@ -433,8 +474,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           }}
           className="bg-white/[0.03] hover:bg-white/[0.06] rounded-2xl p-4 sm:p-5 border border-white/[0.06] backdrop-blur-md transition-all duration-300 relative group cursor-pointer flex flex-col justify-between min-h-[100px] sm:min-h-[120px]"
         >
-          <div className="flex items-center justify-between">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 truncate">{t('Coach & Tactics', 'Trainer & Taktik')}</div>
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 truncate">
+              <span className="sm:hidden">{t('Coach', 'Trainer')}</span>
+              <span className="hidden sm:inline">{t('Coach & Tactics', 'Trainer & Taktik')}</span>
+            </div>
             {state.currentCoach && (
               <button
                 type="button"

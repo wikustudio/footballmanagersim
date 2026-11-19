@@ -22,6 +22,7 @@ interface LeaderboardPageProps {
   lang?: Language;
   gameState?: GameState | null;
   clubsDb?: Club[];
+  isModActive?: boolean;
   initialHighscores?: LeaderboardEntry[];
   onBack: () => void;
 }
@@ -30,6 +31,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   lang = 'en',
   gameState,
   clubsDb = [],
+  isModActive,
   initialHighscores,
   onBack
 }) => {
@@ -247,39 +249,36 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   const { availableCount } = partitionPressSlots(sponsors);
 
   return (
-    <div className="w-full flex flex-col min-h-screen text-white text-left animate-fadeIn pt-6 sm:pt-8 md:pt-10 pb-20">
+    <div className="w-full flex flex-col min-h-screen text-[#18191F] text-left animate-fadeIn pt-6 sm:pt-8 md:pt-10 pb-20">
       {/* Top Breadcrumb & Action Navigation Bar with Generous Breathing Room */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-5 border-b border-white/[0.08]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-5 border-b border-[#E6E3DC]">
         <div className="flex items-center gap-3.5">
           <button
             onClick={onBack}
-            className="px-4 py-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-bold text-zinc-200 hover:text-white transition cursor-pointer flex items-center gap-2 group shrink-0 active:scale-95"
+            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-bold text-[#18191F] shadow-xs transition cursor-pointer flex items-center gap-2 group shrink-0 active:scale-95"
             title="Return to active career or dugout"
           >
-            <i className="fa-solid fa-arrow-left text-xs group-hover:-translate-x-1 transition-transform"></i>
-            <span>Back to Career</span>
+            <i className="fa-solid fa-arrow-left text-xs text-[#6B7280] group-hover:text-[#18191F] group-hover:-translate-x-1 transition-all"></i>
+            <span>{gameState ? 'Back to Career' : 'Back to Club Selection'}</span>
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <i className="fa-solid fa-trophy text-amber-400 text-lg"></i>
-              <span>Leaderboard & Partners</span>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#18191F] flex items-center gap-2.5">
+              <i className="fa-solid fa-trophy text-amber-600 text-lg"></i>
+              <span>Leaderboard &amp; Partners</span>
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-mono font-bold text-[#6B7280] tabular-nums">
+            {availableCount}/18 Slots Open
+          </span>
           <button
             onClick={() => handleOpenCheckout('30_days')}
-            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/20 transition cursor-pointer flex items-center gap-2 active:scale-95"
+            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-2 active:scale-95"
           >
-            <i className="fa-solid fa-file-signature text-xs"></i>
-            <span>Claim Sponsor Slot on Media Wall</span>
-            <span className="px-1.5 py-0.5 rounded bg-black/20 text-[10px] font-black">
-              Free 48h / €0.99
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-black/25 text-[10px] font-black">
-              {availableCount}/18 Open
-            </span>
+            <i className="fa-solid fa-file-signature text-xs text-amber-300"></i>
+            <span>Claim Sponsor Slot · Free 48h / €0.99</span>
           </button>
         </div>
       </div>
@@ -287,29 +286,30 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
       {/* Floating Notification */}
       {notification && (
         <div
-          className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-medium animate-fadeIn ${
+          className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-semibold animate-fadeIn shadow-xs ${
             notification.type === 'success'
-              ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
               : notification.type === 'error'
-              ? 'bg-red-500/15 border-red-400/40 text-red-200'
-              : 'bg-sky-500/15 border-sky-400/40 text-sky-200'
+              ? 'bg-rose-50 border-rose-200 text-rose-900'
+              : 'bg-sky-50 border-sky-200 text-sky-900'
           }`}
         >
           <div className="flex items-center gap-2.5">
             <i
               className={`fa-solid ${
                 notification.type === 'success'
-                  ? 'fa-circle-check text-emerald-400'
+                  ? 'fa-circle-check text-emerald-600'
                   : notification.type === 'error'
-                  ? 'fa-triangle-exclamation text-red-400'
-                  : 'fa-circle-info text-sky-400'
+                  ? 'fa-triangle-exclamation text-rose-600'
+                  : 'fa-circle-info text-sky-600'
               } text-sm`}
             ></i>
             <span>{notification.message}</span>
           </div>
           <button
             onClick={() => setNotification(null)}
-            className="text-white/60 hover:text-white text-xs cursor-pointer ml-2"
+            aria-label="Dismiss notification"
+            className="text-[#6B7280] hover:text-[#18191F] text-xs cursor-pointer ml-2"
           >
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -328,6 +328,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
         highscores={highscores}
         gameState={gameState}
         clubsDb={clubsDb}
+        isModActive={isModActive}
         lang={lang}
         onRefresh={loadHighscores}
         isRefreshing={isRefreshing}

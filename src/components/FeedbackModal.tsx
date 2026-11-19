@@ -47,7 +47,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
   const selectedCrash = reports.find((r) => r.id === selectedCrashId) || reports[0] || null;
   const diagnosticText = includeDiagnostics ? formatDiagnosticSummary(gameState, selectedCrash) : '';
 
-  const subjectLine = `[FMS v2.6 ${reportType === 'bug' ? 'Bug / Crash Report' : 'Feature Request'}] ${
+  const subjectLine = `[FMS v3.0 ${reportType === 'bug' ? 'Bug / Crash Report' : 'Feature Request'}] ${
     title.trim() || (reportType === 'bug' ? (selectedCrash ? selectedCrash.message.slice(0, 50) : 'Gameplay Issue') : 'Feature Suggestion')
   }`;
 
@@ -122,31 +122,33 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
 
   return (
     <div
-      className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[120] p-3 sm:p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 bg-[#18191F]/45 backdrop-blur-sm flex items-center justify-center z-[120] p-2.5 sm:p-4 overflow-y-auto overscroll-contain animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl relative overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-white text-[#18191F] border border-[#E6E3DC] rounded-[24px] sm:rounded-[32px] max-w-xl w-full shadow-[0_24px_64px_rgba(24,25,31,0.18)] relative overflow-hidden max-h-[92dvh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 pb-4 border-b border-zinc-800/80 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-[#E6E3DC] bg-[#FAF9F6] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
               {reportType === 'bug' ? <Bug className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
             </div>
             <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 block">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-700 block">
                 Direct Developer Line
               </span>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+              <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight">
                 Feedback & Crash Reporter
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center text-[#4B5563] hover:text-[#18191F] transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -154,22 +156,22 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto custom-scrollbar space-y-4 py-4 pr-1 flex-1">
+        <div className="overflow-y-auto overscroll-contain custom-scrollbar space-y-4 px-4 sm:px-6 py-4 flex-1 min-h-0">
           {/* Mode Toggle */}
-          <div className="grid grid-cols-2 gap-2 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 gap-2 bg-[#EFECE4] p-1 rounded-xl border border-[#E6E3DC]">
             <button
               type="button"
               onClick={() => setReportType('bug')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 reportType === 'bug'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               <Bug className="w-3.5 h-3.5" />
               Bug / Crash Report
               {reports.length > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-rose-500 text-white font-mono">
+                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-rose-600 text-white font-mono tabular-nums">
                   {reports.length}
                 </span>
               )}
@@ -177,10 +179,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
             <button
               type="button"
               onClick={() => setReportType('feature')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 reportType === 'feature'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -190,16 +192,16 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
 
           {/* Automatic Crash Log Banner if any captured */}
           {reports.length > 0 && (
-            <div className="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3.5 space-y-2">
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <div className="flex items-center gap-2 text-rose-800 text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>Automatic Crash Report Captured ({reports.length})</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleClearLogs}
-                  className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 flex items-center gap-1 transition-colors"
+                  className="text-[10px] font-mono text-[#6B7280] hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3 h-3" />
                   Clear Logs
@@ -209,7 +211,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
                 <select
                   value={selectedCrashId}
                   onChange={(e) => setSelectedCrashId(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 font-mono"
+                  className="w-full bg-white border border-rose-200 rounded-lg px-2.5 py-1.5 text-xs text-[#18191F] font-mono"
                 >
                   {reports.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -219,10 +221,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
                 </select>
               )}
               {selectedCrash && (
-                <div className="bg-black/50 border border-rose-500/20 rounded-lg p-2.5 text-[11px] font-mono text-rose-200/90 overflow-x-auto">
-                  <div className="font-bold text-rose-300">{selectedCrash.context}: {selectedCrash.message}</div>
+                <div className="bg-white border border-rose-200 rounded-lg p-2.5 text-[11px] font-mono text-rose-900 overflow-x-auto">
+                  <div className="font-bold text-rose-800">{selectedCrash.context}: {selectedCrash.message}</div>
                   {selectedCrash.clubName && (
-                    <div className="text-zinc-400 mt-0.5">
+                    <div className="text-[#6B7280] mt-0.5">
                       Club: {selectedCrash.clubName} (Tier {selectedCrash.tier}) • Season {selectedCrash.year} • Phase: {selectedCrash.seasonPhase}
                     </div>
                   )}
@@ -234,7 +236,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
           {/* Inputs */}
           <div className="space-y-3">
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-[#6B7280] mb-1">
                 {reportType === 'bug' ? 'Issue Summary' : 'Feature Title'}
               </label>
               <input
@@ -246,12 +248,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
                     ? 'e.g. Season end returned to winter window / UI layout issue'
                     : 'e.g. Add historical trophy cabinet filter'
                 }
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none transition-colors"
+                className="w-full bg-[#FAF9F6] border border-[#E6E3DC] focus:border-[#18191F] rounded-xl px-3.5 py-2.5 text-sm text-[#18191F] placeholder-[#9A9890] focus:outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-[#6B7280] mb-1">
                 {reportType === 'bug' ? 'What happened / Steps to reproduce' : 'How should this feature work?'}
               </label>
               <textarea
@@ -263,12 +265,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
                     ? 'Describe what you were doing right before the bug occurred...'
                     : 'Share your idea or improvement for Football Manager Strip...'
                 }
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500/60 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none transition-colors resize-none"
+                className="w-full bg-[#FAF9F6] border border-[#E6E3DC] focus:border-[#18191F] rounded-xl px-3.5 py-2.5 text-sm text-[#18191F] placeholder-[#9A9890] focus:outline-none transition-colors resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-[#6B7280] mb-1">
                 Your Email (Optional, for follow-up)
               </label>
               <input
@@ -276,34 +278,34 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
                 value={userEmail}
                 onChange={(e) => setUserEmail(e.target.value)}
                 placeholder="manager@example.com"
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500/60 rounded-xl px-3.5 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none transition-colors"
+                className="w-full bg-[#FAF9F6] border border-[#E6E3DC] focus:border-[#18191F] rounded-xl px-3.5 py-2 text-sm text-[#18191F] placeholder-[#9A9890] focus:outline-none transition-colors"
               />
             </div>
 
             {/* Auto-Include Diagnostics Toggle */}
-            <label className="flex items-start gap-2.5 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 cursor-pointer select-none">
+            <label className="flex items-start gap-2.5 p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={includeDiagnostics}
                 onChange={(e) => setIncludeDiagnostics(e.target.checked)}
-                className="mt-0.5 rounded border-zinc-700 bg-zinc-800 text-emerald-500 focus:ring-emerald-500"
+                className="mt-0.5 rounded border-[#E6E3DC] bg-white text-[#18191F] focus:ring-[#18191F]"
               />
               <div className="text-xs">
-                <div className="font-semibold text-zinc-200">
+                <div className="font-semibold text-[#18191F]">
                   Attach automatic save state & crash diagnostics
                 </div>
-                <div className="text-zinc-500 text-[11px] mt-0.5">
+                <div className="text-[#6B7280] text-[11px] mt-0.5">
                   Includes club, tier, season phase, history count, and any captured stack trace.
                 </div>
               </div>
             </label>
 
             {includeDiagnostics && (
-              <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-3">
-                <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1.5">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-3">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-[#6B7280] mb-1.5">
                   Attached Diagnostic Snapshot
                 </div>
-                <pre className="text-[10px] font-mono text-zinc-400 whitespace-pre-wrap break-words max-h-28 overflow-y-auto custom-scrollbar">
+                <pre className="text-[10px] font-mono text-[#4B5563] whitespace-pre-wrap break-words max-h-28 overflow-y-auto custom-scrollbar">
                   {diagnosticText}
                 </pre>
               </div>
@@ -311,8 +313,8 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
           </div>
 
           {submitStatus !== 'idle' && (
-            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 text-xs text-emerald-300 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800 flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
                 {submitStatus === 'copied'
                   ? 'Full diagnostic report copied to your clipboard!'
@@ -323,13 +325,13 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-4 border-t border-zinc-800/80 flex items-center justify-end gap-2.5 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={handleCopyReport}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-200 transition-colors cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-bold text-[#18191F] transition-colors cursor-pointer"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? 'Copied!' : 'Copy Report'}
           </button>
 
@@ -337,7 +339,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, g
             type="button"
             onClick={handleSubmitReport}
             disabled={submitting}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-zinc-950 text-xs font-black tracking-wide transition-colors shadow-lg shadow-emerald-500/20 cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] disabled:opacity-60 text-white text-xs font-black tracking-wide transition-colors shadow-sm cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             {submitting ? 'Submitting...' : 'Submit Report'}

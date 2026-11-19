@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import crypto from 'crypto';
@@ -9,8 +10,8 @@ dotenv.config();
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { validateSponsorContent } from './src/utils/sponsorModeration';
-import { encodeSafeLogoForMetadata, resolveLogoUrl } from './src/utils/sponsorPresets';
+import { validateSponsorContent } from './src/utils/sponsorModeration.ts';
+import { encodeSafeLogoForMetadata, resolveLogoUrl } from './src/utils/sponsorPresets.ts';
 
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeKey ? new Stripe(stripeKey) : null;
@@ -24,9 +25,55 @@ const supabaseServer = (supabaseUrl && supabaseKey)
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+async function getUniqueActiveSponsorCapacity(nowIso: string) {
+  if (!supabaseServer) return null;
+  const { data, error } = await supabaseServer
+    .from('press_sponsors')
+    .select('brand_name, package_type')
+    .eq('is_active', true)
+    .gt('expires_at', nowIso)
+    .limit(500);
+  if (error || !Array.isArray(data)) return null;
+  const uniqueFree = new Set<string>();
+  const uniquePaid = new Set<string>();
+  for (const row of data) {
+    const key = String(row.brand_name || '').toLowerCase().trim();
+    if (!key) continue;
+    if (row.package_type === 'free_48h') uniqueFree.add(key);
+    else uniquePaid.add(key);
+  }
+  return { uniqueFree, uniquePaid };
+}
+
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  app.set('trust proxy', 1);
+  const PORT = process.env.NGINX_PORT
+    ? Number(process.env.DEFAULT_APP_PORT || 3000)
+    : Number(process.env.PORT || 3000);
+
+  // Player-friendly per-IP rate limiters to protect public POST endpoints from abuse/spam loops
+  const sponsorApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many sponsor requests. Please try again in a few minutes.' },
+  });
+  const highscoreApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many leaderboard submissions. Please wait a moment.' },
+  });
+  const feedbackApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many feedback submissions. Please try again shortly.' },
+  });
 
   // Stripe webhook requires raw body for signature verification
   app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -145,7 +192,7 @@ async function startServer() {
     });
   });
 
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb' }));
 
   // API routes FIRST
   app.get('/api/health', (req, res) => {
@@ -157,7 +204,7 @@ async function startServer() {
   });
 
   // Create Stripe Checkout Session
-  app.post('/api/create-checkout-session', async (req, res) => {
+  app.post('/api/create-checkout-session', sponsorApiLimiter, async (req, res) => {
     try {
       const {
         packageType = '1_day',
@@ -180,31 +227,21 @@ async function startServer() {
 
       if (supabaseServer) {
         const nowIso = new Date().toISOString();
-        if (packageType === 'free_48h') {
-          const { count: freeCount, error: freeErr } = await supabaseServer
-            .from('press_sponsors')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .eq('package_type', 'free_48h')
-            .gt('expires_at', nowIso);
-
-          if (!freeErr && typeof freeCount === 'number' && freeCount >= 2) {
-            return res.status(409).json({
-              error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
-            });
-          }
-        } else {
-          const { count: paidCount, error: countErr } = await supabaseServer
-            .from('press_sponsors')
-            .select('id', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .neq('package_type', 'free_48h')
-            .gt('expires_at', nowIso);
-
-          if (!countErr && typeof paidCount === 'number' && paidCount >= 18) {
-            return res.status(409).json({
-              error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots). Please check back once an active sponsor slot expires.'
-            });
+        const cap = await getUniqueActiveSponsorCapacity(nowIso);
+        const normBrand = String(brandName || '').toLowerCase().trim();
+        if (cap) {
+          if (packageType === 'free_48h') {
+            if (!cap.uniqueFree.has(normBrand) && cap.uniqueFree.size >= 2) {
+              return res.status(409).json({
+                error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
+              });
+            }
+          } else {
+            if (!cap.uniquePaid.has(normBrand) && cap.uniquePaid.size >= 18) {
+              return res.status(409).json({
+                error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots). Please check back once an active sponsor slot expires.'
+              });
+            }
           }
         }
       }
@@ -278,7 +315,7 @@ async function startServer() {
   });
 
   // Verify and activate sponsor after Stripe return
-  app.post('/api/confirm-sponsor-session', async (req, res) => {
+  app.post('/api/confirm-sponsor-session', sponsorApiLimiter, async (req, res) => {
     try {
       const { sessionId, brandName, logoUrl, linkUrl, packageType, tagline } = req.body;
 
@@ -373,32 +410,22 @@ async function startServer() {
               return res.json({ success: true, sponsor: data });
             }
           } else {
-            // Enforce two-pool slot limits: max 2 active free_48h slots, max 18 active paid slots
-            if (isFreeCommunity) {
-              const { count: freeCount, error: freeCountErr } = await supabaseServer
-                .from('press_sponsors')
-                .select('id', { count: 'exact', head: true })
-                .eq('is_active', true)
-                .eq('package_type', 'free_48h')
-                .gt('expires_at', now.toISOString());
-
-              if (!freeCountErr && typeof freeCount === 'number' && freeCount >= 2) {
-                return res.status(409).json({
-                  error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
-                });
-              }
-            } else {
-              const { count: paidCount, error: paidCountErr } = await supabaseServer
-                .from('press_sponsors')
-                .select('id', { count: 'exact', head: true })
-                .eq('is_active', true)
-                .neq('package_type', 'free_48h')
-                .gt('expires_at', now.toISOString());
-
-              if (!paidCountErr && typeof paidCount === 'number' && paidCount >= 18) {
-                return res.status(409).json({
-                  error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots).'
-                });
+            // Enforce two-pool unique-brand slot limits: max 2 active free_48h slots, max 18 active paid slots
+            const cap = await getUniqueActiveSponsorCapacity(now.toISOString());
+            const normVerifiedBrand = String(verifiedBrand || '').toLowerCase().trim();
+            if (cap) {
+              if (isFreeCommunity) {
+                if (!cap.uniqueFree.has(normVerifiedBrand) && cap.uniqueFree.size >= 2) {
+                  return res.status(409).json({
+                    error: 'Community Spotlight (48h free trial) slots are currently at full capacity (2/2 active slots). Please wait for a trial slot to expire or choose an Official Partner package.'
+                  });
+                }
+              } else {
+                if (!cap.uniquePaid.has(normVerifiedBrand) && cap.uniquePaid.size >= 18) {
+                  return res.status(409).json({
+                    error: 'The Press Conference Wall is currently at full capacity (18/18 active paid slots).'
+                  });
+                }
               }
             }
 
@@ -435,7 +462,7 @@ async function startServer() {
   // Authenticated Highscore Submission with Salted Signature Verification
   const HIGHSCORE_SALT = 'FMS_AUTHENTICATED_LEADERBOARD_SALT_2026_V1';
 
-  app.post('/api/submit-highscore', async (req, res) => {
+  app.post('/api/submit-highscore', highscoreApiLimiter, async (req, res) => {
     try {
       const {
         managerName,
@@ -591,11 +618,11 @@ Walking out of the ${safeClub} facilities for the final time, the dressing room 
 
   // Feedback & Crash Report submission endpoint (recipient email kept strictly server-side, no API key required)
   const FEEDBACK_RECIPIENT_EMAIL = 'kuehnewilly@gmail.com';
-  app.post('/api/feedback', async (req, res) => {
+  app.post('/api/feedback', feedbackApiLimiter, async (req, res) => {
     try {
       const { type, subject, title, description, contactEmail, diagnostics, crashReport, crashLogs, timestamp } = req.body || {};
       const reportTypeLabel = type === 'feature' ? 'Feature Request' : 'Bug / Crash Report';
-      const emailSubject = subject || `[FMS v2.6 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
+      const emailSubject = subject || `[FMS v3.0 ${reportTypeLabel}] ${title || 'Untitled Report'}`;
       const submittedAt = timestamp || new Date().toISOString();
 
       const crashSummary = crashReport
@@ -708,7 +735,7 @@ Walking out of the ${safeClub} facilities for the final time, the dressing room 
               'Accept': 'application/json',
               'Origin': originHeader,
               'Referer': refererHeader,
-              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/2.6)'
+              'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (compatible; FootballManagerSim/3.0)'
             },
             body: JSON.stringify(formSubmitPayload)
           });
@@ -729,14 +756,34 @@ Walking out of the ${safeClub} facilities for the final time, the dressing room 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        allowedHosts: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.use(
+      '/assets',
+      express.static(path.join(distPath, 'assets'), {
+        maxAge: '1y',
+        immutable: true,
+      })
+    );
+    app.use(
+      express.static(distPath, {
+        setHeaders(res, filePath) {
+          if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      })
+    );
+    app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

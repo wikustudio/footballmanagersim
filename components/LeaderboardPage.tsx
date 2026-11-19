@@ -22,6 +22,7 @@ interface LeaderboardPageProps {
   lang?: Language;
   gameState?: GameState | null;
   clubsDb?: Club[];
+  isModActive?: boolean;
   initialHighscores?: LeaderboardEntry[];
   onBack: () => void;
 }
@@ -30,6 +31,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   lang = 'en',
   gameState,
   clubsDb = [],
+  isModActive,
   initialHighscores,
   onBack
 }) => {
@@ -328,6 +330,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
         highscores={highscores}
         gameState={gameState}
         clubsDb={clubsDb}
+        isModActive={isModActive}
         lang={lang}
         onRefresh={loadHighscores}
         isRefreshing={isRefreshing}

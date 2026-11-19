@@ -99,6 +99,12 @@ import { MatchdayActionDock } from './components/MatchdayActionDock';
 import { syncGameStoreClub } from './store/useGameStore';
 import { MidSeasonDilemmaModal } from './components/MidSeasonDilemmaModal';
 import { MidSeasonModal } from './components/MidSeasonModal';
+import { PressureMomentModal } from './components/PressureMomentModal';
+import {
+  applyPressureMomentResolution,
+  evaluatePerformancePressure,
+  resolveSeasonEndPressure,
+} from './engine/pressureEngine';
 import { WinterCampModal } from './components/WinterCampModal';
 import { PlayerRevealModal } from './components/PlayerRevealModal';
 import {
@@ -432,6 +438,26 @@ export const sanitizeGameState = (state: any): GameState | null => {
         }))
       : [],
     trophies: Array.isArray(state.trophies) ? state.trophies : [],
+    trophyHistory: Array.isArray(state.trophyHistory)
+      ? state.trophyHistory.map((t: any) => {
+          if (!t || !t.clubName) return t;
+          const resTrophy = resolveHistoryClubDisplay(
+            {
+              name: t.clubName,
+              country: cleanClub?.country,
+              color: t.color,
+              logo: t.logo,
+            },
+            isModActive
+          );
+          return {
+            ...t,
+            clubName: resTrophy.name,
+            logo: resTrophy.logo,
+            color: resTrophy.color || t.color,
+          };
+        })
+      : [],
     clWins: typeof state.clWins === 'number' ? state.clWins : 0,
     consecutiveTitles: typeof state.consecutiveTitles === 'number' ? state.consecutiveTitles : 0,
     trophyDrought: typeof state.trophyDrought === 'number' ? state.trophyDrought : 0,
@@ -1357,12 +1383,31 @@ export default function App() {
             fallbackLogo: rep.fallbackLogo
           };
         }) : prev.history;
+        const cleanTrophyHistory = Array.isArray(prev.trophyHistory) ? prev.trophyHistory.map(t => {
+          if (!t || !t.clubName) return t;
+          const resTrophy = resolveHistoryClubDisplay(
+            {
+              name: t.clubName,
+              country: cleanClub.country,
+              color: t.color,
+              logo: t.logo,
+            },
+            true
+          );
+          return {
+            ...t,
+            clubName: resTrophy.name,
+            logo: resTrophy.logo,
+            color: resTrophy.color || t.color,
+          };
+        }) : prev.trophyHistory;
 
         const updated = {
           ...prev,
           club: cleanClub,
           currentRival: cleanRival,
-          history: cleanHistory
+          history: cleanHistory,
+          trophyHistory: cleanTrophyHistory,
         };
         safeSaveGameState(LOCAL_STORAGE_KEY, updated);
         return updated;
@@ -1370,7 +1415,7 @@ export default function App() {
     } else {
       setGameState(prev => {
         if (!prev || !prev.club) return prev;
-        const resolvedClub = resolveHistoryClubDisplay(prev.club, false, undefined, true);
+        const resolvedClub = resolveHistoryClubDisplay(prev.club, false);
         const cleanClub = {
           ...prev.club,
           id: resolvedClub.id ?? prev.club.id,
@@ -1381,7 +1426,7 @@ export default function App() {
         };
         const cleanRival = prev.currentRival
           ? (() => {
-              const resRival = resolveHistoryClubDisplay(prev.currentRival, false, undefined, true);
+              const resRival = resolveHistoryClubDisplay(prev.currentRival, false);
               return {
                 ...prev.currentRival,
                 id: resRival.id ?? prev.currentRival.id,
@@ -1403,9 +1448,7 @@ export default function App() {
               logo: h.logo,
               fallbackLogo: h.fallbackLogo,
             },
-            false,
-            undefined,
-            true
+            false
           );
           return {
             ...h,
@@ -1416,12 +1459,31 @@ export default function App() {
             color: resHist.color || h.color,
           };
         }) : prev.history;
+        const cleanTrophyHistory = Array.isArray(prev.trophyHistory) ? prev.trophyHistory.map(t => {
+          if (!t || !t.clubName) return t;
+          const resTrophy = resolveHistoryClubDisplay(
+            {
+              name: t.clubName,
+              country: cleanClub.country,
+              color: t.color,
+              logo: t.logo,
+            },
+            false
+          );
+          return {
+            ...t,
+            clubName: resTrophy.name,
+            logo: resTrophy.logo,
+            color: resTrophy.color || t.color,
+          };
+        }) : prev.trophyHistory;
 
         const updated = {
           ...prev,
           club: cleanClub,
           currentRival: cleanRival,
-          history: cleanHistory
+          history: cleanHistory,
+          trophyHistory: cleanTrophyHistory,
         };
         safeSaveGameState(LOCAL_STORAGE_KEY, updated);
         return updated;
@@ -1518,6 +1580,9 @@ export default function App() {
   const [pressRelease, setPressRelease] = useState<{action: 'hire' | 'fire', coachName: string, coachStyle?: string} | null>(null);
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
   const [showMidSeasonModal, setShowMidSeasonModal] = useState<boolean>(false);
+  const [showPressureModal, setShowPressureModal] = useState<boolean>(false);
+  const [pressureIsCrisisTrigger, setPressureIsCrisisTrigger] = useState<boolean>(false);
+  const [pendingMidEventAfterPressure, setPendingMidEventAfterPressure] = useState<any | null>(null);
   const [showMidSeasonDilemmaModal, setShowMidSeasonDilemmaModal] = useState<boolean>(false);
   const [activeDilemmaId, setActiveDilemmaId] = useState<string>('striker_tear');
   const simOverlayCompleteResolveRef = useRef<(() => void) | null>(null);
@@ -2360,6 +2425,11 @@ export default function App() {
       boardUltimatum: false,
       seasonsInDebt: 0,
       lastJobOfferYear: 0,
+      mediaPressure: 15,
+      pressureContext: null,
+      pressureBoostOvr: 0,
+      pressureChoiceThisSeason: null,
+      pressureCommitment: null,
       totals: {
         matches: 0,
         wins: 0,
@@ -2487,6 +2557,9 @@ export default function App() {
       setDossierCoach(null);
       setPressRelease(null);
       setShowMidSeasonModal(false);
+      setShowPressureModal(false);
+      setPressureIsCrisisTrigger(false);
+      setPendingMidEventAfterPressure(null);
       setShowMidSeasonDilemmaModal(false);
       setShowWinterCampModal(false);
       setShowImpactModal(false);
@@ -6080,6 +6153,12 @@ export default function App() {
       updated.clubImpactScore = 50;
       updated.yearsAtCurrentClub = 0;
       updated.boardTargetFinish = targetPos;
+      updated.mediaPressure = 15;
+      updated.pressureContext = null;
+      updated.pressureMomentResolvedYear = undefined;
+      updated.pressureChoiceThisSeason = null;
+      updated.pressureBoostOvr = 0;
+      updated.pressureCommitment = null;
 
       updated.seasonPhase = 'start';
       updated.winterTransfers = 0;
@@ -6661,6 +6740,24 @@ export default function App() {
                 await new Promise(r => setTimeout(r, 600));
             }
             setCupRun(null);
+            // Evaluate Media & Board Performance Pressure at the halfway break
+            const midOutcomeSlice = state.pendingSeasonState?.matchdaySchedule?.slice(0, halfwayMd);
+            const midPressureEval = evaluatePerformancePressure(
+              state,
+              {
+                phase: 'mid',
+                pos: midRawPos,
+                pts: midPts,
+                matchdaysPlayed: halfwayMd,
+                schedule: midOutcomeSlice,
+              },
+              clubsDb,
+              isModActive
+            );
+            state.mediaPressure = midPressureEval.pressureScore;
+            state.pressureContext = midPressureEval;
+            latestGameStateRef.current = { ...state };
+            setGameState({ ...state });
             setShowMidSeasonModal(true);
         };
         
@@ -10702,10 +10799,43 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }, 2200);
     }
 
+    // Evaluate Season-End Media & Board Performance Pressure Verdict
+    const pressureOutcome = resolveSeasonEndPressure(
+      state,
+      {
+        finalPos: approxPos,
+        pts: netPts,
+        tier: seasonLeague,
+        nextTier,
+        wonTrophy,
+        isSacked: Boolean(isSackedRelegation || sackedJobOffer),
+        survivedPlayoff,
+        completedSeasonYear,
+        schedule: syncedPending?.matchdaySchedule,
+      },
+      cleanNewClubsDb,
+      isModActive
+    );
+    if (pressureOutcome.boardTrustDelta !== 0) {
+      state.clubImpactScore = Math.max(
+        impactFloor,
+        Math.min(100, (state.clubImpactScore ?? 50) + pressureOutcome.boardTrustDelta)
+      );
+    }
+    if (pressureOutcome.repDelta !== 0) {
+      state.reputation = Math.max(1, Math.min(100, (state.reputation ?? 50) + pressureOutcome.repDelta));
+    }
+    state.mediaPressure = pressureOutcome.nextMediaPressure;
+    state.pressureContext = null;
+    state.pressureBoostOvr = 0;
+    state.pressureChoiceThisSeason = null;
+    state.pressureCommitment = null;
+
     // Set Season Finish Modal Data for completed season and persist on state so reload re-hydrates cleanly
     const finishDataPayload = {
       coachAtStartOfSim: expiredCoachToOffer || ((state.currentCoach && !coachResigned) ? JSON.parse(JSON.stringify(state.currentCoach)) : null), // Prevent resurrection
       coachDepartureAlert,
+      pressureVerdict: pressureOutcome.verdict,
       moraleDelta: newMorale - currentMorale,
       isSackedRelegation: !!(isSackedRelegation || sackedJobOffer),
       isSacked: !!(isSackedRelegation || sackedJobOffer),
@@ -14477,6 +14607,10 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               if (active) {
                 localStorage.setItem('fms_real_mod_active', 'true');
                 safeSaveClubsDb(CLUBS_DB_STORAGE_KEY, safeguarded);
+              } else {
+                localStorage.removeItem('fms_real_mod_active');
+                localStorage.removeItem('fms_custom_mod_json');
+                localStorage.removeItem(CLUBS_DB_STORAGE_KEY);
               }
             }}
           />
@@ -14485,6 +14619,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             lang={lang as any}
             gameState={gameState}
             clubsDb={clubsDb}
+            isModActive={isModActive}
             initialHighscores={highscores as any}
             onBack={() => handleViewModeChange('game')}
           />
@@ -14595,6 +14730,10 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               onOpenCoachDossier={(coach) => setDossierCoach(coach)}
               onOpenSquadRegistration={() => setShowSquadRegistrationModal(true)}
               onOpenPrestigeModal={() => setShowPrestigeModal(true)}
+              onOpenPressureModal={() => {
+                setPressureIsCrisisTrigger(false);
+                setShowPressureModal(true);
+              }}
             />
             </div>
 
@@ -14664,7 +14803,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 </div>
 
                 <AnimatePresence>
-                {pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach && (
+                {pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showPressureModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach && (
                   <motion.div key={`event-modal-${pendingEvent?.id || Date.now()}`} initial={{ opacity: 0, scale: 0.96, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 26 }} className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black/75 backdrop-blur-2xl p-2.5 sm:p-4 overflow-y-auto overscroll-contain">
                     <div className={`w-full max-h-[92vh] sm:max-h-[88vh] my-auto overflow-y-auto custom-scrollbar overscroll-contain shrink-0 ${pendingEvent?.type === 'job_offer' ? 'max-w-xl sm:max-w-2xl' : 'max-w-md'}`}>
                       <EventUI
@@ -14678,7 +14817,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 )}
                 </AnimatePresence>
 
-                <div className={`${(pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
+                <div className={`${(pendingEvent && isValidGameEvent(pendingEvent) && !isSimulating && !showSimulatingOverlay && !showMidSeasonDilemmaModal && !seasonFinishData && !decisionDay && !activeModal && !offSeasonEvent && !activeTransferSaga && !internationalTournament && !cupRun && !showMidSeasonModal && !showPressureModal && !showWinterCampModal && !showCoachMarketModal && !pressRelease && !dossierCoach) ? 'pointer-events-none opacity-40 blur-[1px]' : ''} ${isSimulating ? 'pointer-events-none opacity-50 transition-opacity' : ''} transition-all duration-200`}>
                   <ActionPanel
                   state={gameState}
                   mediaBaseBoost={getLeagueScaledVal(gameState.club.tier, 6500, gameState.club.country || 'GER')}
@@ -14784,6 +14923,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 showTeamBondingModal ||
                 showWinterCampModal ||
                 showMidSeasonModal ||
+                showPressureModal ||
                 showConfirmReset ||
                 showCustomizationModal ||
                 showModModal ||
@@ -14858,6 +14998,10 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           onClose={() => setShowImpactModal(false)}
           onOpenTeamBonding={() => setShowTeamBondingModal(true)}
           onOpenClubProfile={() => setShowClubProfileModal(true)}
+          onOpenPressureModal={() => {
+            setPressureIsCrisisTrigger(false);
+            setShowPressureModal(true);
+          }}
         />
       )}
       </AnimatePresence>
@@ -15409,6 +15553,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           }}
           onClose={(midEvent) => {
             setShowMidSeasonModal(false);
+            const snap = latestGameStateRef.current || gameState;
+            const hasPressureFlashpoint = Boolean(
+              snap?.pressureContext?.triggerMoment &&
+              snap.pressureMomentResolvedYear !== snap.year
+            );
             setGameState(prev => {
               if (!prev) return prev;
               const next = { ...prev, midSeasonResignedCoach: undefined };
@@ -15416,9 +15565,61 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               return next;
             });
 
-            if (isValidGameEvent(midEvent)) {
+            if (hasPressureFlashpoint) {
+              setPendingMidEventAfterPressure(isValidGameEvent(midEvent) ? midEvent : null);
+              setPressureIsCrisisTrigger(true);
+              setShowPressureModal(true);
+            } else if (isValidGameEvent(midEvent)) {
               enqueueEvent(midEvent);
             }
+          }}
+        />
+      )}
+
+      {showPressureModal && gameState && (
+        <PressureMomentModal
+          key={`PressureMomentModal-${gameState.year}`}
+          state={gameState}
+          clubsDb={clubsDb}
+          isModActive={isModActive}
+          isCrisisTrigger={pressureIsCrisisTrigger}
+          creditLimit={getCreditLimit()}
+          onResolveChoice={(choiceId, assessment) => {
+            const snap = latestGameStateRef.current || gameState;
+            if (!snap) return null;
+            const res = applyPressureMomentResolution(snap, choiceId, assessment, clubsDb, isModActive);
+            let nextState = res.updatedState;
+            if (nextState.pendingSeasonState && nextState.seasonPhase === 'mid') {
+              nextState = {
+                ...nextState,
+                pendingSeasonState: calculateProbabilisticSeason(nextState, clubsDb, isModActive, {
+                  lockFirstHalfFrom: nextState.pendingSeasonState,
+                  dilemmaChoice: nextState.pendingSeasonState.dilemmaChoice,
+                }),
+              };
+            }
+            latestGameStateRef.current = nextState;
+            setGameState(nextState);
+            showToast(res.headline, choiceId === 'demand_coach_change' ? 'warning' : 'info');
+            return res;
+          }}
+          onOpenCoachMarket={() => {
+            setShowPressureModal(false);
+            setPressureIsCrisisTrigger(false);
+            if (pendingMidEventAfterPressure && isValidGameEvent(pendingMidEventAfterPressure)) {
+              enqueueEvent(pendingMidEventAfterPressure);
+            }
+            setPendingMidEventAfterPressure(null);
+            setCoachMarketTab('market');
+            setShowCoachMarketModal(true);
+          }}
+          onClose={() => {
+            setShowPressureModal(false);
+            setPressureIsCrisisTrigger(false);
+            if (pendingMidEventAfterPressure && isValidGameEvent(pendingMidEventAfterPressure)) {
+              enqueueEvent(pendingMidEventAfterPressure);
+            }
+            setPendingMidEventAfterPressure(null);
           }}
         />
       )}
@@ -15483,8 +15684,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                       fallbackLogo: h.fallbackLogo,
                     },
                     active,
-                    safeguarded,
-                    !active
+                    safeguarded
                   );
                   return {
                     ...h,
@@ -15496,9 +15696,29 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                   };
                 }) : prev.history;
 
+                const nextTrophyHistory = Array.isArray(prev.trophyHistory) ? prev.trophyHistory.map(t => {
+                  if (!t || !t.clubName) return t;
+                  const resTrophy = resolveHistoryClubDisplay(
+                    {
+                      name: t.clubName,
+                      country: prev.club.country,
+                      color: t.color,
+                      logo: t.logo,
+                    },
+                    active,
+                    safeguarded
+                  );
+                  return {
+                    ...t,
+                    clubName: resTrophy.name,
+                    logo: resTrophy.logo,
+                    color: resTrophy.color || t.color,
+                  };
+                }) : prev.trophyHistory;
+
                 const nextRival = prev.currentRival
                   ? (() => {
-                      const resRival = resolveHistoryClubDisplay(prev.currentRival, active, safeguarded, !active);
+                      const resRival = resolveHistoryClubDisplay(prev.currentRival, active, safeguarded);
                       return {
                         ...prev.currentRival,
                         id: resRival.id ?? prev.currentRival.id,
@@ -15514,6 +15734,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                   ...prev,
                   currentRival: nextRival,
                   history: nextHistory,
+                  trophyHistory: nextTrophyHistory,
                   ...(matching ? {
                     club: {
                       ...prev.club,

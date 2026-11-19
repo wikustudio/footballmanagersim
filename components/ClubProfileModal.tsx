@@ -5,6 +5,7 @@ import { calculateClubReputation, COUNTRIES, getLeagueInfo, getMaxTier, isCanadi
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
 import { calculateClubLeagueHistory, isTopOvrClub } from '../engine/clubProgressionEngine';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface ClubProfileModalProps {
   state: GameState;
@@ -64,7 +65,19 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
     ? isModActiveProp 
     : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
 
-  const defaultClub = ALL_CLUBS.find(c => c.id === state.club.id || String(c.id) === String(state.club.id));
+  const resolvedDisplay = resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: state.club.name || 'Club',
+      country: state.club.country,
+      color: state.club.color,
+      logo: state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    isModActive,
+    clubsDb
+  );
+  const defaultClub = ALL_CLUBS.find(c => c.id === (resolvedDisplay.id ?? state.club.id) || String(c.id) === String(resolvedDisplay.id ?? state.club.id));
   const liveDbClub = isModActive 
     ? (clubsDb?.find(c => c.id === state.club.id || String(c.id) === String(state.club.id)) || 
        clubsDb?.find(c => c.name.toLowerCase().trim() === state.club.name.toLowerCase().trim()) ||
@@ -72,10 +85,10 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
     : defaultClub;
 
   const resolvedClub = liveDbClub || state.club;
-  const clubName = isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name);
-  const clubLogo = isModActive ? (liveDbClub?.logo || state.club.logo) : undefined;
-  const clubFallbackLogo = isModActive ? (liveDbClub?.fallbackLogo || state.club.fallbackLogo) : undefined;
-  const clubColor = state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
+  const clubName = resolvedDisplay.name || (isModActive ? (liveDbClub?.name || state.club.name) : (defaultClub?.name || state.club.name));
+  const clubLogo = resolvedDisplay.logo;
+  const clubFallbackLogo = resolvedDisplay.fallbackLogo;
+  const clubColor = resolvedDisplay.color || state.club.color || (isModActive ? liveDbClub?.color : defaultClub?.color) || '1d4ed8';
   const clubCountry = state.club.country || (isModActive ? liveDbClub?.country : defaultClub?.country) || 'GER';
   const hexColor = clubColor.startsWith('#') ? clubColor : `#${clubColor}`;
 

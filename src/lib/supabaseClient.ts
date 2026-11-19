@@ -293,7 +293,7 @@ export async function fetchPressSponsors(): Promise<PressSponsor[]> {
     const timeoutId = setTimeout(() => controller.abort(), 2500);
     const nowIso = encodeURIComponent(new Date().toISOString());
 
-    const res = await fetch(`${supabaseUrl}/rest/v1/press_sponsors?select=*&is_active=eq.true&expires_at=gt.${nowIso}&order=created_at.desc&limit=40`, {
+    const res = await fetch(`${supabaseUrl}/rest/v1/press_sponsors?select=*&is_active=eq.true&expires_at=gt.${nowIso}&order=created_at.desc&limit=300`, {
       signal: controller.signal,
       headers: {
         'apikey': supabaseAnonKey,

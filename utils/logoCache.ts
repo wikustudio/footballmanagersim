@@ -150,6 +150,11 @@ export const cacheLogoBlob = async (clubKey: string, url: string): Promise<strin
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     return null;
   }
+  // Wikimedia / Wikipedia Special:FilePath redirects lack CORS headers for fetch() and flood the console
+  // with CORS errors even though <img> tags load and browser-cache them cleanly.
+  if (/wikimedia\.org|wikipedia\.org/i.test(url)) {
+    return null;
+  }
   if (inFlightBlobFetches.has(clubKey)) {
     return null;
   }

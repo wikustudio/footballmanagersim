@@ -11,15 +11,28 @@
   .text-system-red { color: #ff453a; }
   
   .glass {
-    background: rgba(28, 28, 30, 0.75);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .editorial-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E6E3DC;
+    border-radius: 26px;
+    box-shadow: 0 4px 18px rgba(24, 25, 31, 0.04);
+  }
+
+  .editorial-well {
+    background-color: #F6F5F1;
+    border: 1px solid #EAE7E0;
+    border-radius: 16px;
   }
 
   .ovr-box {
-    background: linear-gradient(135deg, #e5e5ea 0%, #d1d1d6 100%);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #F6F5F1 0%, #EAE7E0 100%);
+    border: 1px solid #DCD8CE;
+    box-shadow: 0 4px 14px rgba(24, 25, 31, 0.06);
   }
 
   .trophy-stack > * {
@@ -134,15 +147,15 @@
   height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(24, 25, 31, 0.04);
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(24, 25, 31, 0.18);
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(24, 25, 31, 0.30);
 }
 
 @keyframes treasuryGainPulse {
@@ -372,7 +385,7 @@ textarea,
 /* Modern sleek scrollbars across desktop browsers */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(24, 25, 31, 0.18) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -385,14 +398,14 @@ textarea,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(24, 25, 31, 0.16);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(24, 25, 31, 0.28);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -439,4 +452,268 @@ textarea,
   padding-bottom: 2px;
   margin-bottom: -2px;
 }
+
+@keyframes fmsCrowdBob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2.2px); }
+}
+
+@keyframes fmsCrowdExcite {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-3.6px); }
+}
+
+@keyframes fmsFlagWave {
+  0%, 100% { transform: rotate(-4deg) skewX(-3deg); }
+  50% { transform: rotate(5deg) skewX(4deg); }
+}
+
+@keyframes fmsPyroGlow {
+  0%, 100% { opacity: 0.72; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.22); }
+}
+
+@keyframes fmsSmokeRise {
+  0% { opacity: 0.55; transform: translate(0px, 0px) scale(0.85); }
+  50% { opacity: 0.34; transform: translate(3px, -12px) scale(1.25); }
+  100% { opacity: 0.06; transform: translate(-2px, -24px) scale(1.55); }
+}
+
+@keyframes fmsPlayerIdle {
+  0%, 100% { transform: translate(0px, 0px); }
+  33% { transform: translate(2.2px, -1.4px); }
+  66% { transform: translate(-1.8px, 1.6px); }
+}
+
+@keyframes fmsPlayerCelebrate {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2.8px); }
+}
+
+@keyframes fmsCrowdCelebrate {
+  0%, 100% { transform: translateY(0px); }
+  45% { transform: translateY(-5.2px); }
+  75% { transform: translateY(-1.4px); }
+}
+
+.fms-crowd-bob {
+  animation: fmsCrowdBob 1.75s ease-in-out infinite;
+}
+.fms-crowd-excite {
+  animation: fmsCrowdExcite 0.95s ease-in-out infinite;
+}
+.fms-crowd-celebrate {
+  animation: fmsCrowdCelebrate 0.7s ease-in-out infinite;
+}
+.fms-flag-wave {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: fmsFlagWave 1.4s ease-in-out infinite;
+}
+.fms-pyro-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsPyroGlow 0.9s ease-in-out infinite;
+}
+.fms-smoke-rise {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsSmokeRise 2.6s ease-out infinite;
+}
+.fms-player-idle {
+  animation: fmsPlayerIdle 2.8s ease-in-out infinite;
+}
+.fms-player-celebrate {
+  animation: fmsPlayerCelebrate 0.75s ease-in-out infinite;
+}
+
+@keyframes fmsConfettiDrift {
+  0% { transform: translate(0px, -4px) rotate(0deg); opacity: 0.92; }
+  50% { transform: translate(2.4px, 3.2px) rotate(110deg); opacity: 0.78; }
+  100% { transform: translate(-1.8px, 8px) rotate(220deg); opacity: 0.12; }
+}
+
+.fms-confetti-drift {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsConfettiDrift 2.6s ease-in-out infinite;
+}
+
+/* 3D Training Pitch Drills (Shuttle Sprints, Passing Triangles & Goalkeeper Reflex Dives) */
+@keyframes fmsShuttleIsoA {
+  0%, 100% { transform: translate(-22px, -11px); }
+  50% { transform: translate(22px, 11px); }
+}
+
+@keyframes fmsShuttleIsoB {
+  0%, 100% { transform: translate(20px, 10px); }
+  50% { transform: translate(-20px, -10px); }
+}
+
+@keyframes fmsRondoBall {
+  0%, 100% { transform: translate(-18px, -4px); }
+  25% { transform: translate(2px, -14px); }
+  50% { transform: translate(20px, -2px); }
+  75% { transform: translate(-2px, 12px); }
+}
+
+@keyframes fmsLongPassBall {
+  0%, 100% { transform: translate(-34px, -16px); }
+  50% { transform: translate(34px, 16px); }
+}
+
+@keyframes fmsGkDiveLeft {
+  0%, 35%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+  55% { transform: translate(-11px, 5px) rotate(-24deg); }
+  75% { transform: translate(-4px, 2px) rotate(-8deg); }
+}
+
+@keyframes fmsGkDiveRight {
+  0%, 40%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+  60% { transform: translate(11px, -5px) rotate(24deg); }
+  80% { transform: translate(4px, -2px) rotate(8deg); }
+}
+
+@keyframes fmsGkShotLeft {
+  0%, 25% { transform: translate(46px, 22px); opacity: 1; }
+  55% { transform: translate(-8px, 4px); opacity: 1; }
+  75%, 100% { transform: translate(14px, 18px); opacity: 0.85; }
+}
+
+@keyframes fmsGkShotRight {
+  0%, 30% { transform: translate(-46px, -22px); opacity: 1; }
+  60% { transform: translate(8px, -4px); opacity: 1; }
+  80%, 100% { transform: translate(-14px, -18px); opacity: 0.85; }
+}
+
+.fms-shuttle-a {
+  animation: fmsShuttleIsoA 3.1s ease-in-out infinite;
+}
+.fms-shuttle-b {
+  animation: fmsShuttleIsoB 3.4s ease-in-out infinite;
+}
+.fms-rondo-ball {
+  animation: fmsRondoBall 2.6s linear infinite;
+}
+.fms-longpass-ball {
+  animation: fmsLongPassBall 2.4s ease-in-out infinite;
+}
+.fms-gk-dive-left {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: fmsGkDiveLeft 2.8s ease-in-out infinite;
+}
+.fms-gk-dive-right {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: fmsGkDiveRight 3.1s ease-in-out infinite;
+}
+.fms-gk-shot-left {
+  animation: fmsGkShotLeft 2.8s ease-out infinite;
+}
+.fms-gk-shot-right {
+  animation: fmsGkShotRight 3.1s ease-out infinite;
+}
+
+@keyframes fmsWaterGlint {
+  0%, 100% { opacity: 0.22; transform: translate(0px, 0px); }
+  50% { opacity: 0.62; transform: translate(4px, 1.8px); }
+}
+
+@keyframes fmsBeaconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.65); opacity: 0.35; }
+}
+
+@keyframes fmsTickerGlow {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+
+@keyframes fmsVisitorStroll {
+  0%, 100% { transform: translate(0px, 0px); }
+  25% { transform: translate(4.5px, 2px); }
+  50% { transform: translate(1.5px, -1.5px); }
+  75% { transform: translate(-4px, -1.8px); }
+}
+
+@keyframes fmsBusCruise {
+  0%, 100% { transform: translate(-12px, -5.5px); }
+  50% { transform: translate(15px, 6.9px); }
+}
+
+@keyframes fmsSedanGlide {
+  0%, 100% { transform: translate(-9px, -4.1px); }
+  50% { transform: translate(11px, 5.1px); }
+}
+
+@keyframes fmsKpiPulse {
+  0%, 100% { opacity: 0.38; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.22); }
+}
+
+@keyframes fmsKpiBar {
+  0%, 100% { opacity: 0.84; }
+  50% { opacity: 1; }
+}
+
+@keyframes fmsLampBreathe {
+  0%, 100% { opacity: 0.68; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes fmsExecNod {
+  0%, 100% { transform: translate(0px, 0px); }
+  50% { transform: translate(0px, -1px); }
+}
+
+@keyframes fmsMowerSweep {
+  0% { transform: translate(0px, 0px); }
+  44% { transform: translate(var(--mx1, 84px), var(--my1, 38px)); }
+  50% { transform: translate(var(--mx2, 62px), var(--my2, 48px)); }
+  94% { transform: translate(var(--mx3, -22px), var(--my3, 10px)); }
+  100% { transform: translate(0px, 0px); }
+}
+
+.fms-water-glint {
+  animation: fmsWaterGlint 3.4s ease-in-out infinite;
+}
+.fms-beacon-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsBeaconPulse 2.1s ease-in-out infinite;
+}
+.fms-ticker-glow {
+  animation: fmsTickerGlow 2.8s ease-in-out infinite;
+}
+.fms-visitor-stroll {
+  animation: fmsVisitorStroll 5.8s ease-in-out infinite;
+}
+.fms-bus-cruise {
+  animation: fmsBusCruise 9.5s ease-in-out infinite;
+}
+.fms-sedan-glide {
+  animation: fmsSedanGlide 7.6s ease-in-out infinite;
+}
+.fms-kpi-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsKpiPulse 1.8s ease-in-out infinite;
+}
+.fms-kpi-bar {
+  animation: fmsKpiBar 3.1s ease-in-out infinite;
+}
+.fms-lamp-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fmsLampBreathe 3.8s ease-in-out infinite;
+}
+.fms-exec-nod {
+  animation: fmsExecNod 4.2s ease-in-out infinite;
+}
+.fms-mower-sweep {
+  animation: fmsMowerSweep 9.2s ease-in-out infinite;
+}
+
+
 

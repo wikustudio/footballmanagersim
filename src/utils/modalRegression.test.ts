@@ -386,7 +386,7 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(eventSrc).toContain('{countryObj?.name || countryCode}</span>');
       expect(eventSrc).toContain('{lgInfo?.name || `Tier ${c.tier}`}</span>');
       // Club name wraps cleanly
-      expect(eventSrc).toContain('group-hover:text-sky-200 transition-colors break-words');
+      expect(eventSrc).toContain('group-hover:text-sky-700 transition-colors break-words');
     });
 
     it('verifies ToastContainer uses break-words on kicker and message to prevent mobile cutoffs', async () => {
@@ -596,8 +596,9 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(appSrc).toContain("if (ddType === 'promotion_playoff') {");
       expect(appSrc).toContain('wonPlayoff = ddWon;');
 
-      // Verify 34-game targetPts accounts for Decision Day victory
-      expect(appSrc).toContain('targetPts = Math.max(userPreGamePts + 3, userFinalPts)');
+      // Verify 34-game final stats account for Decision Day victory on top of MD 33
+      expect(appSrc).toContain('userFinalPts = userPreGamePts + 3');
+      expect(appSrc).toContain('wins = baseW33 + (ddWon ? 1 : 0)');
     });
 
     it('verifies sanitizeGameState and active save state auto-heals SGV Freiberg 7-1 Decision Day victory', async () => {
@@ -693,7 +694,7 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(headerSrc).toContain('href="https://basketballmanagersim.com"');
       expect(headerSrc).toContain('Basketball Manager Sim');
 
-      expect(profileModalSrc).toContain('divide-x divide-white/[0.06]');
+      expect(profileModalSrc).toContain('divide-x divide-[#E6E3DC]');
       expect(profileModalSrc).toContain("title: 'Balanced Model'");
       expect(profileModalSrc).toContain("title: 'Wonderkid Factory'");
       expect(profileModalSrc).not.toContain('lg:grid-cols-3');
@@ -776,7 +777,399 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(appSrc).toContain('minExpectedNextYear');
       expect(mainSrc).toContain('if (Date.now() - bootedAt < 4000) updateSW(true);');
     }, 25000);
+
+    it('verifies modal z-index hierarchy, single-layer navigation, and Escape dismissal across modal stack', async () => {
+      const fs = await import('fs');
+      const consentSrc = fs.readFileSync('src/components/ConsentBanner.tsx', 'utf-8');
+      const tourSrc = fs.readFileSync('src/components/GlobalTourModal.tsx', 'utf-8');
+      const pressSrc = fs.readFileSync('src/components/CoachPressReleaseModal.tsx', 'utf-8');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+
+      // ConsentBanner bottom bar stays below z-50 modals
+      expect(consentSrc).not.toContain('z-[9998]');
+      expect(consentSrc).toContain('z-[45]');
+
+      // GlobalTourModal sits above MarketingModal (z-[70] > z-50) and handles Escape
+      expect(tourSrc).toContain('z-[70]');
+      expect(tourSrc).toContain("e.key === 'Escape'");
+      expect(tourSrc).toContain('e.stopImmediatePropagation()');
+
+      // CoachPressReleaseModal handles Escape cleanly above CoachMarketModal
+      expect(pressSrc).toContain('z-[70]');
+      expect(pressSrc).toContain("e.key === 'Escape'");
+      expect(pressSrc).toContain('e.stopImmediatePropagation()');
+
+      // Centralized voluntary modal Escape handler + single-layer ClubImpactModal sub-navigation
+      expect(appSrc).toContain('const handleGlobalModalEscape = (e: KeyboardEvent) =>');
+      expect(appSrc).toContain('returnToYouthModalRef.current = showYouthModal;');
+      expect(appSrc).toContain("onOpenTeamBonding={() => {\n            setShowImpactModal(false);\n            setShowTeamBondingModal(true);\n          }}");
+    });
+
+    it('prevents transient stat/record reset and bounce-back at end of 1st-half and full-season simulation', async () => {
+      const fs = await import('fs');
+      const workspaceSrc = fs.readFileSync('src/components/WorkspaceTabs.tsx', 'utf-8');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const { calculateProbabilisticSeason } = await import('../engine/seasonSimEngine');
+
+      // Verify WorkspaceTabs preserves completed inlineSim matchdays while pendingSeasonState is still active
+      expect(workspaceSrc).toContain('state.pendingSeasonState && inlineSim.currentIdx > 0 && activeSchedule.length > 0');
+      expect(workspaceSrc).toContain('Math.min(activeSchedule.length, inlineSim.currentIdx + 1)');
+      expect(appSrc).toContain('last5: (syncedPending?.matchdaySchedule || syncedPending?.schedule || [])');
+
+      // Simulate a full season lifecycle and assert monotonic record progression without reset or bounce-back
+      const testState: any = {
+        year: 2026,
+        startYear: 2026,
+        seasonCount: 1,
+        seasonPhase: 'start',
+        budget: 2500,
+        reputation: 55,
+        clubImpactScore: 60,
+        tactic: 'Total Football',
+        stadiumPolicy: 'balanced',
+        managerSkills: [],
+        history: [
+          {
+            year: 2025,
+            clubName: '1. FC Magdeburg',
+            color: '#005CA9',
+            leagueTag: '2.BL',
+            leagueCss: '',
+            ovr: 71,
+            tier: 2,
+            wins: 14,
+            draws: 10,
+            losses: 10,
+            pts: 52,
+            pos: 7,
+            gf: 48,
+            ga: 42,
+            att: 22000,
+            util: 88,
+            trophyIcons: '',
+            trophiesThisYear: {},
+          },
+        ],
+        club: {
+          id: 101,
+          name: '1. FC Magdeburg',
+          country: 'GER',
+          tier: 2,
+          baseOvr: 73,
+          ovr: 73,
+          morale: 85,
+          stadium: 25000,
+          fanBase: 45000,
+          color: '#005CA9',
+        },
+      };
+
+      const pending1 = calculateProbabilisticSeason(testState, [testState.club], false);
+      testState.pendingSeasonState = pending1;
+      const schedule1 = pending1.matchdaySchedule || [];
+      expect(schedule1).toHaveLength(34);
+
+      const computeSnapshot = (state: any, inlineSim: { active: boolean; currentIdx: number; schedule: any[]; totalMatchdays: number }) => {
+        const pendingSchedule = state.pendingSeasonState?.matchdaySchedule || state.pendingSeasonState?.schedule || [];
+        const activeSchedule =
+          inlineSim.active && inlineSim.schedule.length > 0
+            ? inlineSim.schedule
+            : pendingSchedule.length > 0
+            ? pendingSchedule
+            : inlineSim.schedule;
+        const totalMds = inlineSim.active
+          ? inlineSim.totalMatchdays
+          : state.pendingSeasonState?.totalMatchdays || inlineSim.totalMatchdays || 34;
+        const playedMatchdays = inlineSim.active
+          ? Math.max(0, inlineSim.currentIdx + 1)
+          : state.pendingSeasonState && inlineSim.currentIdx > 0 && activeSchedule.length > 0
+          ? Math.min(activeSchedule.length, inlineSim.currentIdx + 1)
+          : state.seasonPhase === 'mid'
+          ? Math.floor(totalMds / 2)
+          : 0;
+        const currentOutcome = playedMatchdays > 0 ? activeSchedule[playedMatchdays - 1] : undefined;
+        if (playedMatchdays > 0 && currentOutcome) {
+          const w = currentOutcome.runningWins ?? currentOutcome.runningW ?? 0;
+          const d = currentOutcome.runningDraws ?? currentOutcome.runningD ?? 0;
+          const l = currentOutcome.runningLosses ?? currentOutcome.runningL ?? Math.max(0, playedMatchdays - w - d);
+          const winRate = Math.round((w / Math.max(1, playedMatchdays)) * 100);
+          const last5 = activeSchedule.slice(Math.max(0, playedMatchdays - 5), playedMatchdays).map((m: any) => m.result);
+          return { playedMatchdays, w, d, l, winRate, last5, playedCount: playedMatchdays };
+        }
+        const lastHist = state.history && state.history.length > 0 ? state.history[state.history.length - 1] : null;
+        if (lastHist) {
+          const w = lastHist.wins || 0;
+          const d = lastHist.draws || 0;
+          const l = lastHist.losses ?? Math.max(0, 34 - w - d);
+          const total = Math.max(1, w + d + l);
+          return {
+            playedMatchdays,
+            w,
+            d,
+            l,
+            winRate: Math.round((w / total) * 100),
+            last5: lastHist.last5 || [],
+            playedCount: w + d + l,
+          };
+        }
+        return { playedMatchdays, w: 0, d: 0, l: 0, winRate: 0, last5: [], playedCount: 0 };
+      };
+
+      // 1. End of 1st-half active tick (MD 17, active: true, currentIdx: 16)
+      const snapMd17Active = computeSnapshot(testState, {
+        active: true,
+        currentIdx: 16,
+        schedule: schedule1,
+        totalMatchdays: 34,
+      });
+      expect(snapMd17Active.playedMatchdays).toBe(17);
+
+      // 2. MidSeasonDilemmaModal opens (active becomes false BEFORE seasonPhase becomes 'mid')
+      const snapMidDilemmaOpen = computeSnapshot(testState, {
+        active: false,
+        currentIdx: 16,
+        schedule: schedule1,
+        totalMatchdays: 34,
+      });
+      // Must NOT drop to 0 (last year's 14-10-10 record) and bounce back!
+      expect(snapMidDilemmaOpen.playedMatchdays).toBe(17);
+      expect(snapMidDilemmaOpen.w).toBe(snapMd17Active.w);
+      expect(snapMidDilemmaOpen.d).toBe(snapMd17Active.d);
+      expect(snapMidDilemmaOpen.l).toBe(snapMd17Active.l);
+
+      // 3. Dilemma resolved -> recalculate 2nd half with locked 1st half and transition to seasonPhase = 'mid'
+      testState.club.baseOvr += 1;
+      const pending2 = calculateProbabilisticSeason(testState, [testState.club], false, {
+        lockFirstHalfFrom: pending1,
+        dilemmaChoice: 'A',
+      });
+      testState.pendingSeasonState = pending2;
+      testState.seasonPhase = 'mid';
+      const schedule2 = pending2.matchdaySchedule || [];
+      const snapWinterBreak = computeSnapshot(testState, {
+        active: false,
+        currentIdx: 16,
+        schedule: schedule2,
+        totalMatchdays: 34,
+      });
+      expect(snapWinterBreak.playedMatchdays).toBe(17);
+      expect(snapWinterBreak.w).toBe(snapMd17Active.w);
+      expect(snapWinterBreak.d).toBe(snapMd17Active.d);
+      expect(snapWinterBreak.l).toBe(snapMd17Active.l);
+
+      // 4. End of 2nd-half active tick (MD 34, active: true, currentIdx: 33)
+      const snapMd34Active = computeSnapshot(testState, {
+        active: true,
+        currentIdx: 33,
+        schedule: schedule2,
+        totalMatchdays: 34,
+      });
+      expect(snapMd34Active.playedMatchdays).toBe(34);
+      expect(snapMd34Active.w).toBe(pending2.wins);
+      expect(snapMd34Active.d).toBe(pending2.draws);
+      expect(snapMd34Active.l).toBe(pending2.losses);
+
+      // 5. Post-MD34 async window (active: false while gameState.seasonPhase is still 'mid' during DecisionDay / TrophyModal / CupRunModal / simulateAiLeaguesAsync)
+      const snapPostSimAsyncGap = computeSnapshot(testState, {
+        active: false,
+        currentIdx: 33,
+        schedule: schedule2,
+        totalMatchdays: 34,
+      });
+      // Must NOT drop back to MD 17 (17 matchdays) and bounce back to MD 34!
+      expect(snapPostSimAsyncGap.playedMatchdays).toBe(34);
+      expect(snapPostSimAsyncGap.w).toBe(snapMd34Active.w);
+      expect(snapPostSimAsyncGap.d).toBe(snapMd34Active.d);
+      expect(snapPostSimAsyncGap.l).toBe(snapMd34Active.l);
+      expect(snapPostSimAsyncGap.winRate).toBe(snapMd34Active.winRate);
+      expect(snapPostSimAsyncGap.last5).toEqual(snapMd34Active.last5);
+
+      // 6. Final atomic state commit (pendingSeasonState cleared, historyItem pushed with last5, inlineSim reset)
+      testState.history.push({
+        year: 2026,
+        clubName: '1. FC Magdeburg',
+        color: '#005CA9',
+        leagueTag: '2.BL',
+        leagueCss: '',
+        ovr: 74,
+        tier: 2,
+        wins: pending2.wins,
+        draws: pending2.draws,
+        losses: pending2.losses,
+        pts: pending2.pts,
+        pos: pending2.pos,
+        gf: pending2.gf,
+        ga: pending2.ga,
+        att: 23000,
+        util: 92,
+        trophyIcons: '',
+        trophiesThisYear: {},
+        last5: schedule2.slice(-5).map((m: any) => m.result),
+      });
+      testState.pendingSeasonState = null;
+      testState.seasonPhase = 'start';
+      const snapCommitted = computeSnapshot(testState, {
+        active: false,
+        currentIdx: 0,
+        schedule: [],
+        totalMatchdays: 34,
+      });
+      expect(snapCommitted.w).toBe(snapMd34Active.w);
+      expect(snapCommitted.d).toBe(snapMd34Active.d);
+      expect(snapCommitted.l).toBe(snapMd34Active.l);
+      expect(snapCommitted.winRate).toBe(snapMd34Active.winRate);
+      expect(snapCommitted.last5).toEqual(snapMd34Active.last5);
+      expect(snapCommitted.playedCount).toBe(34);
+    });
+
+    it('maintains v3.0 workspace data parity (50-man squad cap, trophy/shield sync, PLC badge, and restored modal triggers)', async () => {
+      const fs = await import('fs');
+      const workspaceSrc = fs.readFileSync('src/components/WorkspaceTabs.tsx', 'utf-8');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+
+      // Prefer live inlineSim.schedule even when inlineSim.active becomes false after MD 34 Decision Day
+      expect(workspaceSrc).toContain('inlineSim.schedule.length > 0\n      ? inlineSim.schedule\n      : pendingSchedule');
+
+      // Unified 50-man squad cap (no stale / 25 hardcode)
+      expect(workspaceSrc).not.toContain('/ 25');
+      expect(workspaceSrc).toContain('maxSquadSize={50}');
+      expect(workspaceSrc).toContain('{state.club.squadSize ?? 24} / 50');
+
+      // Single-source trophy count (no Supercup double-counting) & listed PLC check
+      expect(workspaceSrc).toContain('const totalTrophiesCount = state.totals?.trophies || 0;');
+      expect(workspaceSrc).not.toContain("(state.supercupHistory || []).filter((s) => s.won).length");
+      expect(workspaceSrc).toContain("state.isPublic || state.ipoDone ? 'Listed PLC'");
+
+      // Restored modal triggers across tabs and Quick Actions
+      expect(workspaceSrc).toContain('data-testid="squad-roster-rules-btn"');
+      expect(workspaceSrc).toContain('data-testid="commercial-fan-event-btn"');
+      expect(workspaceSrc).toContain('data-testid="board-prestige-btn"');
+      expect(appSrc).toContain('onOpenSquadRegistration={() => setShowSquadRegistrationModal(true)}');
+      expect(appSrc).toContain('onOpenFanBonding={() => setShowFanBondingModal(true)}');
+      expect(appSrc).toContain('onOpenPrestige={() => setShowPrestigeModal(true)}');
+    });
+
+    it('eliminates v3.0 second-pass visual & UX defects (heatmap clip, sponsor auto-sign trap, duplicate links, exact win-rate, and CWC/WC trophy parity)', async () => {
+      const fs = await import('fs');
+      const shotCardSrc = fs.readFileSync('src/components/ShotEfficiencyCard.tsx', 'utf-8');
+      const workspaceSrc = fs.readFileSync('src/components/WorkspaceTabs.tsx', 'utf-8');
+      const historySrc = fs.readFileSync('src/components/SeasonHistoryTable.tsx', 'utf-8');
+      const campusSrc = fs.readFileSync('src/components/ClubCampus3D.tsx', 'utf-8');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const { buildActiveNotifications } = await import('../engine/liveSimVisualEngine');
+
+      // 1. Tactical Outcome pitch SVG uses exact 100/62 aspect ratio + clipPath + userSpaceOnUse filter (no corner artifacts)
+      expect(shotCardSrc).toContain('aspect-[100/62]');
+      expect(shotCardSrc).toContain('preserveAspectRatio="none"');
+      expect(shotCardSrc).toContain('clipPath="url(#tacticalPitchClip)"');
+      expect(shotCardSrc).toContain('filterUnits="userSpaceOnUse"');
+
+      // 2. Commercial Sponsorship Deals removes silent auto-sign Negotiate Sponsors button and duplicate Naming Rights Desk link
+      expect(workspaceSrc).not.toContain('Negotiate Sponsors');
+      expect(workspaceSrc).not.toContain('Naming Rights Desk →');
+      expect(workspaceSrc).toContain('data-testid="sponsor-quota-badge"');
+      expect(workspaceSrc).toContain('data-testid="overview-treasury-sponsors-btn"');
+      expect(workspaceSrc).toContain("onSelectTab ? onSelectTab('commercial') : onOpenNamingRights()");
+
+      // 3. Overview Season Snapshot uses 1-decimal winRateExact instead of integer Math.round(...).toFixed(1)
+      expect(workspaceSrc).toContain('snapshotStats.winRateExact.toFixed(1)');
+      expect(workspaceSrc).not.toContain('snapshotStats.winRate.toFixed(1)');
+
+      // 4. ClubCampus3D fallback maxSquadSize defaults to 50 and SeasonHistoryTable counts CWC & WC honours
+      expect(campusSrc).toContain('maxSquadSize = 50');
+      expect(historySrc).toContain('counts.cwc += (h.trophiesThisYear?.cwc || 0)');
+      expect(historySrc).toContain('counts.wc += (h.trophiesThisYear?.wc || 0)');
+
+      // 5. CoachDossierModal onRenew and WinterCampModal onFireCoach target explicit CoachMarketModal tabs
+      expect(appSrc).toContain("onRenew={() => {\n            setCoachMarketTab('staff');");
+      expect(appSrc).toContain("setCoachMarketTab(gameState.currentCoach ? 'staff' : 'market');");
+
+      // 6. buildActiveNotifications surfaces Head Coach Vacant (-4 OVR) alert with coach_market actionId
+      const alerts = buildActiveNotifications(
+        {
+          club: { id: 1, name: 'Test FC', tier: 2, baseOvr: 70, color: '#0055aa', stadium: 20000, country: 'GER' },
+          budget: 5000,
+          sponsorsPitchedThisSeason: 3,
+          stadiumNamingRights: { partnerName: 'Partner', stadiumDisplayName: 'Partner Arena', tier: 'national', annualPayoutK: 500, signingBonusK: 200, totalYears: 4, yearsLeft: 3, signedYear: 2026 },
+          currentCoach: undefined,
+          youthPipeline: [],
+        } as any,
+        { net: 400, wages: 1200, estRevenue: 1600 }
+      );
+      expect(alerts.some((a) => a.id === 'coach_vacant' && a.actionId === 'coach_market')).toBe(true);
+    });
+  });
+
+  describe('Bankruptcy, Sacking, Promotion & Job-Offer Lifecycle Integrity', () => {
+    it('prioritizes mandatory bankruptcyDecisionEvent ahead of narrative events, persists pendingForcedEvent, and suppresses insolvency when already sacked', async () => {
+      const fs = await import('fs');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+
+      // 1. Dismissed manager must never carry old club's bankruptcy modal onto their next club
+      expect(appSrc).toContain('bankruptcyDecisionEvent = null;\n      state.pendingForcedEvent = sackedJobOffer;');
+      // 2. Mandatory 3yr/4yr insolvency crisis persists across reloads via pendingForcedEvent
+      expect(appSrc).toContain('} else if (bankruptcyDecisionEvent) {\n      state.pendingForcedEvent = bankruptcyDecisionEvent;');
+      // 3. bankruptcyDecisionEvent fires BEFORE rivalTakeoverEventTriggered and nlzLossEventTriggered
+      const idxBankruptcy = appSrc.indexOf('if (bankruptcyDecisionEvent && !sackedJobOffer)');
+      const idxRival = appSrc.indexOf('} else if (rivalTakeoverEventTriggered && !sackedJobOffer)');
+      const idxNlz = appSrc.indexOf('} else if (nlzLossEventTriggered && !sackedJobOffer)');
+      expect(idxBankruptcy).toBeGreaterThan(0);
+      expect(idxRival).toBeGreaterThan(idxBankruptcy);
+      expect(idxNlz).toBeGreaterThan(idxRival);
+    });
+
+    it('deduplicates enqueueEvent by id, replaces insolvency queue atomically, and resets club-bound naming/stadium/ownership state on job switch', async () => {
+      const fs = await import('fs');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+
+      // 1. Idempotent enqueueEvent prevents duplicate forced modals
+      expect(appSrc).toContain('prev.some(e => Boolean(e.id && evt.id && e.id === evt.id)) ? prev : [...prev, evt]');
+      // 2. Full Insolvency atomically replaces eventQueue with insolvencyJobOffer
+      expect(appSrc).toContain('setEventQueue([insolvencyJobOffer]);');
+      // 3. Switching clubs via handleAcceptJobOffer clears old club's naming rights, stadium architecture override, VIP boxes, and billionaire ownership
+      expect(appSrc).toContain("updated.ownership = 'standard';");
+      expect(appSrc).toContain('updated.stadiumNamingRights = null;');
+      expect(appSrc).toContain('updated.stadiumStyle = resolvedNewClub.stadiumStyle || undefined;');
+      expect(appSrc).toContain('updated.vipHospitality = false;');
+      expect(appSrc).toContain("updated.stadiumPolicy = 'atmosphere';");
+    });
+
+    it('aligns Year-1 debt point deduction threshold to €2M (2000 in €K) across App.tsx and standingsEngine.ts', async () => {
+      const fs = await import('fs');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const standingsSrc = fs.readFileSync('src/engine/standingsEngine.ts', 'utf-8');
+
+      expect(appSrc).not.toContain('Math.abs(state.budget) < 500000');
+      expect(standingsSrc).not.toContain('Math.abs(budget) < 500000');
+      expect(appSrc).toContain('Math.abs(state.budget) < 2000 ? 1 : 2');
+      expect(standingsSrc).toContain('Math.abs(budget) < 2000 ? 1 : 2');
+    });
+
+    it('configures Vite 6 allowedHosts: true, hmr: false, safeStoragePolyfill, Cloud Run PORT, and React.lazy modal splitting', async () => {
+      const fs = await import('fs');
+      const viteSrc = fs.readFileSync('vite.config.ts', 'utf-8');
+      const serverSrc = fs.readFileSync('server.ts', 'utf-8');
+      const mainSrc = fs.readFileSync('src/main.tsx', 'utf-8');
+      const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const pkgSrc = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+
+      expect(viteSrc).toContain('allowedHosts: true');
+      expect(viteSrc).toContain('hmr: false');
+      expect(serverSrc).toContain('allowedHosts: true');
+      expect(serverSrc).toContain('hmr: false');
+      expect(serverSrc).toContain('process.env.NGINX_PORT');
+      expect(serverSrc).toContain('Number(process.env.PORT || 3000)');
+      expect(pkgSrc.scripts.start).toBe('node server.ts');
+      expect(pkgSrc.scripts.build).toBe('vite build');
+      expect(mainSrc.startsWith("import './utils/safeStoragePolyfill';")).toBe(true);
+      expect(mainSrc).toContain("window.location.hostname.endsWith('.run.app')");
+      expect(appSrc).toContain("React.lazy(() => import('./components/SeasonFinishModal')");
+      expect(appSrc).toContain('<React.Suspense fallback={null}>');
+    });
   });
 });
+
+
+
 
 

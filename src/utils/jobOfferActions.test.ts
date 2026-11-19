@@ -7,7 +7,7 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
 
     // Club card must be a div, not a clickable button
     expect(eventUiSrc).toContain('c.id || `${c.name}-${idx}`');
-    expect(eventUiSrc).toContain('className="w-full bg-white/[0.025] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col border border-white/[0.08] relative overflow-hidden text-left shadow-sm cursor-default"');
+    expect(eventUiSrc).toContain('className="w-full bg-[#F6F5F1] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col border border-[#E6E3DC] relative overflow-hidden text-left shadow-sm cursor-default"');
 
     // Ensure the card wrapper does not have onClick
     expect(eventUiSrc).not.toMatch(/<button\s+key=\{c\.id\s*\|\|\s*`\$\{c\.name\}-\$\{idx\}`\}\s+onClick=/);
@@ -207,7 +207,7 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     expect(errorBoundarySrc).toContain('Boolean(navigator.webdriver)');
   }, 20000);
 
-  it('aligns UI badges, patch notes spotlight, crash/feedback headers, and package metadata on v2.6', () => {
+  it('aligns UI badges, patch notes spotlight, crash/feedback headers, and package metadata on v3.0', () => {
     const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
     const onboardingSrc = fs.readFileSync('src/components/Onboarding.tsx', 'utf-8');
     const aboutSrc = fs.readFileSync('src/components/AboutPage.tsx', 'utf-8');
@@ -216,19 +216,20 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     const serverSrc = fs.readFileSync('server.ts', 'utf-8');
     const netlifyFeedbackSrc = fs.readFileSync('netlify/functions/feedback.ts', 'utf-8');
 
-    expect(pkg.version).toBe('2.6.0');
-    expect(onboardingSrc).toContain('v 2.6');
+    expect(pkg.version).toBe('3.0.0');
+    expect(onboardingSrc).toContain('v 3.0');
     expect(onboardingSrc).not.toContain('v 2.2');
-    expect(aboutSrc).toContain('<span className="text-zinc-400">v2.6</span>');
-    expect(aboutSrc).toContain('v2.6 Spotlight');
+    expect(aboutSrc).toContain('<span className="text-[#6B7280] tabular-nums">v3.0</span>');
+    expect(aboutSrc).toContain('v3.0 Spotlight');
+    expect(aboutSrc).toContain('v2.6 Archive');
     expect(aboutSrc).toContain('v2.3 Archive');
     expect(aboutSrc).toContain('v2.2 Archive');
-    expect(feedbackSrc).toContain('[FMS v2.6');
-    expect(errorBoundarySrc).toContain('[FMS v2.6 Auto Crash Report]');
-    expect(serverSrc).toContain('[FMS v2.6');
-    expect(serverSrc).toContain('FootballManagerSim/2.6');
-    expect(netlifyFeedbackSrc).toContain('[FMS v2.6');
-    expect(netlifyFeedbackSrc).toContain('FootballManagerSim/2.6');
+    expect(feedbackSrc).toContain('[FMS v3.0');
+    expect(errorBoundarySrc).toContain('[FMS v3.0 Auto Crash Report]');
+    expect(serverSrc).toContain('[FMS v3.0');
+    expect(serverSrc).toContain('FootballManagerSim/3.0');
+    expect(netlifyFeedbackSrc).toContain('[FMS v3.0');
+    expect(netlifyFeedbackSrc).toContain('FootballManagerSim/3.0');
 
     // Verify handleAcceptJobOffer strips temporary coach/loan/ringer boosts from departing club,
     // aligns lastOvr with boostedNewClubOvr, and saves state immediately
@@ -259,8 +260,9 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     expect(appSrc).toContain('updated.lastPoachDeclinedYear = (updated.year || 2026) - 1;');
     expect(appSrc).toContain('!isSummerWorldCupInviteYear && (state.madeCupFinal || eventRoll < 0.85)');
 
-    // 2. MatchdayActionDock hides behind FeedbackModal and ignores Space when any dialog is mounted
-    expect(appSrc).toContain('showFeedbackModal ||');
+    // 2. FeedbackModal marks itself as an accessible dialog so MatchdayActionDock/Spacebar guard ignores Space when any dialog is mounted
+    const feedbackModalSrc = fs.readFileSync('src/components/FeedbackModal.tsx', 'utf-8');
+    expect(feedbackModalSrc).toContain('role="dialog"');
     expect(dockSrc).toContain("document.querySelector('[role=\"dialog\"], [aria-modal=\"true\"], [data-wc-modal=\"true\"]')");
 
     // 3. SeasonHistoryTable scroll container includes pb-24 clearance above floating dock and removes the Almanac tab switcher

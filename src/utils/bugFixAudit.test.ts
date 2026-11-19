@@ -302,7 +302,7 @@ describe('Surgical Bug Fix Verification: Mod Sync Customization & Cup Desync', (
     expect(ovrModalSrc).not.toContain('Cushioned to -2 OVR by Level 5 Facilities');
 
     // SeasonFinishModal enforces unavoidable -4 OVR
-    expect(seasonFinishSrc).toContain('unavoidable <strong className="text-rose-400">-4 OVR penalty</strong>');
+    expect(seasonFinishSrc).toContain('unavoidable <strong className="text-rose-700">-4 OVR penalty</strong>');
     expect(seasonFinishSrc).toContain("'Stale (-4 OVR Penalty)'");
   });
 
@@ -540,12 +540,13 @@ describe('Surgical Bug Fix Verification: Mod Sync Customization & Cup Desync', (
     expect(stripeClientSrc).not.toContain('https://api.stripe.com');
     expect(stripeClientSrc).toContain("fetch('/api/create-checkout-session'");
 
-    // Verify two-pool capacity separation (max 18 paid, max 2 free_48h) across both server.ts and Netlify functions
+    // Verify two-pool unique-brand capacity separation (max 18 paid, max 2 free_48h) across both server.ts and Netlify functions
     for (const src of [serverSrc, netlifyCreateSrc, netlifyConfirmSrc]) {
-      expect(src).toContain(".neq('package_type', 'free_48h')");
-      expect(src).toContain(".eq('package_type', 'free_48h')");
-      expect(src).toContain('freeCount >= 2');
-      expect(src).toContain('paidCount >= 18');
+      expect(src).toContain("'free_48h'");
+      expect(src).toContain('uniqueFree');
+      expect(src).toContain('uniquePaid');
+      expect(src).toContain('.size >= 2');
+      expect(src).toContain('.size >= 18');
     }
   });
 

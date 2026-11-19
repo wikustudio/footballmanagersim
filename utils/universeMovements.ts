@@ -4,6 +4,7 @@ import { REAL_CLUB_ALIASES } from '../engine/moddingEngine';
 import { ALL_CLUBS } from '../data/clubsData';
 import { TEAMS } from '../mod-data/teams';
 import { UEFA_COUNTRIES, CONMEBOL_COUNTRIES, CONCACAF_COUNTRIES, AFC_COUNTRIES } from './regionHelpers';
+import { resolveHistoryClubDisplay } from './modSafeguards';
 
 // Authentic baseline transitions (recent European promotions & relegations)
 export const BASELINE_UNIVERSE_MOVEMENTS: UniverseMovement[] = [
@@ -1237,25 +1238,32 @@ export function getAllUniverseMovements(
       clubId = dbClub.id;
     }
 
-    // Determine resolved name
-    let resolvedName = m.clubName;
-    if (isUser && state.club?.name) {
-      resolvedName = state.club.name;
-    } else if (effectiveModActive) {
-      // Mod is ON: prefer real authentic mod name
-      const modClub = clubId != null ? modClubById.get(clubId) : undefined;
-      resolvedName = modClub?.name || dbClub?.name || m.clubName;
-    } else {
-      // Mod is OFF: strictly use unmodded / fictional club name from clubsData.ts (ALL_CLUBS or unmodded clubsDb)
-      const defClub = clubId != null ? defaultClubById.get(clubId) : undefined;
-      resolvedName = defClub?.name || dbClub?.name || m.clubName;
-    }
+    const rawCandidateName =
+      isUser && state.club?.name
+        ? state.club.name
+        : effectiveModActive
+        ? ((clubId != null ? modClubById.get(clubId)?.name : undefined) || dbClub?.name || m.clubName)
+        : ((clubId != null ? defaultClubById.get(clubId)?.name : undefined) || m.clubName || dbClub?.name);
 
-    const clubColor = dbClub?.color
-      ? (dbClub.color.startsWith('#') ? dbClub.color : `#${dbClub.color}`)
-      : (clubId != null && defaultClubById.get(clubId)?.color ? `#${defaultClubById.get(clubId)!.color}` : (m.clubColor || '#38bdf8'));
-    
-    const clubLogo = dbClub?.logo || dbClub?.fallbackLogo || m.clubLogo;
+    const resolvedDisplay = resolveHistoryClubDisplay(
+      {
+        id: clubId ?? dbClub?.id,
+        name: rawCandidateName || 'Club',
+        country: m.country || dbClub?.country,
+        color: dbClub?.color || m.clubColor,
+        logo: dbClub?.logo || dbClub?.fallbackLogo || m.clubLogo,
+        fallbackLogo: dbClub?.fallbackLogo,
+      },
+      effectiveModActive,
+      clubsDb
+    );
+
+    const resolvedName = resolvedDisplay.name || rawCandidateName || m.clubName;
+    clubId = resolvedDisplay.id ?? clubId;
+
+    const rawColor = resolvedDisplay.color || dbClub?.color || (clubId != null ? defaultClubById.get(clubId)?.color : undefined) || m.clubColor || '#38bdf8';
+    const clubColor = rawColor.startsWith('#') ? rawColor : `#${rawColor}`;
+    const clubLogo = resolvedDisplay.logo || resolvedDisplay.fallbackLogo;
 
     // CRITICAL: Integrity enforcement - if a movement is a champion (pos === 1, title winner, or cup champion), it can NEVER be typed as 'relegation'!
     const isChampMove = 

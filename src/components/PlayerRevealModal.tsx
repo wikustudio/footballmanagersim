@@ -277,7 +277,7 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
       onClick={onClose}
-      className="fixed inset-0 z-[70] flex flex-col items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl overflow-y-auto overscroll-contain select-none cursor-pointer"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-center p-2.5 sm:p-4 bg-[#18191F]/45 backdrop-blur-sm overflow-y-auto overscroll-contain select-none cursor-pointer"
     >
       <motion.div
         initial={{ scale: 0.94, opacity: 0, y: 16 }}
@@ -287,16 +287,12 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={`relative w-full max-w-[340px] sm:max-w-[380px] bg-[#12141c]/95 backdrop-blur-3xl rounded-[28px] border ${
+        className={`relative w-full max-w-[340px] sm:max-w-[380px] bg-white text-[#18191F] rounded-[24px] sm:rounded-[32px] border ${
           isGalactico 
-            ? 'border-amber-400/35 shadow-[0_24px_64px_rgba(0,0,0,0.8),0_0_40px_rgba(245,158,11,0.22)]' 
-            : 'border-sky-400/30 shadow-[0_24px_64px_rgba(0,0,0,0.8),0_0_40px_rgba(56,189,248,0.18)]'
-        } p-4 sm:p-5 flex flex-col gap-3.5 my-auto overflow-hidden text-left cursor-default`}
+            ? 'border-amber-300 shadow-[0_24px_64px_rgba(24,25,31,0.2)]' 
+            : 'border-sky-200 shadow-[0_24px_64px_rgba(24,25,31,0.18)]'
+        } p-4 sm:p-5 flex flex-col gap-3.5 my-auto max-h-[92dvh] sm:max-h-[88vh] min-h-0 overflow-hidden text-left cursor-default`}
       >
-        {/* Elite Ambient Aura Glow */}
-        <div className={`absolute -top-24 -right-24 w-60 h-60 ${isGalactico ? 'bg-amber-500/15' : 'bg-sky-500/12'} rounded-full blur-3xl pointer-events-none`} />
-        <div className={`absolute -bottom-24 -left-24 w-60 h-60 ${isGalactico ? 'bg-amber-400/10' : 'bg-emerald-500/10'} rounded-full blur-3xl pointer-events-none`} />
-
         <AnimatePresence mode="wait">
           {!isRevealed ? (
             /* Split-Second Anticipation State (400ms pulse & golden silhouette) */
@@ -311,11 +307,11 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
               <div className="relative">
                 <div className={`w-28 h-28 rounded-3xl ${
                   isGalactico 
-                    ? 'bg-amber-500/15 border-2 border-amber-400/50 shadow-[0_0_45px_rgba(245,158,11,0.45)]' 
-                    : 'bg-sky-500/15 border-2 border-sky-400/50 shadow-[0_0_45px_rgba(56,189,248,0.35)]'
+                    ? 'bg-amber-50 border-2 border-amber-300' 
+                    : 'bg-sky-50 border-2 border-sky-300'
                 } flex flex-col items-center justify-center animate-pulse`}>
-                  <i className={`${isGalactico ? 'fa-solid fa-crown text-amber-300' : 'fa-solid fa-user-astronaut text-sky-300'} text-4xl`}></i>
-                  <div className="flex items-center gap-1 text-[9px] text-amber-400 mt-2">
+                  <i className={`${isGalactico ? 'fa-solid fa-crown text-amber-600' : 'fa-solid fa-user-astronaut text-sky-600'} text-4xl`}></i>
+                  <div className="flex items-center gap-1 text-[9px] text-amber-600 mt-2">
                     <i className="fa-solid fa-star"></i>
                     <i className="fa-solid fa-star"></i>
                     <i className="fa-solid fa-star"></i>
@@ -323,17 +319,17 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
                     <i className="fa-solid fa-star"></i>
                   </div>
                 </div>
-                <div className="absolute inset-0 rounded-3xl ring-4 ring-amber-400/25 animate-ping pointer-events-none" />
+                <div className="absolute inset-0 rounded-3xl ring-4 ring-amber-400/30 animate-ping pointer-events-none" />
               </div>
 
               <div className="flex flex-col gap-1 items-center">
-                <span className={`text-[11px] font-mono font-bold tracking-widest uppercase ${isGalactico ? 'text-amber-400' : 'text-sky-400'}`}>
+                <span className={`text-[11px] font-mono font-bold tracking-widest uppercase ${isGalactico ? 'text-amber-700' : 'text-sky-700'}`}>
                   {isGalactico ? (isDe ? 'GALACTICO ENTDECKUNG...' : 'GALACTICO SIGHTING...') : (isDe ? 'STAR-VERPFLICHTUNG...' : 'SIGNING CONFIRMED...')}
                 </span>
-                <div className="text-3xl font-black text-white tracking-tight font-mono">
+                <div className="text-3xl font-black text-[#18191F] tracking-tight font-mono tabular-nums">
                   +{ovr} OVR
                 </div>
-                <p className="text-[11px] text-zinc-400 font-normal">
+                <p className="text-[11px] text-[#6B7280] font-normal">
                   {isDe ? 'Werte werden entschlüsselt...' : 'Scouting report compiling...'}
                 </p>
               </div>
@@ -345,16 +341,16 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="flex flex-col gap-3.5 relative z-10"
+              className="flex flex-col gap-3.5 relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar pr-0.5"
             >
               {/* Top Header Strip */}
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-lg ${isGalactico ? 'bg-amber-500/15 border-amber-400/30 text-amber-400' : 'bg-sky-500/15 border-sky-400/30 text-sky-400'} border flex items-center justify-center text-xs shadow-inner`}>
+                  <div className={`w-7 h-7 rounded-lg ${isGalactico ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-sky-50 border-sky-200 text-sky-700'} border flex items-center justify-center text-xs`}>
                     <i className={isGalactico ? "fa-solid fa-crown" : "fa-solid fa-star"}></i>
                   </div>
                   <div>
-                    <div className={`text-[10px] font-bold uppercase tracking-wider ${isGalactico ? 'text-amber-400' : 'text-sky-400'}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${isGalactico ? 'text-amber-800' : 'text-sky-800'}`}>
                       {isGalactico 
                         ? (isDe ? 'Galactico-Verpflichtung' : 'Galactico Marquee Signing')
                         : (cardType === 'youth' ? (isDe ? 'Akademie-Aufstieg' : 'Academy Graduate') : (isDe ? 'Star-Verpflichtung' : 'Marquee Signing'))}
@@ -365,42 +361,42 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
                 <button
                   onClick={onClose}
                   aria-label="Close card modal"
-                  className="w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/[0.08] cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-full bg-[#FAF9F6] hover:bg-[#EFECE4] text-[#4B5563] hover:text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] cursor-pointer shrink-0"
                 >
                   <i className="fa-solid fa-xmark text-xs"></i>
                 </button>
               </div>
 
               {/* Hero Identity Section */}
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 flex items-center justify-between gap-3">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 flex items-center justify-between gap-3">
                 {/* Left: OVR, Position, Nation */}
                 <div className="flex flex-col">
                   <div className="flex items-baseline gap-1.5">
-                    <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tighter tabular-nums ${isGalactico ? 'text-amber-300' : 'text-sky-300'}`}>
+                    <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tighter tabular-nums ${isGalactico ? 'text-amber-700' : 'text-sky-700'}`}>
                       {cardData.rating}
                     </span>
-                    <span className={`text-xs font-bold font-mono px-1.5 py-0.5 rounded-md ${isGalactico ? 'bg-amber-400/20 text-amber-300' : 'bg-sky-400/20 text-sky-300'}`}>
+                    <span className={`text-xs font-bold font-mono tabular-nums px-1.5 py-0.5 rounded-md border ${isGalactico ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-sky-50 text-sky-800 border-sky-200'}`}>
                       +{ovr} OVR
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-semibold mt-1">
+                  <div className="flex items-center gap-1.5 text-xs text-[#4B5563] font-semibold mt-1">
                     <span className="text-base leading-none">{cardData.flag}</span>
-                    <span className="text-white font-bold">{cardData.pos}</span>
-                    <span className="text-zinc-600 font-normal">·</span>
-                    <span className="text-zinc-400 font-normal truncate max-w-[120px]">{cardData.nationName}</span>
+                    <span className="text-[#18191F] font-bold">{cardData.pos}</span>
+                    <span className="text-[#C7C4BC] font-normal">·</span>
+                    <span className="text-[#6B7280] font-normal truncate max-w-[120px]">{cardData.nationName}</span>
                   </div>
                 </div>
 
-                {/* Right: Superstar Emblem / Avatar with Aura Ring */}
+                {/* Right: Superstar Emblem / Avatar */}
                 <div className="relative shrink-0">
-                  <div className={`w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br ${
+                  <div className={`w-16 h-16 sm:w-18 sm:h-18 rounded-2xl ${
                     isGalactico 
-                      ? 'from-amber-500/25 via-zinc-800 to-zinc-950 border-amber-400/40 shadow-[0_0_24px_rgba(245,158,11,0.3)]' 
-                      : 'from-sky-500/25 via-zinc-800 to-zinc-950 border-sky-400/40 shadow-[0_0_24px_rgba(56,189,248,0.25)]'
+                      ? 'bg-amber-50 border-amber-200' 
+                      : 'bg-sky-50 border-sky-200'
                   } border flex flex-col items-center justify-center relative overflow-hidden group`}>
-                    <i className={`${isGalactico ? 'fa-solid fa-crown text-amber-300' : 'fa-solid fa-user-astronaut text-sky-300'} text-2xl`}></i>
-                    <div className="flex items-center gap-0.5 text-[8px] text-amber-400 mt-1">
+                    <i className={`${isGalactico ? 'fa-solid fa-crown text-amber-600' : 'fa-solid fa-user-astronaut text-sky-600'} text-2xl`}></i>
+                    <div className="flex items-center gap-0.5 text-[8px] text-amber-500 mt-1">
                       <i className="fa-solid fa-star"></i>
                       <i className="fa-solid fa-star"></i>
                       <i className="fa-solid fa-star"></i>
@@ -413,10 +409,10 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
 
               {/* Player Name & Trait */}
               <div className="px-1">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase leading-none truncate">
+                <h1 className="text-xl sm:text-2xl font-black text-[#18191F] tracking-tight uppercase leading-none truncate">
                   {cardData.name}
                 </h1>
-                <p className={`text-xs font-semibold mt-1 flex items-center gap-1.5 ${isGalactico ? 'text-amber-300/90' : 'text-sky-300/90'}`}>
+                <p className={`text-xs font-semibold mt-1 flex items-center gap-1.5 ${isGalactico ? 'text-amber-800' : 'text-sky-800'}`}>
                   <i className="fa-solid fa-sparkles text-[10px]"></i>
                   <span className="truncate">{cardData.subtitle}</span>
                 </p>
@@ -424,48 +420,48 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
 
               {/* Tactical Stats Matrix (6 Key Attributes) */}
               <div className="grid grid-cols-3 gap-1.5 text-left">
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label1}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val1}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label1}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val1}</span>
                 </div>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label2}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val2}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label2}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val2}</span>
                 </div>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label3}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val3}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label3}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val3}</span>
                 </div>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label4}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val4}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label4}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val4}</span>
                 </div>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label5}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val5}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label5}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val5}</span>
                 </div>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2 flex flex-col justify-between">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{cardData.stats.label6}</span>
-                  <span className="font-mono font-bold text-sm text-white tabular-nums">{cardData.stats.val6}</span>
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-2 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">{cardData.stats.label6}</span>
+                  <span className="font-mono font-bold text-sm text-[#18191F] tabular-nums">{cardData.stats.val6}</span>
                 </div>
               </div>
 
               {/* Transaction & Impact Summary Strip */}
-              <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs px-1">
+              <div className="pt-2 border-t border-[#E6E3DC] flex items-center justify-between text-xs px-1">
                 <div>
-                  <div className="text-[10px] text-zinc-500 uppercase font-semibold">
+                  <div className="text-[10px] text-[#6B7280] uppercase font-semibold">
                     {isDe ? 'Transfergebühr' : 'Transfer Fee'}
                   </div>
-                  <div className={`font-mono font-bold ${cost > 0 ? 'text-zinc-200' : 'text-emerald-400'}`}>
+                  <div className={`font-mono font-bold tabular-nums ${cost > 0 ? 'text-[#18191F]' : 'text-emerald-700'}`}>
                     {cost > 0 ? `-${formatMoney(cost)}` : (isDe ? 'KOSTENLOS' : 'FREE')}
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] text-zinc-500 uppercase font-semibold">
+                  <div className="text-[10px] text-[#6B7280] uppercase font-semibold">
                     {isDe ? 'Kader-Auswirkung' : 'Squad Impact'}
                   </div>
-                  <div className={`font-mono font-bold ${isGalactico ? 'text-amber-300' : 'text-emerald-400'}`}>
+                  <div className={`font-mono font-bold tabular-nums ${isGalactico ? 'text-amber-700' : 'text-emerald-700'}`}>
                     {isGalactico ? `+${ovr} OVR · +5k Fans` : `+${ovr} Team OVR`}
                   </div>
                 </div>
@@ -475,11 +471,7 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
               <div className="pt-1 flex flex-col gap-1.5">
                 <button
                   onClick={onClose}
-                  className={`w-full min-h-[46px] py-2.5 px-4 rounded-xl ${
-                    isGalactico 
-                      ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 shadow-[0_4px_16px_rgba(245,158,11,0.3)]' 
-                      : 'bg-gradient-to-r from-sky-500 via-sky-400 to-cyan-500 hover:brightness-110 text-slate-950 shadow-[0_4px_16px_rgba(56,189,248,0.3)]'
-                  } font-bold text-sm tracking-wide transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2`}
+                  className="w-full min-h-[46px] py-2.5 px-4 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white shadow-sm font-bold text-sm tracking-wide transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span>
                     {returnToTransferMarket
@@ -489,7 +481,7 @@ export const PlayerRevealModal: React.FC<PlayerRevealModalProps> = ({
                   <i className="fa-solid fa-arrow-right text-xs"></i>
                 </button>
                 
-                <div className="text-center text-[10px] text-zinc-500 tracking-tight">
+                <div className="text-center text-[10px] text-[#6B7280] tracking-tight">
                   {isDe ? 'Tippen oder nach unten wischen zum Schließen' : 'Tap or swipe down to dismiss'}
                 </div>
               </div>

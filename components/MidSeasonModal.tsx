@@ -6,6 +6,7 @@ import { getLeagueInfo, isReserveClub } from '../data/gameConstants';
 import { generateMidSeasonEvent } from '../engine/midSeasonEngine';
 import { getCupName } from '../data/randomEvents';
 import { getContinentalCupNames } from '../utils/regionHelpers';
+import { getPressureLevelMeta } from '../engine/pressureEngine';
 
 interface MidSeasonModalProps {
   state: GameState;
@@ -388,6 +389,38 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Media & Board Pressure Alert (when expectations slip or pressure builds) */}
+          {(state.pressureContext?.scenario && state.pressureContext.scenario !== 'none' || (state.mediaPressure ?? 0) >= 35) && (() => {
+            const pScore = state.pressureContext?.pressureScore ?? state.mediaPressure ?? 0;
+            const pMeta = getPressureLevelMeta(pScore);
+            return (
+              <div className={`rounded-2xl p-3.5 border flex items-start gap-3 ${
+                pScore >= 75
+                  ? 'bg-rose-500/10 border-rose-500/35'
+                  : 'bg-orange-500/10 border-orange-500/30'
+              }`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs shrink-0 border ${pMeta.badgeClass}`}>
+                  <i className={`fas ${pMeta.icon}`}></i>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${pMeta.textClass}`}>
+                      {pMeta.label} · {pScore}/100
+                    </span>
+                    {state.pressureContext?.triggerMoment && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300">
+                        Press Briefing Next
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-200 font-medium mt-0.5 leading-snug">
+                    {state.pressureContext?.headline || 'Media scrutiny is building over league form.'}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Bottom Info Strip */}
           <div className="bg-sky-500/10 border border-sky-400/20 rounded-2xl p-3 sm:p-3.5 flex items-center gap-3">

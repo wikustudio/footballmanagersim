@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { GameState, Language, BoardVision } from '../types';
 import { calculateClubReputation } from '../data/gameConstants';
 import { generateBoardVision } from '../engine/boardVisionEngine';
+import { getPressureLevelMeta } from '../engine/pressureEngine';
 
 interface ClubImpactModalProps {
   state: GameState;
@@ -11,6 +12,7 @@ interface ClubImpactModalProps {
   onClose: () => void;
   onOpenTeamBonding: () => void;
   onOpenClubProfile: () => void;
+  onOpenPressureModal?: () => void;
 }
 
 export const ClubImpactModal: React.FC<ClubImpactModalProps> = ({
@@ -18,7 +20,8 @@ export const ClubImpactModal: React.FC<ClubImpactModalProps> = ({
   initialTab = 'roadmap',
   onClose,
   onOpenTeamBonding,
-  onOpenClubProfile
+  onOpenClubProfile,
+  onOpenPressureModal,
 }) => {
   const [activeTab, setActiveTab] = useState<'roadmap' | 'dressing_room'>(initialTab);
 
@@ -293,6 +296,46 @@ export const ClubImpactModal: React.FC<ClubImpactModalProps> = ({
                     {impactStatus.desc}
                   </div>
                 </div>
+
+                {/* Media & Board Pressure Meter */}
+                {(() => {
+                  const pScore = state.mediaPressure ?? 15;
+                  const pMeta = getPressureLevelMeta(pScore);
+                  return (
+                    <div className="mt-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${pMeta.badgeClass}`}>
+                            <i className={`fas ${pMeta.icon} text-[9px]`}></i>
+                            <span>Media Heat: {pMeta.label} ({pScore}/100)</span>
+                          </span>
+                        </div>
+                        {onOpenPressureModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenPressureModal();
+                            }}
+                            className="text-[11px] font-bold text-sky-300 hover:text-white transition cursor-pointer flex items-center gap-1"
+                          >
+                            <span>Open Press Briefing</span>
+                            <i className="fas fa-chevron-right text-[9px]"></i>
+                          </button>
+                        )}
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${pMeta.barClass}`}
+                          style={{ width: `${Math.max(4, Math.min(100, pScore))}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-snug">
+                        {state.pressureContext?.headline || 'Public scrutiny rises when league standings slip behind board expectations and cools when targets are met.'}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Strategic Milestones */}

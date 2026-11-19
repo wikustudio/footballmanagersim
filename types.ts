@@ -470,6 +470,12 @@ export interface GameState {
   boardTarget?: number;
   managerAge?: number;
   ovrHistory?: { year: number; delta: number; reason: string }[];
+  mediaPressure?: number;
+  pressureContext?: PressureAssessment | null;
+  pressureMomentResolvedYear?: number;
+  pressureChoiceThisSeason?: PressureChoiceId | null;
+  pressureBoostOvr?: number;
+  pressureCommitment?: { year: number; targetPos: number; choice: PressureChoiceId } | null;
 }
 
 export interface MatchdayOutcome {
@@ -538,6 +544,8 @@ export interface PendingSeasonState {
     skillsKeyAtCalculation?: string;
     stadiumAtCalculation?: number;
     stadiumPolicyAtCalculation?: string;
+    pressureBoostAtCalculation?: number;
+    mediaPressureAtCalculation?: number;
     midPos?: number;
     midPts?: number;
   };
@@ -773,6 +781,70 @@ export interface DirectorSynergyResult {
   clutchGoalChance: number;
 }
 
+
+export type PressureLevel = 'calm' | 'scrutiny' | 'high' | 'crisis';
+export type PressureScenario = 'none' | 'title_collapse' | 'relegation_spiral' | 'expectation_gap';
+export type PressureChoiceId = 'back_coach' | 'demand_coach_change' | 'take_gm_accountability' | 'crisis_pr_summit';
+
+export interface PressureScrutinyProfile {
+  name: string;
+  role: string;
+  statusTag: string;
+  heatRating: number;
+  quote: string;
+}
+
+export interface PressureMediaClipping {
+  outlet: string;
+  headline: string;
+  tone: 'critical' | 'alarm' | 'supportive';
+}
+
+export interface PressureAssessment {
+  pressureScore: number;
+  level: PressureLevel;
+  scenario: PressureScenario;
+  expectedRank: number;
+  actualRank: number;
+  expectationGap: number;
+  ptsGapFromTarget: number;
+  streakLosses: number;
+  triggerMoment: boolean;
+  headline: string;
+  subheadline: string;
+  coachScrutiny: PressureScrutinyProfile;
+  gmScrutiny: PressureScrutinyProfile;
+  mediaOutlets: PressureMediaClipping[];
+  evaluatedYear?: number;
+  evaluatedPhase?: 'mid' | 'end' | 'dashboard';
+}
+
+export interface PressureOption {
+  id: PressureChoiceId;
+  title: string;
+  subtitle: string;
+  stanceBadge: string;
+  icon: string;
+  costK?: number;
+  mpCost?: number;
+  effectsSummary: string;
+  riskLabel: string;
+  disabledReason?: string;
+}
+
+export interface PressureSeasonVerdict {
+  scenario: 'title_collapse' | 'relegation_survival' | 'relegation_disaster' | 'comeback_redemption' | 'sustained_heat';
+  headline: string;
+  summary: string;
+  coachVerdict: string;
+  gmVerdict: string;
+  pressureBefore: number;
+  pressureAfter: number;
+  badge: string;
+  tone: 'crisis' | 'warning' | 'triumph' | 'relief';
+  boardTrustBonus?: number;
+  repBonus?: number;
+}
 
 declare global {
   interface Window {

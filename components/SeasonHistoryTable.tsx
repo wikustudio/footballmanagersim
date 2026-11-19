@@ -124,7 +124,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
 
   return (
     <div className="bg-[#161820]/75 backdrop-blur-2xl rounded-3xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.36)] flex flex-col overflow-hidden h-[560px] lg:h-full w-full flex-1 relative">
-      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-semibold uppercase tracking-wider px-6 pt-3 pb-2.5 border-b border-white/[0.08] bg-white/[0.02] shrink-0">
+      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-semibold uppercase tracking-wider px-4 sm:px-6 pt-3 pb-2.5 border-b border-white/[0.08] bg-white/[0.02] shrink-0">
         <div className="min-w-0 flex-1 pr-2 flex items-center gap-2">
           <span className="truncate">{t('Year / Club / Tier', 'Jahr / Club / Liga')}</span>
           {hasWorldCupArchive && (
@@ -144,8 +144,8 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
           <div className="w-14 sm:w-15 text-center" title="Win–Draw–Loss Record">W–D–L</div>
           <div className="hidden xl:block w-6 text-center">{t('GF', 'T+')}</div>
           <div className="hidden xl:block w-6 text-center">{t('GA', 'T-')}</div>
-          <div className="w-11 sm:w-12 text-right">{t('Att', 'Zus')}</div>
-          <div className="w-9 sm:w-10 text-right">{t('Util', 'Ausl')}</div>
+          <div className="hidden sm:block w-11 sm:w-12 text-right">{t('Att', 'Zus')}</div>
+          <div className="hidden sm:block w-9 sm:w-10 text-right">{t('Util', 'Ausl')}</div>
         </div>
       </div>
 
@@ -416,7 +416,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                       <div className="hidden xl:block w-6 text-center text-emerald-400">{h.gf ?? 0}</div>
                       <div className="hidden xl:block w-6 text-center text-rose-400">{h.ga ?? 0}</div>
                       <div 
-                        className="w-11 sm:w-12 text-right cursor-help"
+                        className="hidden sm:block w-11 sm:w-12 text-right cursor-help"
                         title={isDe 
                           ? `Durchschnittliche Zuschauer: ${h.att ? h.att.toLocaleString('de-DE') : '—'} pro Heimspiel (${((h.att || 0) * 17).toLocaleString('de-DE')} Gesamtzuschauer)` 
                           : `Average attendance: ${h.att ? h.att.toLocaleString('en-US') : '—'} per home fixture (${((h.att || 0) * 17).toLocaleString('en-US')} total season crowd)`}
@@ -424,7 +424,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                         {h.att != null ? formatNum(h.att) : '—'}
                       </div>
                       <div
-                        className={`w-9 sm:w-10 text-right cursor-help ${
+                        className={`hidden sm:block w-9 sm:w-10 text-right cursor-help ${
                           (h.util ?? 0) >= 95
                             ? 'text-emerald-400 font-semibold'
                             : h.util != null && h.util < 50
@@ -506,7 +506,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({ state, l
                 <div className="w-11 sm:w-12 text-right text-xs font-black text-yellow-400" title={t('Trophies', 'Titel')}>
                   {(state.worldCupTrophies || state.internationalTrophies || 0) > 0 ? `${state.worldCupTrophies || state.internationalTrophies} 🏆` : '—'}
                 </div>
-                <div className="w-9 sm:w-10 text-right text-[10px] font-bold text-zinc-400" title={t('Tournaments', 'Turniere')}>
+                <div className="hidden sm:block w-9 sm:w-10 text-right text-[10px] font-bold text-zinc-400" title={t('Tournaments', 'Turniere')}>
                   {(state.worldCupCampaigns && state.worldCupCampaigns.length > 0)
                     ? state.worldCupCampaigns.filter(c => typeof c.year === 'number' && c.year >= 1950 && c.year % 4 === 2).length
                     : (state.worldCupTournamentsPlayed || state.internationalTournamentsPlayed || 1)} ed.

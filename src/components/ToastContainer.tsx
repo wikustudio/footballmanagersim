@@ -70,14 +70,14 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
     return parts.map((part, i) => {
       if (/^\+\s*€?\s*[\d.,]/i.test(part)) {
         return (
-          <span key={i} className="text-emerald-400 font-semibold tracking-tight">
+          <span key={i} className="text-emerald-700 font-bold tracking-tight tabular-nums">
             {part}
           </span>
         );
       }
       if (/^-\s*€?\s*[\d.,]/i.test(part)) {
         return (
-          <span key={i} className="text-rose-400 font-semibold tracking-tight">
+          <span key={i} className="text-rose-700 font-bold tracking-tight tabular-nums">
             {part}
           </span>
         );
@@ -98,54 +98,55 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
         const isRunnerUpPromotion = lower.includes('runner-up') || lower.includes('vizemeister');
         const isGeneralPromotion = !isLeagueChampion && !isRunnerUpPromotion && (lower.includes('promoted') || lower.includes('aufstieg'));
 
-        let icon = 'fa-circle-info text-sky-400';
-        let badgeBg = 'bg-sky-500/10 border-sky-400/20 text-sky-400';
-        let containerBorder = 'border-white/[0.08]';
-        let containerBg = 'bg-[#12141c]/85';
-        let containerGlow = 'shadow-[0_20px_50px_rgba(0,0,0,0.6)]';
+        let icon = 'fa-circle-info text-sky-700';
+        let badgeBg = 'bg-sky-50 border-sky-200 text-sky-700';
+        let containerBorder = 'border-[#E6E3DC]';
+        let containerBg = 'bg-white/95';
+        let containerGlow = 'shadow-[0_16px_44px_rgba(24,25,31,0.14)]';
         let kicker: string | null = null;
-        let kickerClass = 'text-sky-400/90';
+        let kickerClass = 'text-sky-700';
 
         if (isLeagueChampion) {
-          icon = 'fa-trophy text-amber-300';
-          badgeBg = 'bg-amber-400/10 border-amber-400/30 text-amber-300';
-          containerBorder = 'border-amber-400/35';
-          containerBg = 'bg-gradient-to-r from-amber-500/[0.08] via-[#12141c]/90 to-sky-500/[0.06]';
-          containerGlow = 'shadow-[0_20px_60px_rgba(245,158,11,0.22)]';
+          icon = 'fa-trophy text-amber-700';
+          badgeBg = 'bg-amber-50 border-amber-200 text-amber-700';
+          containerBorder = 'border-amber-300';
+          containerBg = 'bg-gradient-to-r from-amber-50 via-white to-amber-50/70';
+          containerGlow = 'shadow-[0_18px_50px_rgba(217,119,6,0.18)]';
           kicker = 'League Champions · Domestic Crown';
-          kickerClass = 'text-amber-300/90';
+          kickerClass = 'text-amber-800';
         } else if (isRunnerUpPromotion) {
-          icon = 'fa-medal text-sky-300';
-          badgeBg = 'bg-sky-400/10 border-sky-400/30 text-sky-300';
-          containerBorder = 'border-sky-400/35';
-          containerBg = 'bg-gradient-to-r from-sky-500/[0.1] via-[#12141c]/90 to-sky-400/[0.05]';
-          containerGlow = 'shadow-[0_20px_60px_rgba(56,189,248,0.22)]';
+          icon = 'fa-medal text-sky-700';
+          badgeBg = 'bg-sky-50 border-sky-200 text-sky-700';
+          containerBorder = 'border-sky-300';
+          containerBg = 'bg-gradient-to-r from-sky-50 via-white to-sky-50/70';
+          containerGlow = 'shadow-[0_18px_50px_rgba(2,132,199,0.16)]';
           kicker = 'Runner-Up Promotion · Top 2 Ascent';
-          kickerClass = 'text-sky-400';
+          kickerClass = 'text-sky-800';
         } else if (isGeneralPromotion) {
-          icon = 'fa-arrow-trend-up text-sky-300';
-          badgeBg = 'bg-sky-400/10 border-sky-400/25 text-sky-300';
-          containerBorder = 'border-sky-400/25';
-          containerBg = 'bg-gradient-to-r from-sky-500/[0.08] via-[#12141c]/90 to-emerald-500/[0.05]';
-          containerGlow = 'shadow-[0_20px_50px_rgba(56,189,248,0.18)]';
+          icon = 'fa-arrow-trend-up text-sky-700';
+          badgeBg = 'bg-sky-50 border-sky-200 text-sky-700';
+          containerBorder = 'border-sky-200';
+          containerBg = 'bg-gradient-to-r from-sky-50 via-white to-emerald-50/60';
+          containerGlow = 'shadow-[0_16px_44px_rgba(2,132,199,0.14)]';
           kicker = 'Promotion Secured · Division Ascent';
-          kickerClass = 'text-sky-300/90';
+          kickerClass = 'text-sky-800';
         } else if (toast.type === 'success') {
-          icon = 'fa-check text-emerald-400';
-          badgeBg = 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300';
-          containerBorder = 'border-emerald-500/40';
-          containerBg = 'bg-gradient-to-r from-emerald-950/80 via-[#12141c]/95 to-emerald-950/60';
-          containerGlow = 'shadow-[0_20px_50px_rgba(16,185,129,0.25)]';
+          icon = 'fa-check text-emerald-700';
+          badgeBg = 'bg-emerald-50 border-emerald-200 text-emerald-700';
+          containerBorder = 'border-emerald-200';
+          containerBg = 'bg-white/95';
+          containerGlow = 'shadow-[0_16px_44px_rgba(16,185,129,0.14)]';
         } else if (toast.type === 'error') {
-          icon = 'fa-xmark text-rose-400';
-          badgeBg = 'bg-rose-500/20 border-rose-400/40 text-rose-300';
-          containerBorder = 'border-rose-500/40';
-          containerBg = 'bg-gradient-to-r from-rose-950/80 via-[#12141c]/95 to-rose-950/60';
-          containerGlow = 'shadow-[0_20px_50px_rgba(244,63,94,0.25)]';
+          icon = 'fa-xmark text-rose-700';
+          badgeBg = 'bg-rose-50 border-rose-200 text-rose-700';
+          containerBorder = 'border-rose-200';
+          containerBg = 'bg-white/95';
+          containerGlow = 'shadow-[0_16px_44px_rgba(225,29,72,0.14)]';
         } else if (toast.type === 'warning') {
-          icon = 'fa-exclamation text-amber-400';
-          badgeBg = 'bg-amber-500/10 border-amber-400/20 text-amber-400';
-          containerBorder = 'border-amber-400/25';
+          icon = 'fa-exclamation text-amber-700';
+          badgeBg = 'bg-amber-50 border-amber-200 text-amber-700';
+          containerBorder = 'border-amber-200';
+          containerBg = 'bg-white/95';
         }
 
         return (
@@ -156,21 +157,21 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
               zIndex: toasts.length - index,
               opacity: revIndex > 2 ? 0 : 1
             }}
-            className={`row-start-1 col-start-1 flex items-center gap-3.5 px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl sm:rounded-[24px] ${containerBg} backdrop-blur-2xl border ${containerBorder} ${containerGlow} toast-enter pointer-events-auto w-[92vw] sm:w-auto max-w-[95vw] sm:max-w-lg mx-auto transition-all duration-300 ease-out`}
+            className={`row-start-1 col-start-1 flex items-center gap-3.5 px-4 sm:px-5 py-3 sm:py-3.5 rounded-2xl sm:rounded-[24px] ${containerBg} backdrop-blur-md border ${containerBorder} ${containerGlow} toast-enter pointer-events-auto w-[92vw] sm:w-auto max-w-[95vw] sm:max-w-lg mx-auto transition-all duration-300 ease-out`}
           >
-            {/* Frosted Icon Badge */}
-            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl ${badgeBg} border flex items-center justify-center shrink-0 shadow-inner`}>
+            {/* Icon Badge */}
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl ${badgeBg} border flex items-center justify-center shrink-0`}>
               <i className={`fas ${icon} text-sm sm:text-base`}></i>
             </div>
 
             {/* Content Text */}
             <div className="flex flex-col min-w-0 flex-1">
               {kicker && (
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${kickerClass} mb-0.5 break-words`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${kickerClass} mb-0.5 break-words`}>
                   {kicker}
                 </span>
               )}
-              <span className="text-xs sm:text-[13px] font-medium text-white/95 tracking-tight leading-snug break-words">
+              <span className="text-xs sm:text-[13px] font-semibold text-[#18191F] tracking-tight leading-snug break-words">
                 {renderFormattedMessage(toast.message)}
               </span>
             </div>

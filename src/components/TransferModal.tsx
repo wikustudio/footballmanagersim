@@ -13,29 +13,29 @@ interface CompactTreasuryProps {
 
 const CompactTreasury: React.FC<CompactTreasuryProps> = ({ budget, financials, squadSize, t }) => {
   return (
-    <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-3.5 sm:p-4 grid grid-cols-3 gap-2 text-left">
+    <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5 sm:p-4 grid grid-cols-3 gap-2 text-left">
       <div>
-        <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+        <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
           {t('Transfer Budget', 'Transferbudget')}
         </div>
-        <div className="text-base sm:text-lg font-bold font-mono text-white tracking-tight">
+        <div className="text-base sm:text-lg font-bold font-mono text-[#18191F] tracking-tight tabular-nums">
           {formatMoney(budget)}
         </div>
       </div>
       <div>
-        <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+        <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
           {t('Net / Match', 'Netto / Spiel')}
         </div>
-        <div className={`text-base sm:text-lg font-bold font-mono ${financials.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+        <div className={`text-base sm:text-lg font-bold font-mono tabular-nums ${financials.net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
           {financials.net >= 0 ? '+' : ''}{formatMoney(financials.net)}
         </div>
       </div>
       <div className="text-right">
-        <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+        <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
           {t('Squad Capacity', 'Kadergröße')}
         </div>
-        <div className="text-base sm:text-lg font-bold font-mono text-zinc-200">
-          {squadSize}<span className="text-zinc-500 font-normal text-xs">/50</span>
+        <div className="text-base sm:text-lg font-bold font-mono text-[#18191F] tabular-nums">
+          {squadSize}<span className="text-[#6B7280] font-normal text-xs">/50</span>
         </div>
       </div>
     </div>
@@ -153,94 +153,91 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   );
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: isMinimized ? 0 : 1 }} 
-      exit={{ opacity: 0 }} 
-      transition={{ duration: 0.1, ease: 'linear' }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: isMinimized ? 0 : 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.1, ease: 'linear' }}
       onClick={() => {
         if (!isMinimized) onClose();
       }}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-2xl text-left cursor-pointer overflow-y-auto overscroll-contain transition-opacity duration-150 ${isMinimized ? 'opacity-0 pointer-events-none invisible' : ''}`}
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-4 bg-[#18191F]/45 backdrop-blur-sm text-left cursor-pointer overflow-y-auto overscroll-contain transition-opacity duration-150 ${isMinimized ? 'opacity-0 pointer-events-none invisible' : ''}`}
     >
-      <motion.div 
-        initial={{ scale: 0.98, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.98, opacity: 0 }} 
-        transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }} 
+      <motion.div
+        initial={{ scale: 0.98, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.98, opacity: 0 }}
+        transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl bg-[#12141c]/90 backdrop-blur-3xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_64px_rgba(0,0,0,0.6)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden cursor-default shrink-0"
+        className="relative w-full max-w-xl bg-white text-[#18191F] rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden cursor-default shrink-0"
       >
-        {/* Subtle Ambient Sky-Blue / Ice-Blue Glow */}
-        <div className={`absolute -top-24 -right-24 w-80 h-80 ${isWinter ? 'bg-cyan-500/10' : 'bg-sky-500/10'} rounded-full blur-3xl pointer-events-none`} />
-
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0 relative z-10">
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className={`w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center ${isWinter ? 'text-cyan-400' : 'text-sky-400'} text-base shadow-inner shrink-0`}>
+            <div className={`w-11 h-11 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center ${isWinter ? 'text-sky-700' : 'text-[#18191F]'} text-base shadow-xs shrink-0`}>
               <i className={isWinter ? "fa-solid fa-snowflake" : "fa-solid fa-right-left"}></i>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90 mb-0.5">
-                {isWinter 
-                  ? t('Mid-Season Window', 'Winterpause Transferfenster') 
+              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5">
+                {isWinter
+                  ? t('Mid-Season Window', 'Winterpause Transferfenster')
                   : t('Season Transfer Window', 'Saison Transfermarkt')}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight">
-                {isWinter 
-                  ? t('Winter Transfer Market', 'Winter-Transfermarkt') 
+              <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
+                {isWinter
+                  ? t('Winter Transfer Market', 'Winter-Transfermarkt')
                   : t('Squad Transfer Market', 'Kader-Transfermarkt')}
               </h2>
             </div>
           </div>
-          <button 
+          <button
             aria-label="Close modal"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center transition border border-white/[0.08] cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] cursor-pointer shrink-0"
           >
             <i className="fas fa-xmark text-xs"></i>
           </button>
         </div>
 
         {/* Treasury Metrics Strip */}
-        <div className="px-5 sm:px-6 pt-4 shrink-0 relative z-10">
-          <CompactTreasury 
-            budget={state.budget} 
-            financials={financials} 
+        <div className="px-5 sm:px-6 pt-4 shrink-0 relative z-10 bg-white">
+          <CompactTreasury
+            budget={state.budget}
+            financials={financials}
             squadSize={currentSquadSize}
-            t={t} 
+            t={t}
           />
         </div>
 
-        {/* Progressive Disclosure: Segmented Navigation */}
-        <div className="px-5 sm:px-6 pt-3 shrink-0 relative z-10">
-          <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-x-auto custom-scrollbar">
+        {/* Segmented Navigation */}
+        <div className="px-5 sm:px-6 pt-3 shrink-0 relative z-10 bg-white">
+          <div className="flex items-center gap-1 p-1 bg-[#EFECE4] border border-[#E6E3DC] rounded-xl overflow-x-auto custom-scrollbar">
             <button
               onClick={() => handleTabChange('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === 'all'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               {t('All Operations', 'Alle Aktionen')}
             </button>
             <button
               onClick={() => handleTabChange('signings')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === 'signings'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               {t('Incoming Signings', 'Neuzugänge')}
             </button>
             <button
               onClick={() => handleTabChange('outgoings')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
                 activeTab === 'outgoings'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'text-[#4B5563] hover:text-[#18191F]'
               }`}
             >
               {t('Loans & Sales', 'Leihe & Verkäufe')}
@@ -248,10 +245,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             {state.club.tier === 1 && (
               <button
                 onClick={() => handleTabChange('galactico')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
                   activeTab === 'galactico'
-                    ? 'bg-amber-500/20 text-amber-300 shadow-sm'
-                    : 'text-amber-400/70 hover:text-amber-300'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-amber-800 hover:bg-amber-50'
                 }`}
               >
                 {t('Galactico Elite', 'Galactico')}
@@ -260,14 +257,16 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             {state.youthPipeline && state.youthPipeline.length > 0 && (
               <button
                 onClick={() => handleTabChange('academy')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
                   activeTab === 'academy'
-                    ? 'bg-emerald-500/20 text-emerald-300 shadow-sm'
-                    : 'text-emerald-400/80 hover:text-emerald-300'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-emerald-800 hover:bg-emerald-50'
                 }`}
               >
                 <span>{t('Academy Call-Up', 'Jugend-Abruf')}</span>
-                <span className="text-[10px] bg-emerald-500/30 px-1.5 py-0.2 rounded-full font-mono text-emerald-200">
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+                  activeTab === 'academy' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                }`}>
                   {state.youthPipeline.length}
                 </span>
               </button>
@@ -276,75 +275,74 @@ export const TransferModal: React.FC<TransferModalProps> = ({
         </div>
 
         {/* Scrollable Operations Body */}
-        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4 custom-scrollbar relative z-10">
-          
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4 custom-scrollbar relative z-10 bg-white">
           {/* Signings Section */}
           {(activeTab === 'all' || activeTab === 'signings') && (
             <div className="space-y-3">
-              <div className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase px-1">
+              <div className="text-[10px] font-semibold tracking-wider text-[#6B7280] uppercase px-1">
                 {t('First-Team Additions', 'Kaderverstärkung')}
               </div>
-              
+
               {/* Buy Regular Squad Player */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleAction(onBidReg); }}
                 disabled={isRegDisabled || isLocalProcessing}
-                className="w-full bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE7] p-4 rounded-2xl border border-[#E6E3DC] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-45 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
                   <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-user-plus"></i>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs sm:text-sm font-semibold text-white flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <div className="text-xs sm:text-sm font-semibold text-[#18191F] flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Squad Player', 'Stammspieler verpflichten')}</span>
                         {isUnderdog && (
-                          <span className="text-[10px] text-amber-400 font-normal">· 20% Underdog Off</span>
+                          <span className="text-[10px] text-amber-700 font-semibold">· 20% Underdog Off</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
+                      <div className="text-[11px] text-[#6B7280] font-normal leading-snug mt-0.5">
                         {t('Solid starting quality to strengthen depth and base team OVR.', 'Solider Stammspieler zur Stärkung der Kaderbreite und Basis-GES.')}
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-bold text-white text-sm">
+                    <div className="font-mono font-bold text-[#18191F] text-sm tabular-nums">
                       -{formatMoney(actionCosts.bidReg)}
                     </div>
-                    <div className="font-mono text-[10px] text-zinc-400">
+                    <div className="font-mono text-[10px] text-[#6B7280] tabular-nums">
                       {regCount} / {regMax} {t('slots', 'Plätze')}
                     </div>
                   </div>
                 </div>
               </button>
-              
+
               {/* Buy Key Player */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleAction(onBidKey); }}
                 disabled={isKeyDisabled || isLocalProcessing}
-                className="w-full bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE7] p-4 rounded-2xl border border-[#E6E3DC] text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-45 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
                   <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-400/20 flex items-center justify-center text-purple-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-star"></i>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs sm:text-sm font-semibold text-white flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <div className="text-xs sm:text-sm font-semibold text-[#18191F] flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Key Player', 'Schlüsselspieler verpflichten')}</span>
                         {isUnderdog && (
-                          <span className="text-[10px] text-amber-400 font-normal">· 20% Underdog Off</span>
+                          <span className="text-[10px] text-amber-700 font-semibold">· 20% Underdog Off</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
+                      <div className="text-[11px] text-[#6B7280] font-normal leading-snug mt-0.5">
                         {isMoneyball ? (
-                          <span className="text-amber-400 font-medium">
+                          <span className="text-amber-700 font-semibold">
                             {t('Moneyball Syndicate: Locked out of Key Player signings.', 'Moneyball-Syndikat: Keine Verpflichtung von Schlüsselspielern erlaubt.')}
                           </span>
                         ) : isMoraleLow ? (
-                          <span className="text-rose-400 font-medium">
+                          <span className="text-rose-700 font-semibold">
                             {t('Squad morale too low (< 40%). High-profile players refuse to sign.', 'Kadermoral zu niedrig (< 40%). Topspieler lehnen Wechsel ab.')}
                           </span>
                         ) : state.club.tier >= 6 ? (
@@ -355,12 +353,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-bold text-white text-sm">
+                    <div className="font-mono font-bold text-[#18191F] text-sm tabular-nums">
                       -{formatMoney(actionCosts.bidKey)}
                     </div>
-                    <div className="font-mono text-[10px] text-zinc-400">
+                    <div className="font-mono text-[10px] text-[#6B7280] tabular-nums">
                       {keyCount} / {keyLimit} {t('slots', 'Plätze')}
                     </div>
                   </div>
@@ -372,28 +370,28 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           {/* Galactico Section (Tier 1) */}
           {(activeTab === 'all' || activeTab === 'galactico') && state.club.tier === 1 && (
             <div className="space-y-3">
-              <div className="text-[10px] font-semibold tracking-wider text-amber-400/90 uppercase px-1">
+              <div className="text-[10px] font-semibold tracking-wider text-amber-700 uppercase px-1">
                 {t('Galactico Marquee Signing', 'Galactico Verpflichtung')}
               </div>
-              
+
               <button
                 onClick={(e) => { e.stopPropagation(); handleAction(onGalacticoTransfer); }}
                 disabled={isGalacticoDisabled || isLocalProcessing}
-                className="w-full bg-amber-500/[0.04] hover:bg-amber-500/[0.08] p-4 rounded-2xl border border-amber-400/20 text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-amber-50 hover:bg-amber-100/70 p-4 rounded-2xl border border-amber-200 text-left transition-all duration-200 cursor-pointer flex flex-col gap-2 relative overflow-hidden group disabled:opacity-45 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start sm:items-center justify-between gap-2.5 w-full">
                   <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 text-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xs shrink-0 group-hover:scale-105 transition-transform">
                       <i className="fa-solid fa-crown"></i>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs sm:text-sm font-semibold text-amber-200 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <div className="text-xs sm:text-sm font-bold text-[#18191F] flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Galactico', 'Galactico Verpflichten')}</span>
-                        <span className="text-[10px] text-amber-400/80 font-normal">· League 1 Exclusive</span>
+                        <span className="text-[10px] text-amber-800 font-semibold">· League 1 Exclusive</span>
                       </div>
-                      <div className="text-[11px] text-zinc-400 font-normal leading-snug mt-0.5">
+                      <div className="text-[11px] text-[#4B5563] font-normal leading-snug mt-0.5">
                         {isMoneyball ? (
-                          <span className="text-amber-400 font-medium">
+                          <span className="text-amber-800 font-semibold">
                             {t('Moneyball Syndicate: Locked out of Galactico signings.', 'Moneyball-Syndikat: Keine Verpflichtung von Galacticos erlaubt.')}
                           </span>
                         ) : state.club.baseOvr >= 96
@@ -404,12 +402,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-right shrink-0">
-                    <div className="font-mono font-bold text-amber-300 text-sm">
+                    <div className="font-mono font-bold text-amber-800 text-sm tabular-nums">
                       -{formatMoney(actionCosts.bidKey * 2)}
                     </div>
-                    <div className="font-mono text-[10px] text-amber-400/80">
+                    <div className="font-mono text-[10px] text-amber-700 tabular-nums">
                       {state.galacticosThisSeason || 0} / 1 {t('season', 'Saison')}
                     </div>
                   </div>
@@ -421,7 +419,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           {/* Outgoings Section */}
           {(activeTab === 'all' || activeTab === 'outgoings') && (
             <div className="space-y-3">
-              <div className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase px-1">
+              <div className="text-[10px] font-semibold tracking-wider text-[#6B7280] uppercase px-1">
                 {t('Loans & Outgoings', 'Leihe & Abgänge')}
               </div>
 
@@ -430,44 +428,44 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 <button
                   onClick={(e) => { e.stopPropagation(); handleAction(onLoanPlayer); }}
                   disabled={isLoanDisabled || isLocalProcessing}
-                  className="bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-[#FAF9F6] hover:bg-[#F2EFE7] p-4 rounded-2xl border border-[#E6E3DC] text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 disabled:opacity-45 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-between w-full">
-                    <div className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
-                      <i className="fa-solid fa-handshake text-sky-400 text-xs"></i>
+                    <div className="text-xs sm:text-sm font-semibold text-[#18191F] flex items-center gap-2">
+                      <i className="fa-solid fa-handshake text-sky-700 text-xs"></i>
                       <span>{t('Loan In', 'Leihe')}</span>
                     </div>
-                    <span className="text-emerald-400 font-mono text-xs font-semibold">Free</span>
+                    <span className="text-emerald-700 font-mono text-xs font-semibold">Free</span>
                   </div>
 
-                  <div className="text-[11px] text-zinc-400 font-normal leading-snug">
+                  <div className="text-[11px] text-[#6B7280] font-normal leading-snug">
                     {t('Temporary signing (-1 to +2 OVR impact). Expires at season end.', 'Temporärer Leihspieler (-1 bis +2 GES). Endet nach der Saison.')}
                   </div>
 
-                  <div className="font-mono text-[10px] text-zinc-400 pt-2 border-t border-white/[0.04]">
+                  <div className="font-mono text-[10px] text-[#6B7280] pt-2 border-t border-[#E6E3DC] tabular-nums">
                     {loanCount} / {loanLimit} {t('loans used', 'geliehen')}
                   </div>
                 </button>
-                
+
                 {/* Sell Players */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleAction(onSellPlayer); }}
                   disabled={isSellDisabled || isLocalProcessing}
-                  className="bg-white/[0.03] hover:bg-white/[0.05] p-4 rounded-2xl border border-white/[0.06] text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-[#FAF9F6] hover:bg-[#F2EFE7] p-4 rounded-2xl border border-[#E6E3DC] text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2.5 disabled:opacity-45 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-between w-full">
-                    <div className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
-                      <i className="fa-solid fa-arrow-trend-up text-emerald-400 text-xs"></i>
+                    <div className="text-xs sm:text-sm font-semibold text-[#18191F] flex items-center gap-2">
+                      <i className="fa-solid fa-arrow-trend-up text-emerald-700 text-xs"></i>
                       <span>{t('Sell Player', 'Spieler Verkaufen')}</span>
                     </div>
-                    <span className="text-emerald-400 font-mono text-xs font-semibold">+Cash</span>
+                    <span className="text-emerald-700 font-mono text-xs font-semibold">+Cash</span>
                   </div>
 
-                  <div className="text-[11px] text-zinc-400 font-normal leading-snug">
+                  <div className="text-[11px] text-[#6B7280] font-normal leading-snug">
                     {t('Liquidate surplus talent to reduce squad wage bill and inject capital.', 'Kader verkleinern, Gehaltskosten senken und Budget freisetzen.')}
                   </div>
 
-                  <div className="font-mono text-[10px] text-zinc-400 pt-2 border-t border-white/[0.04]">
+                  <div className="font-mono text-[10px] text-[#6B7280] pt-2 border-t border-[#E6E3DC] tabular-nums">
                     {sellReason}
                   </div>
                 </button>
@@ -486,32 +484,32 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   isLocalProcessing;
 
                 return (
-                  <div className="mt-3 bg-[#181b26] border border-amber-500/30 rounded-2xl p-4 relative overflow-hidden">
+                  <div className="mt-3 bg-amber-50/70 border border-amber-200 rounded-2xl p-4 relative overflow-hidden">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-wider">
-                          <span className="text-amber-400">
+                          <span className="text-amber-800">
                             <i className="fa-solid fa-fire-flame-curved mr-1.5" />
                             {t('Veteran Ringer', 'Altstar-Vertrag')}
                           </span>
-                          <span className="text-zinc-600" aria-hidden="true">·</span>
-                          <span className="text-emerald-400 font-mono">
+                          <span className="text-[#9A9890]" aria-hidden="true">·</span>
+                          <span className="text-emerald-700 font-mono">
                             +5 OVR · 1 YR
                           </span>
                         </div>
-                        <div className="text-sm font-bold text-white tracking-tight">
+                        <div className="text-sm font-bold text-[#18191F] tracking-tight">
                           {ringerEcon.alreadySigned && state.veteranRingerName
                             ? state.veteranRingerName
                             : `${t('Sign Legend', 'Ikone verpflichten')} (${featuredLegend.name})`}
                         </div>
-                        <p className="text-[11px] text-zinc-400 leading-snug">
+                        <p className="text-[11px] text-[#4B5563] leading-snug">
                           {t(
                             `+5 OVR for 1 season. +${formatMoney(ringerEcon.annualWageBurdenK)}/yr wages.`,
                             `+5 GES für 1 Saison. +${formatMoney(ringerEcon.annualWageBurdenK)}/Jahr Gehalt.`
                           )}
                         </p>
                         {ringerEcon.isBlockedByDebtVeto && (
-                          <div className="text-[10px] font-semibold text-rose-400 flex items-center gap-1.5 pt-1">
+                          <div className="text-[10px] font-semibold text-rose-700 flex items-center gap-1.5 pt-1">
                             <i className="fa-solid fa-ban" />
                             {t(
                               'Blocked while in debt.',
@@ -531,10 +529,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                           }}
                           className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition flex flex-col items-center justify-center min-w-[128px] border ${
                             ringerEcon.alreadySigned
-                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 cursor-not-allowed'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 cursor-not-allowed'
                               : isRingerDisabled
-                              ? 'bg-white/[0.03] border-white/[0.06] text-zinc-500 cursor-not-allowed'
-                              : 'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-400 shadow-sm cursor-pointer active:scale-[0.98]'
+                              ? 'bg-[#EFECE4] border-[#E6E3DC] text-[#9A9890] cursor-not-allowed'
+                              : 'bg-[#18191F] hover:bg-[#2A2C35] text-white border-[#18191F] shadow-xs cursor-pointer active:scale-[0.98]'
                           }`}
                         >
                           {ringerEcon.alreadySigned ? (
@@ -545,7 +543,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                           ) : (
                             <>
                               <span>{t('Sign Legend', 'Verpflichten')}</span>
-                              <span className="text-[10px] font-mono font-semibold tabular-nums">
+                              <span className="text-[10px] font-mono font-semibold tabular-nums opacity-85">
                                 {formatMoney(ringerEcon.signingFeeK)} {t('Fee', 'Handgeld')}
                               </span>
                             </>
@@ -562,23 +560,23 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           {/* Academy Call-Up Section */}
           {(activeTab === 'all' || activeTab === 'academy') && state.youthPipeline && state.youthPipeline.length > 0 && (
             <div className="space-y-3">
-              <div className="text-[10px] font-semibold tracking-wider text-emerald-400 uppercase px-1 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[10px] font-semibold tracking-wider text-emerald-700 uppercase px-1 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span>{t('Incubator Squad Pull (Cost of OVR)', 'Jugendakademie-Abruf (GES-Integration)')}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border ${
-                    isCallUpCapped 
-                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
-                      : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border tabular-nums ${
+                    isCallUpCapped
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     {callUpsUsed} / {callUpCap} {t('Call-ups Used', 'Berufungen')} (Lvl {state.club.academyLevel || 1})
                   </span>
                 </div>
-                <span className="text-zinc-500 font-normal">Zero Transfer Fee</span>
+                <span className="text-[#6B7280] font-normal">Zero Transfer Fee</span>
               </div>
 
               {isCallUpCapped && (
-                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-xs flex items-center gap-2.5">
-                  <i className="fa-solid fa-circle-exclamation text-amber-400 text-sm shrink-0"></i>
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
+                  <i className="fa-solid fa-circle-exclamation text-amber-700 text-sm shrink-0"></i>
                   <span>
                     {t(
                       `Seasonal call-up cap reached (${callUpsUsed}/${callUpCap}). Upgrade your Youth Academy to unlock higher call-up limits each season.`,
@@ -610,55 +608,55 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className="bg-emerald-500/[0.03] hover:bg-emerald-500/[0.06] p-3.5 rounded-2xl border border-emerald-500/20 text-left transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="bg-emerald-50/50 hover:bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 text-left transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 text-xs shrink-0">
                           <i className="fa-solid fa-graduation-cap"></i>
                         </div>
                         <div>
-                          <div className="text-xs sm:text-sm font-semibold text-white flex flex-wrap items-center gap-1.5">
+                          <div className="text-xs sm:text-sm font-semibold text-[#18191F] flex flex-wrap items-center gap-1.5">
                             <span>{sanitizePlayerName(p.name)}</span>
                             {p.position && (
-                              <span className="text-zinc-400 font-mono text-[11px]">· {p.position}</span>
+                              <span className="text-[#6B7280] font-mono text-[11px]">· {p.position}</span>
                             )}
                             {isLoaned && (
-                              <span className="bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                              <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                                 {t('On Loan', 'Verliehen')}
                               </span>
                             )}
                             {isReady && (
-                              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                                 {t('Matured', 'Reif')}
                               </span>
                             )}
                             {hasNlzBonus && (
-                              <span className="bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+                              <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold">
                                 {t('+1 NLZ Bonus', '+1 NLZ-Bonus')}
                               </span>
                             )}
                             {hasFeederBonus && (
-                              <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+                              <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] px-1.5 py-0.2 rounded-full font-mono font-bold">
                                 {t('+1 Feeder', '+1 Farmteam')}
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-zinc-400 font-normal flex flex-wrap items-center gap-1.5">
-                            <span className="text-emerald-300 font-medium">+{p.boost} {t('Potential', 'Potenzial')}</span>
+                          <div className="text-[11px] text-[#6B7280] font-normal flex flex-wrap items-center gap-1.5">
+                            <span className="text-emerald-700 font-semibold">+{p.boost} {t('Potential', 'Potenzial')}</span>
                             {isLoaned ? (
                               <>
-                                <span className="text-zinc-600">·</span>
-                                <span className="text-sky-300 font-medium">{t('Developing on loan (Returns next season)', 'Auf Ausbildungsleihe (Rückkehr nächste Saison)')}</span>
+                                <span className="text-[#D6D3CB]">·</span>
+                                <span className="text-sky-700 font-medium">{t('Developing on loan (Returns next season)', 'Auf Ausbildungsleihe (Rückkehr nächste Saison)')}</span>
                               </>
                             ) : isReady ? (
                               <>
-                                <span className="text-zinc-600">·</span>
-                                <span className="text-emerald-400 font-medium">{t('Graduation Ready (0 Penalty)', 'Abschlussbereit (0 Abzug)')}</span>
+                                <span className="text-[#D6D3CB]">·</span>
+                                <span className="text-emerald-700 font-medium">{t('Graduation Ready (0 Penalty)', 'Abschlussbereit (0 Abzug)')}</span>
                               </>
                             ) : (
                               <>
-                                <span className="text-zinc-600">·</span>
-                                <span className="text-rose-300/90">{t('-1 OVR Early Promotion Penalty', '-1 GES Vorzeitige Berufung')}</span>
+                                <span className="text-[#D6D3CB]">·</span>
+                                <span className="text-rose-700 font-medium">{t('-1 OVR Early Promotion Penalty', '-1 GES Vorzeitige Berufung')}</span>
                               </>
                             )}
                           </div>
@@ -667,10 +665,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
                       <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
                         <div className="text-right hidden sm:block">
-                          <div className="font-mono font-bold text-emerald-400 text-xs">
+                          <div className="font-mono font-bold text-emerald-700 text-xs tabular-nums">
                             +{netGain} {t('Net OVR', 'Netto GES')}
                           </div>
-                          <div className="font-mono text-[10px] text-zinc-400">
+                          <div className="font-mono text-[10px] text-[#6B7280] tabular-nums">
                             {formatMoney(0)} {t('Fee', 'Ablöse')}
                           </div>
                         </div>
@@ -683,10 +681,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                               e.stopPropagation();
                               handleAction(() => onPullYouthToSquad(p.id));
                             }}
-                            className={`font-semibold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm ${
+                            className={`font-semibold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs ${
                               (isCallUpCapped || isLoaned || isSquadFull || isLocalProcessing)
-                                ? 'bg-zinc-800/80 text-zinc-500 border border-white/[0.05] cursor-not-allowed opacity-60'
-                                : 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer active:scale-95'
+                                ? 'bg-[#EFECE4] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95'
                             }`}
                             title={
                               isLoaned
@@ -713,15 +711,14 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               </div>
             </div>
           )}
-          
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-white/[0.06] bg-white/[0.02] shrink-0 relative z-10">
-          <button 
+        <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] shrink-0 relative z-10">
+          <button
             aria-label="Close modal"
             onClick={onClose}
-            className="w-full py-3.5 px-6 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white font-semibold text-xs transition border border-white/[0.08] cursor-pointer"
+            className="w-full py-3.5 px-6 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-xs transition cursor-pointer shadow-xs"
           >
             {t('Close Window', 'Fenster Schließen')}
           </button>

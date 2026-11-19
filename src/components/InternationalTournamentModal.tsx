@@ -96,7 +96,7 @@ const TRAINING_CAMPS: TrainingCampConfig[] = [
     tagline: '+1 OVR Group & Early Tempo',
     desc: 'Explosive pressing drills for fast starts and group stage dominance.',
     icon: 'fa-dumbbell',
-    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+    badgeColor: 'bg-amber-50 text-amber-800 border-amber-200'
   },
   {
     id: 'tactical_masterclass',
@@ -104,7 +104,7 @@ const TRAINING_CAMPS: TrainingCampConfig[] = [
     tagline: '+1 OVR & -1 Giant Opp OVR',
     desc: 'Deep opposition scouting that neutralizes higher-rated superpowers.',
     icon: 'fa-brain',
-    badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+    badgeColor: 'bg-sky-50 text-sky-800 border-sky-200'
   },
   {
     id: 'stamina_recovery',
@@ -112,7 +112,7 @@ const TRAINING_CAMPS: TrainingCampConfig[] = [
     tagline: '+1 OVR & +15% Extra-Time/Pens',
     desc: 'Cryo-recovery and load management for 120-minute knockout battles.',
     icon: 'fa-heart-pulse',
-    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+    badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200'
   },
   {
     id: 'set_piece_specialist',
@@ -120,7 +120,7 @@ const TRAINING_CAMPS: TrainingCampConfig[] = [
     tagline: '+40% Set-Piece Goal & +20% Pens',
     desc: 'Obsessive corner routines and ice-cold penalty shootout rehearsals.',
     icon: 'fa-crosshairs',
-    badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+    badgeColor: 'bg-purple-50 text-purple-800 border-purple-200'
   }
 ];
 
@@ -718,32 +718,28 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.14, ease: 'linear' }}
-      className="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-2xl overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/45 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-4xl bg-[#12141c]/95 backdrop-blur-3xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden text-left text-white"
+        className="relative w-full max-w-4xl bg-white rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden text-left text-[#18191F]"
       >
-        {/* Subtle Ambient Glows */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
-
         {/* Top Header */}
-        <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-white/[0.06] bg-white/[0.01] flex items-center justify-between shrink-0 relative z-10">
+        <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 text-lg shadow-lg shadow-amber-500/20 shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-lg shrink-0">
               <i className="fas fa-trophy"></i>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm sm:text-base font-black tracking-tight uppercase text-white">
+                <span className="text-sm sm:text-base font-black tracking-tight uppercase text-[#18191F]">
                   World Cup™ {year}
                 </span>
-                <span aria-hidden="true" className="text-zinc-600">·</span>
-                <span className="text-xs font-semibold text-amber-300">
+                <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+                <span className="text-xs font-semibold text-amber-800">
                   {hostNation.flag} {hostNation.name}
                 </span>
                 <BroadcastBadge
@@ -752,7 +748,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   isModActive={isModActive}
                 />
               </div>
-              <p className="text-[11px] text-zinc-400 font-medium truncate mt-0.5">
+              <p className="text-[11px] text-[#6B7280] font-medium truncate mt-0.5">
                 National Team Director of Football · Final at {hostNation.stadium}, {hostNation.city}
               </p>
             </div>
@@ -760,7 +756,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
           <button
             onClick={handleDeclineOrClose}
-            className="w-9 h-9 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white transition cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center text-[#4B5563] hover:text-[#18191F] transition cursor-pointer shrink-0"
             title={step === 'summary' ? 'Complete & Return to Club' : 'Decline & Return to Club'}
           >
             <i className="fas fa-times text-xs"></i>
@@ -769,46 +765,46 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
         {/* Streamlined Single Sleek Non-Wrapping Status Ribbon */}
         {step !== 'invite' && selectedTeam && (
-          <div className="px-5 py-2.5 sm:px-6 bg-black/30 border-b border-white/[0.06] flex items-center justify-between shrink-0 text-xs gap-3 relative z-10">
+          <div className="px-5 py-2.5 sm:px-6 bg-[#FAF9F6] border-b border-[#E6E3DC] flex items-center justify-between shrink-0 text-xs gap-3 relative z-10">
             <div className="flex items-center gap-2 min-w-0 truncate">
               <span className="text-lg shrink-0">{selectedTeam.flag}</span>
-              <span className="text-white font-black truncate">{selectedTeam.name}</span>
-              <span aria-hidden="true" className="text-zinc-600">·</span>
-              <span className="font-mono text-xs font-bold text-amber-300 tabular-nums whitespace-nowrap">
+              <span className="text-[#18191F] font-black truncate">{selectedTeam.name}</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
+              <span className="font-mono text-xs font-bold text-amber-800 tabular-nums whitespace-nowrap">
                 {effectiveUserOvr} Eff. OVR
               </span>
               {appointedCoach && (
                 <>
-                  <span aria-hidden="true" className="text-zinc-600 hidden sm:inline">·</span>
-                  <span className="text-[11px] text-zinc-400 truncate hidden sm:inline">
-                    HC: <strong className="text-zinc-200 font-semibold">{appointedCoach.name}</strong>
+                  <span aria-hidden="true" className="text-[#C7C4BC] hidden sm:inline">·</span>
+                  <span className="text-[11px] text-[#6B7280] truncate hidden sm:inline">
+                    HC: <strong className="text-[#18191F] font-semibold">{appointedCoach.name}</strong>
                   </span>
                 </>
               )}
             </div>
 
             <div className="hidden md:flex items-center gap-2 text-[11px] font-bold tracking-wide shrink-0">
-              <span className={step === 'strategy' ? 'text-amber-300' : 'text-emerald-400'}>01. Blueprint</span>
-              <span aria-hidden="true" className="text-zinc-700">/</span>
-              <span className={step === 'group' ? 'text-amber-300' : ['knockout', 'final', 'summary'].includes(step) ? 'text-emerald-400' : 'text-zinc-500'}>02. Group</span>
-              <span aria-hidden="true" className="text-zinc-700">/</span>
-              <span className={step === 'knockout' ? 'text-amber-300' : ['final', 'summary'].includes(step) ? 'text-emerald-400' : 'text-zinc-500'}>03. Knockouts</span>
-              <span aria-hidden="true" className="text-zinc-700">/</span>
-              <span className={step === 'final' || step === 'summary' ? 'text-amber-300' : 'text-zinc-500'}>04. Grand Final</span>
+              <span className={step === 'strategy' ? 'text-[#18191F]' : 'text-emerald-700'}>01. Blueprint</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">/</span>
+              <span className={step === 'group' ? 'text-[#18191F]' : ['knockout', 'final', 'summary'].includes(step) ? 'text-emerald-700' : 'text-[#6B7280]'}>02. Group</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">/</span>
+              <span className={step === 'knockout' ? 'text-[#18191F]' : ['final', 'summary'].includes(step) ? 'text-emerald-700' : 'text-[#6B7280]'}>03. Knockouts</span>
+              <span aria-hidden="true" className="text-[#C7C4BC]">/</span>
+              <span className={step === 'final' || step === 'summary' ? 'text-[#18191F]' : 'text-[#6B7280]'}>04. Grand Final</span>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 text-[11px] font-bold">
               <span className={
                 synergy.ovrModifier > 0
-                  ? 'text-emerald-400 font-mono tabular-nums'
+                  ? 'text-emerald-700 font-mono tabular-nums'
                   : synergy.ovrModifier < 0
-                  ? 'text-rose-400 font-mono tabular-nums'
-                  : 'text-amber-300 font-mono tabular-nums'
+                  ? 'text-rose-700 font-mono tabular-nums'
+                  : 'text-amber-800 font-mono tabular-nums'
               }>
                 ⚡ {synergy.ovrModifier > 0 ? `+${synergy.ovrModifier}` : synergy.ovrModifier} OVR
               </span>
-              <span aria-hidden="true" className="text-zinc-600 hidden sm:inline">·</span>
-              <span className="text-zinc-300 hidden sm:inline">{synergy.title}</span>
+              <span aria-hidden="true" className="text-[#C7C4BC] hidden sm:inline">·</span>
+              <span className="text-[#4B5563] hidden sm:inline">{synergy.title}</span>
             </div>
           </div>
         )}
@@ -827,27 +823,27 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 className="flex flex-col gap-5 flex-1 justify-between"
               >
                 <div className="space-y-5">
-                  <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <span className="text-4xl sm:text-5xl drop-shadow">{hostNation.flag}</span>
+                      <span className="text-4xl sm:text-5xl">{hostNation.flag}</span>
                       <div>
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 mb-0.5">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-amber-800 mb-0.5">
                           Official Federation Call-Up · Tier 1 Sporting Director Invitation
                         </div>
-                        <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                        <h3 className="text-lg sm:text-xl font-black text-[#18191F] tracking-tight">
                           {year} World Cup™ in {hostNation.name}
                         </h3>
-                        <p className="text-xs text-zinc-400 mt-0.5">
-                          Grand Final Venue: <strong className="text-zinc-200">{hostNation.stadium}</strong> ({hostNation.city}) · Champion Reward: <strong className="text-amber-300">+5,000 Career Pts &amp; +25 Rep</strong>
+                        <p className="text-xs text-[#4B5563] mt-0.5">
+                          Grand Final Venue: <strong className="text-[#18191F]">{hostNation.stadium}</strong> ({hostNation.city}) · Champion Reward: <strong className="text-amber-800">+5,000 Career Pts &amp; +25 Rep</strong>
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center justify-between">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#6B7280] mb-3 flex items-center justify-between">
                       <span>Select National Federation to Direct</span>
-                      <span className="text-[11px] text-zinc-500 font-medium">4 Federations Courting Your Signature</span>
+                      <span className="text-[11px] text-[#6B7280] font-medium">4 Federations Courting Your Signature</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -860,33 +856,33 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             onClick={() => handleSelectTeam(team)}
                             className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between group ${
                               isHost
-                                ? 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-amber-500/35 hover:border-amber-400/60'
-                                : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.07] hover:border-white/[0.16]'
+                                ? 'bg-amber-50 hover:bg-amber-100/80 border-amber-300'
+                                : 'bg-[#FAF9F6] hover:bg-[#EFECE4] border-[#E6E3DC]'
                             }`}
                           >
                             <div className="flex items-center gap-3.5 min-w-0">
-                              <span className="text-4xl drop-shadow shrink-0">{team.flag}</span>
+                              <span className="text-4xl shrink-0">{team.flag}</span>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-black text-white text-base group-hover:text-amber-300 transition truncate">
+                                  <span className="font-black text-[#18191F] text-base truncate">
                                     {team.name}
                                   </span>
                                   {isHost && (
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
                                       · Host (+2 OVR)
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-xs text-zinc-400 font-medium mt-0.5 flex items-center gap-1.5">
-                                  <span>Squad <strong className="text-amber-300 font-mono tabular-nums">{team.ovr} OVR</strong></span>
-                                  <span aria-hidden="true" className="text-zinc-600">·</span>
+                                <div className="text-xs text-[#4B5563] font-medium mt-0.5 flex items-center gap-1.5">
+                                  <span>Squad <strong className="text-amber-800 font-mono tabular-nums">{team.ovr} OVR</strong></span>
+                                  <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
                                   <span>{team.continent}</span>
                                 </div>
-                                <div className="text-[11px] text-zinc-500 mt-0.5 truncate">{expectation}</div>
+                                <div className="text-[11px] text-[#6B7280] mt-0.5 truncate">{expectation}</div>
                               </div>
                             </div>
 
-                            <div className="px-3.5 py-2 rounded-xl bg-white/[0.06] group-hover:bg-amber-400 text-zinc-200 group-hover:text-slate-950 text-xs font-black transition flex items-center gap-1.5 shrink-0 ml-2">
+                            <div className="px-3.5 py-2 rounded-xl bg-white group-hover:bg-[#18191F] border border-[#E6E3DC] text-[#18191F] group-hover:text-white text-xs font-black transition flex items-center gap-1.5 shrink-0 ml-2">
                               <span>Appoint</span>
                               <i className="fas fa-arrow-right text-[10px]"></i>
                             </div>
@@ -897,11 +893,11 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-white/[0.06] flex justify-between items-center text-xs text-zinc-500">
+                <div className="pt-2 border-t border-[#E6E3DC] flex justify-between items-center text-xs text-[#6B7280]">
                   <span>International tournaments do not deduct club budget or energy.</span>
                   <button
                     onClick={onDecline}
-                    className="text-xs font-semibold text-zinc-400 hover:text-white transition cursor-pointer py-1.5 px-3 rounded-lg hover:bg-white/[0.04]"
+                    className="text-xs font-semibold text-[#4B5563] hover:text-[#18191F] transition cursor-pointer py-1.5 px-3 rounded-lg hover:bg-[#EFECE4]"
                   >
                     Decline International Duty
                   </button>
@@ -920,22 +916,22 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 className="flex flex-col gap-4"
               >
                 {/* Live Director Synergy Summary Banner */}
-                <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-bold text-white">
-                      <i className="fas fa-sliders text-amber-400"></i>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#18191F]">
+                      <i className="fas fa-sliders text-amber-600"></i>
                       <span>Federation Blueprint Alignment: {synergy.title}</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
+                    <p className="text-[11px] text-[#6B7280] mt-0.5 truncate">
                       {synergy.desc}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 text-xs font-mono font-bold tabular-nums">
-                    <span className="text-zinc-400">
-                      Base <strong className="text-white">{selectedTeam.ovr}</strong>
+                    <span className="text-[#6B7280]">
+                      Base <strong className="text-[#18191F]">{selectedTeam.ovr}</strong>
                     </span>
-                    <span aria-hidden="true" className="text-zinc-600">→</span>
-                    <span className="text-amber-300">
+                    <span aria-hidden="true" className="text-[#C7C4BC]">→</span>
+                    <span className="text-amber-800">
                       Effective {effectiveUserOvr} OVR
                     </span>
                   </div>
@@ -943,9 +939,9 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
                 {/* Step 1: Appoint Head Coach */}
                 <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center justify-between">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280] mb-2 flex items-center justify-between">
                     <span>01. Appoint National Head Coach</span>
-                    <span className="text-zinc-500 font-normal">Selects tactical identity &amp; synergy profile</span>
+                    <span className="text-[#6B7280] font-normal">Selects tactical identity &amp; synergy profile</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -957,25 +953,25 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                           onClick={() => setAppointedCoach(c)}
                           className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between ${
                             isSelected
-                              ? 'bg-amber-500/[0.10] border-amber-400/60 shadow-sm'
-                              : 'bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05]'
+                              ? 'bg-amber-50 border-amber-400 shadow-xs'
+                              : 'bg-[#FAF9F6] border-[#E6E3DC] hover:bg-[#EFECE4]'
                           }`}
                         >
                           <div>
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-xs font-black text-white truncate">{c.name}</span>
+                              <span className="text-xs font-black text-[#18191F] truncate">{c.name}</span>
                               {isSelected && (
-                                <i className="fas fa-circle-check text-amber-400 text-xs shrink-0"></i>
+                                <i className="fas fa-circle-check text-amber-700 text-xs shrink-0"></i>
                               )}
                             </div>
-                            <div className="text-[11px] text-amber-300 font-semibold mb-1.5">{c.title}</div>
-                            <p className="text-[11px] text-zinc-400 leading-snug mb-2.5">{c.strength}</p>
+                            <div className="text-[11px] text-amber-800 font-semibold mb-1.5">{c.title}</div>
+                            <p className="text-[11px] text-[#4B5563] leading-snug mb-2.5">{c.strength}</p>
                           </div>
-                          <div className="pt-2 border-t border-white/[0.06] space-y-1 text-[10px]">
-                            <div className="text-sky-300 font-medium truncate">
+                          <div className="pt-2 border-t border-[#E6E3DC] space-y-1 text-[10px]">
+                            <div className="text-sky-700 font-medium truncate">
                               Style: {c.tacticalStyle}
                             </div>
-                            <div className="text-rose-300/80 font-medium truncate">
+                            <div className="text-rose-700 font-medium truncate">
                               Risk: {c.flaw}
                             </div>
                           </div>
@@ -988,8 +984,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 {/* Step 2 & 3 Side-by-Side: Squad Identity + Federation Funding */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Step 2: Squad Identity */}
-                  <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-3.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280] mb-2">
                       02. National Squad Identity
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -1006,15 +1002,15 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             onClick={() => setSquadDirection(item.id as NationalSquadDirection)}
                             className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                               active
-                                ? 'bg-amber-500/[0.12] border-amber-400/60 text-white'
-                                : 'bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.05]'
+                                ? 'bg-amber-50 border-amber-400 text-[#18191F]'
+                                : 'bg-white border-[#E6E3DC] text-[#4B5563] hover:bg-[#EFECE4]'
                             }`}
                           >
-                            <div className="text-xs font-bold text-white flex items-center justify-between">
+                            <div className="text-xs font-bold text-[#18191F] flex items-center justify-between">
                               <span>{item.label}</span>
-                              {active && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                              {active && <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />}
                             </div>
-                            <div className="text-[10px] text-zinc-400 mt-0.5 leading-tight">{item.desc}</div>
+                            <div className="text-[10px] text-[#6B7280] mt-0.5 leading-tight">{item.desc}</div>
                           </button>
                         );
                       })}
@@ -1022,8 +1018,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   </div>
 
                   {/* Step 3: Federation Infrastructure */}
-                  <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-3.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280] mb-2">
                       03. Federation Camp Allocation
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -1040,15 +1036,15 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             onClick={() => setFederationInvestment(item.id as NationalFederationInvestment)}
                             className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                               active
-                                ? 'bg-sky-500/[0.12] border-sky-400/60 text-white'
-                                : 'bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.05]'
+                                ? 'bg-sky-50 border-sky-400 text-[#18191F]'
+                                : 'bg-white border-[#E6E3DC] text-[#4B5563] hover:bg-[#EFECE4]'
                             }`}
                           >
-                            <div className="text-xs font-bold text-white flex items-center justify-between">
+                            <div className="text-xs font-bold text-[#18191F] flex items-center justify-between">
                               <span>{item.label}</span>
-                              {active && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
+                              {active && <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />}
                             </div>
-                            <div className="text-[10px] text-zinc-400 mt-0.5 leading-tight">{item.desc}</div>
+                            <div className="text-[10px] text-[#6B7280] mt-0.5 leading-tight">{item.desc}</div>
                           </button>
                         );
                       })}
@@ -1057,10 +1053,10 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 </div>
 
                 {/* Step 4: Pre-Tournament Readiness Focus */}
-                <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-3.5">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center justify-between">
+                <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280] mb-2 flex items-center justify-between">
                     <span>04. Pre-Tournament Readiness Regimen</span>
-                    <span className="text-zinc-500 font-normal">Final training camp focus before Matchday 1</span>
+                    <span className="text-[#6B7280] font-normal">Final training camp focus before Matchday 1</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {TRAINING_CAMPS.map((camp) => {
@@ -1071,16 +1067,16 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                           onClick={() => setTrainingFocus(camp.id)}
                           className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                             active
-                              ? 'bg-amber-500/[0.12] border-amber-400/60 text-white'
-                              : 'bg-white/[0.02] border-white/[0.06] text-zinc-300 hover:bg-white/[0.05]'
+                              ? 'bg-amber-50 border-amber-400 text-[#18191F]'
+                              : 'bg-white border-[#E6E3DC] text-[#4B5563] hover:bg-[#EFECE4]'
                           }`}
                         >
                           <div>
                             <div className="flex items-center gap-1.5 mb-1">
-                              <i className={`fas ${camp.icon} text-amber-400 text-[10px] shrink-0`}></i>
-                              <span className="text-xs font-bold text-white truncate">{camp.label}</span>
+                              <i className={`fas ${camp.icon} text-amber-600 text-[10px] shrink-0`}></i>
+                              <span className="text-xs font-bold text-[#18191F] truncate">{camp.label}</span>
                             </div>
-                            <div className="text-[10px] text-zinc-400 leading-tight">{camp.tagline}</div>
+                            <div className="text-[10px] text-[#6B7280] leading-tight">{camp.tagline}</div>
                           </div>
                         </button>
                       );
@@ -1092,7 +1088,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 <div className="pt-1">
                   <button
                     onClick={handleLaunchGroupStage}
-                    className="w-full min-h-[48px] py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-lg shadow-amber-500/15 cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                   >
                     <i className="fas fa-futbol"></i>
                     <span>Lock In Blueprint &amp; Kick Off Group Stage</span>
@@ -1111,25 +1107,25 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 transition={{ duration: 0.14 }}
                 className="flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-2xl px-4 py-3">
+                <div className="flex items-center justify-between bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl px-4 py-3">
                   <div>
-                    <h3 className="font-black text-white text-sm sm:text-base">
+                    <h3 className="font-black text-[#18191F] text-sm sm:text-base">
                       {groupResult.groupName} · Matchday {groupMatchdayRevealed} of 3
                     </h3>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-[#6B7280]">
                       Top 2 nations advance to the World Cup Quarter-Finals
                     </p>
                   </div>
                   {groupMatchdayRevealed < 3 ? (
                     <button
                       onClick={() => setGroupMatchdayRevealed(3)}
-                      className="px-3.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-xs font-bold text-amber-300 transition cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-bold text-[#18191F] transition cursor-pointer"
                     >
                       Fast-Forward Group ⏩
                     </button>
                   ) : (
                     <span className={`text-xs font-black uppercase tracking-wider ${
-                      groupResult.userQualified ? 'text-emerald-400' : 'text-rose-400'
+                      groupResult.userQualified ? 'text-emerald-700' : 'text-rose-700'
                     }`}>
                       {groupResult.userQualified ? `Qualified (#${groupResult.userPosition})` : `Eliminated (#${groupResult.userPosition})`}
                     </span>
@@ -1137,10 +1133,10 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 </div>
 
                 {/* Live Group Standings Table */}
-                <div className="bg-white/[0.02] rounded-2xl border border-white/[0.08] overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#E6E3DC] overflow-hidden">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] uppercase font-bold tracking-wider text-zinc-400">
+                      <tr className="bg-[#FAF9F6] border-b border-[#E6E3DC] text-[10px] uppercase font-bold tracking-wider text-[#6B7280]">
                         <th className="py-2.5 px-3.5">Pos</th>
                         <th className="py-2.5 px-3">Nation</th>
                         <th className="py-2.5 px-2 text-center">MP</th>
@@ -1148,38 +1144,38 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                         <th className="py-2.5 px-2 text-center">D</th>
                         <th className="py-2.5 px-2 text-center">L</th>
                         <th className="py-2.5 px-2 text-center">GD</th>
-                        <th className="py-2.5 px-3.5 text-right font-black text-white">PTS</th>
+                        <th className="py-2.5 px-3.5 text-right font-black text-[#18191F]">PTS</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.05]">
+                    <tbody className="divide-y divide-[#E6E3DC]">
                       {displayedGroupTable.map((row, idx) => {
                         const isQualifying = idx < 2;
                         return (
                           <tr
                             key={row.team.code}
-                            className={`${row.isUser ? 'bg-amber-500/[0.10] font-bold' : ''} hover:bg-white/[0.02]`}
+                            className={`${row.isUser ? 'bg-amber-50 font-bold' : ''} hover:bg-[#FAF9F6]`}
                           >
                             <td className="py-2.5 px-3.5 font-mono tabular-nums">
                               <span className={`w-5 h-5 rounded-md inline-flex items-center justify-center text-[11px] font-bold ${
-                                isQualifying ? 'bg-emerald-500/20 text-emerald-300' : 'text-zinc-500'
+                                isQualifying ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'text-[#6B7280]'
                               }`}>
                                 {idx + 1}
                               </span>
                             </td>
                             <td className="py-2.5 px-3 flex items-center gap-2.5">
                               <span className="text-lg">{row.team.flag}</span>
-                              <span className={row.isUser ? 'text-amber-300 font-black' : 'text-white font-semibold'}>
+                              <span className={row.isUser ? 'text-[#18191F] font-black' : 'text-[#18191F] font-semibold'}>
                                 {row.team.name}
                               </span>
                             </td>
-                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-zinc-400">{row.p}</td>
-                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-emerald-400">{row.w}</td>
-                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-zinc-300">{row.d}</td>
-                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-rose-400">{row.l}</td>
-                            <td className="py-2.5 px-2 text-center font-mono tabular-nums font-bold text-zinc-200">
+                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-[#6B7280]">{row.p}</td>
+                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-emerald-700">{row.w}</td>
+                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-[#4B5563]">{row.d}</td>
+                            <td className="py-2.5 px-2 text-center font-mono tabular-nums text-rose-700">{row.l}</td>
+                            <td className="py-2.5 px-2 text-center font-mono tabular-nums font-bold text-[#18191F]">
                               {row.gd > 0 ? `+${row.gd}` : row.gd}
                             </td>
-                            <td className="py-2.5 px-3.5 text-right font-mono tabular-nums font-black text-white text-sm">
+                            <td className="py-2.5 px-3.5 text-right font-mono tabular-nums font-black text-[#18191F] text-sm">
                               {row.pts}
                             </td>
                           </tr>
@@ -1194,8 +1190,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   {[1, 2, 3].filter(md => md <= groupMatchdayRevealed).map(md => {
                     const mdMatches = groupResult.matches.slice((md - 1) * 2, md * 2);
                     return (
-                      <div key={md} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                      <div key={md} className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-2">
                           Matchday {md} Results
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1205,14 +1201,14 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                               <div
                                 key={idx}
                                 className={`rounded-xl px-3 py-2 flex items-center justify-between text-xs border ${
-                                  isUserMatch ? 'bg-amber-500/[0.08] border-amber-400/30 font-bold' : 'bg-black/30 border-white/[0.05]'
+                                  isUserMatch ? 'bg-amber-50 border-amber-300 font-bold' : 'bg-white border-[#E6E3DC]'
                                 }`}
                               >
-                                <span className="truncate flex-1">{m.home.flag} {m.home.name}</span>
-                                <span className="font-mono font-black px-2.5 py-0.5 rounded-lg bg-black/50 text-amber-300 mx-2 whitespace-nowrap tabular-nums inline-flex items-center shrink-0">
+                                <span className="truncate flex-1 text-[#18191F]">{m.home.flag} {m.home.name}</span>
+                                <span className="font-mono font-black px-2.5 py-0.5 rounded-lg bg-[#FAF9F6] border border-[#E6E3DC] text-[#18191F] mx-2 whitespace-nowrap tabular-nums inline-flex items-center shrink-0">
                                   {m.homeScore} – {m.awayScore}
                                 </span>
-                                <span className="truncate flex-1 text-right">{m.away.name} {m.away.flag}</span>
+                                <span className="truncate flex-1 text-right text-[#18191F]">{m.away.name} {m.away.flag}</span>
                               </div>
                             );
                           })}
@@ -1227,7 +1223,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   {groupMatchdayRevealed < 3 ? (
                     <button
                       onClick={() => setGroupMatchdayRevealed(prev => prev + 1)}
-                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-forward-step"></i>
                       <span>Simulate Group Matchday {groupMatchdayRevealed + 1}</span>
@@ -1235,7 +1231,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   ) : groupResult.userQualified ? (
                     <button
                       onClick={handleStartKnockouts}
-                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-lg shadow-emerald-500/15 cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-sitemap"></i>
                       <span>Advance to World Cup Quarter-Final</span>
@@ -1246,7 +1242,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                         setWonTrophy(false);
                         setStep('summary');
                       }}
-                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer"
+                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer"
                     >
                       Group Stage Elimination · Conclude Campaign
                     </button>
@@ -1267,47 +1263,47 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
               >
                 {isSimulatingMatch ? (
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
-                    <i className="fas fa-futbol fa-spin text-amber-400 text-4xl mb-1"></i>
-                    <span className="text-base font-black tracking-wide text-white">
+                    <i className="fas fa-futbol fa-spin text-amber-600 text-4xl mb-1"></i>
+                    <span className="text-base font-black tracking-wide text-[#18191F]">
                       Simulating {currentStage} Clash...
                     </span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-[#6B7280]">
                       Executing matchday tactical directive on the pitch
                     </span>
                   </div>
                 ) : knockoutPhase === 'prep' && pendingOpponent ? (
-                  <div className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-5 space-y-4">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 space-y-4">
                     {/* Matchup Header */}
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 border-b border-white/[0.06]">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 border-b border-[#E6E3DC]">
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{selectedTeam.flag}</span>
-                        <span className="font-black text-sm sm:text-base text-white truncate max-w-full">{selectedTeam.name}</span>
-                        <span className="text-xs font-mono text-amber-300 font-bold tabular-nums">{effectiveUserOvr} Eff. OVR</span>
+                        <span className="text-4xl sm:text-5xl">{selectedTeam.flag}</span>
+                        <span className="font-black text-sm sm:text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
+                        <span className="text-xs font-mono text-amber-800 font-bold tabular-nums">{effectiveUserOvr} Eff. OVR</span>
                       </div>
                       <div className="flex flex-col items-center px-3">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-1">{currentStage}</span>
-                        <span className="text-xl sm:text-2xl font-black text-zinc-500">VS</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">{currentStage}</span>
+                        <span className="text-xl sm:text-2xl font-black text-[#6B7280]">VS</span>
                       </div>
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{pendingOpponent.flag}</span>
-                        <span className="font-black text-sm sm:text-base text-white truncate max-w-full">{pendingOpponent.name}</span>
-                        <span className="text-xs font-mono text-zinc-300 font-bold tabular-nums">{pendingOpponent.ovr} OVR</span>
+                        <span className="text-4xl sm:text-5xl">{pendingOpponent.flag}</span>
+                        <span className="font-black text-sm sm:text-base text-[#18191F] truncate max-w-full">{pendingOpponent.name}</span>
+                        <span className="text-xs font-mono text-[#4B5563] font-bold tabular-nums">{pendingOpponent.ovr} OVR</span>
                       </div>
                     </div>
 
                     {/* Integrated Chief Scout Dossier */}
                     {scoutReport && (
-                      <div className="bg-sky-500/[0.07] border border-sky-400/25 rounded-2xl px-4 py-3 text-left">
+                      <div className="bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3 text-left">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5 truncate">
-                            <i className="fas fa-binoculars text-sky-400 shrink-0"></i>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5 truncate">
+                            <i className="fas fa-binoculars text-sky-700 shrink-0"></i>
                             <span>Chief Scout Dossier · {pendingOpponent.name}</span>
                           </span>
-                          <span className="text-[11px] font-semibold text-sky-200 shrink-0">
+                          <span className="text-[11px] font-semibold text-sky-900 shrink-0">
                             {scoutReport.style}
                           </span>
                         </div>
-                        <p className="text-xs text-zinc-300 leading-relaxed">
+                        <p className="text-xs text-[#4B5563] leading-relaxed">
                           {scoutReport.threat}
                         </p>
                       </div>
@@ -1315,7 +1311,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
                     {/* Pre-Game Tactical Directive Selector */}
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 text-left">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280] mb-2 text-left">
                         Select Matchday Tactical Directive
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
@@ -1327,18 +1323,18 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                               onClick={() => setPreGameDirective(d.id)}
                               className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
                                 isSelected
-                                  ? 'bg-amber-500/[0.12] border-amber-400/60 shadow-sm'
-                                  : 'bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05]'
+                                  ? 'bg-amber-50 border-amber-400 shadow-xs'
+                                  : 'bg-white border-[#E6E3DC] hover:bg-[#EFECE4]'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-black text-white flex items-center gap-2">
-                                  <i className={`fas ${d.icon} text-amber-400`}></i>
+                                <span className="text-xs font-black text-[#18191F] flex items-center gap-2">
+                                  <i className={`fas ${d.icon} text-amber-600`}></i>
                                   <span>{d.label}</span>
                                 </span>
-                                {isSelected && <i className="fas fa-circle-check text-amber-400 text-xs"></i>}
+                                {isSelected && <i className="fas fa-circle-check text-amber-700 text-xs"></i>}
                               </div>
-                              <p className="text-[11px] text-zinc-400 leading-snug">{d.desc}</p>
+                              <p className="text-[11px] text-[#6B7280] leading-snug">{d.desc}</p>
                             </button>
                           );
                         })}
@@ -1347,50 +1343,50 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
                     <button
                       onClick={executeKnockoutMatch}
-                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-futbol"></i>
                       <span>Kick Off {currentStage}</span>
                     </button>
                   </div>
                 ) : currentMatch ? (
-                  <div className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-6 text-center space-y-4">
-                    <div className="text-[11px] font-bold uppercase tracking-widest text-amber-400">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-6 text-center space-y-4">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-amber-800">
                       {currentMatch.stage} · Full-Time Result
                     </div>
 
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5 my-2 w-full max-w-md mx-auto">
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{selectedTeam.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-white truncate max-w-full">{selectedTeam.name}</span>
+                        <span className="text-4xl sm:text-5xl">{selectedTeam.flag}</span>
+                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
                       </div>
                       <div className="flex flex-col items-center shrink-0">
-                        <div className="bg-black/60 border border-white/[0.12] rounded-2xl px-5 sm:px-6 py-2.5 font-mono font-black text-2xl sm:text-4xl text-amber-300 whitespace-nowrap tabular-nums inline-flex items-center justify-center tracking-wide">
+                        <div className="bg-white border border-[#E6E3DC] rounded-2xl px-5 sm:px-6 py-2.5 font-mono font-black text-2xl sm:text-4xl text-[#18191F] whitespace-nowrap tabular-nums inline-flex items-center justify-center tracking-wide shadow-xs">
                           <span>{currentMatch.teamGoals}</span>
-                          <span className="mx-2.5 text-zinc-500 font-sans text-xl sm:text-2xl">–</span>
+                          <span className="mx-2.5 text-[#C7C4BC] font-sans text-xl sm:text-2xl">–</span>
                           <span>{currentMatch.oppGoals}</span>
                         </div>
                         {currentMatch.pens && (
-                          <span className="text-[11px] font-mono font-bold text-amber-300 mt-1.5 tabular-nums">
+                          <span className="text-[11px] font-mono font-bold text-amber-800 mt-1.5 tabular-nums">
                             ({currentMatch.teamPenGoals} : {currentMatch.oppPenGoals} Penalties)
                           </span>
                         )}
                       </div>
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{currentMatch.opponent.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-white truncate max-w-full">{currentMatch.opponent.name}</span>
+                        <span className="text-4xl sm:text-5xl">{currentMatch.opponent.flag}</span>
+                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{currentMatch.opponent.name}</span>
                       </div>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-zinc-300 font-medium max-w-lg mx-auto leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#4B5563] font-medium max-w-lg mx-auto leading-relaxed">
                       {currentMatch.summary}
                     </p>
 
-                    <div className="pt-3 border-t border-white/[0.06]">
+                    <div className="pt-3 border-t border-[#E6E3DC]">
                       {currentMatch.won ? (
                         <button
                           onClick={handleProceedAfterKnockout}
-                          className="w-full min-h-[48px] py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                          className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                         >
                           <span>{currentMatch.stage === 'Quarter-Final' ? 'Advance to Semi-Final ⚽' : 'Advance to World Cup Grand Final 🏆'}</span>
                           <i className="fas fa-arrow-right"></i>
@@ -1401,7 +1397,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             setWonTrophy(false);
                             setStep('summary');
                           }}
-                          className="w-full min-h-[48px] py-3.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer"
+                          className="w-full min-h-[48px] py-3.5 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-[#18191F] font-black text-xs sm:text-sm uppercase tracking-wider transition cursor-pointer"
                         >
                           Conclude World Cup Campaign
                         </button>
@@ -1422,41 +1418,41 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 transition={{ duration: 0.14 }}
                 className="flex flex-col gap-4"
               >
-                <div className="bg-amber-500/[0.08] border border-amber-400/30 rounded-2xl px-4 py-2.5 text-center">
-                  <div className="text-[11px] font-bold uppercase tracking-widest text-amber-300">
-                    <i className="fas fa-crown mr-1.5"></i>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-center">
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-amber-800">
+                    <i className="fas fa-crown mr-1.5 text-amber-600"></i>
                     World Cup™ Grand Final · {hostNation.stadium}, {hostNation.city}
                   </div>
                 </div>
 
                 {finalPhase === 'prep' ? (
-                  <div className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-5 space-y-4">
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 border-b border-white/[0.06]">
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 space-y-4">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 border-b border-[#E6E3DC]">
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-5xl drop-shadow">{selectedTeam.flag}</span>
-                        <span className="font-black text-base text-white truncate max-w-full">{selectedTeam.name}</span>
-                        <span className="text-xs font-mono text-amber-300 font-bold tabular-nums">{effectiveUserOvr} Eff. OVR</span>
+                        <span className="text-5xl">{selectedTeam.flag}</span>
+                        <span className="font-black text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
+                        <span className="text-xs font-mono text-amber-800 font-bold tabular-nums">{effectiveUserOvr} Eff. OVR</span>
                       </div>
-                      <div className="text-xl sm:text-2xl font-black text-amber-400 px-3">VS</div>
+                      <div className="text-xl sm:text-2xl font-black text-amber-700 px-3">VS</div>
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-5xl drop-shadow">{finalOpponent.flag}</span>
-                        <span className="font-black text-base text-white truncate max-w-full">{finalOpponent.name}</span>
-                        <span className="text-xs font-mono text-zinc-300 font-bold tabular-nums">{finalOpponent.ovr} OVR</span>
+                        <span className="text-5xl">{finalOpponent.flag}</span>
+                        <span className="font-black text-base text-[#18191F] truncate max-w-full">{finalOpponent.name}</span>
+                        <span className="text-xs font-mono text-[#4B5563] font-bold tabular-nums">{finalOpponent.ovr} OVR</span>
                       </div>
                     </div>
 
                     {scoutReport && (
-                      <div className="bg-sky-500/[0.07] border border-sky-400/25 rounded-2xl px-4 py-3 text-left">
+                      <div className="bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3 text-left">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300 flex items-center gap-1.5 truncate">
-                            <i className="fas fa-binoculars text-sky-400 shrink-0"></i>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5 truncate">
+                            <i className="fas fa-binoculars text-sky-700 shrink-0"></i>
                             <span>Grand Final Dossier · {finalOpponent.name}</span>
                           </span>
-                          <span className="text-[11px] font-semibold text-sky-200 shrink-0">
+                          <span className="text-[11px] font-semibold text-sky-900 shrink-0">
                             {scoutReport.style}
                           </span>
                         </div>
-                        <p className="text-xs text-zinc-300 leading-relaxed">
+                        <p className="text-xs text-[#4B5563] leading-relaxed">
                           {scoutReport.threat}
                         </p>
                       </div>
@@ -1471,18 +1467,18 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             onClick={() => setPreGameDirective(d.id)}
                             className={`p-3.5 rounded-2xl border transition cursor-pointer flex flex-col justify-between ${
                               isSelected
-                                ? 'bg-amber-500/[0.12] border-amber-400/60 shadow-sm'
-                                : 'bg-white/[0.02] border-white/[0.07] hover:bg-white/[0.05]'
+                                ? 'bg-amber-50 border-amber-400 shadow-xs'
+                                : 'bg-white border-[#E6E3DC] hover:bg-[#EFECE4]'
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-black text-white flex items-center gap-2">
-                                <i className={`fas ${d.icon} text-amber-400`}></i>
+                              <span className="text-xs font-black text-[#18191F] flex items-center gap-2">
+                                <i className={`fas ${d.icon} text-amber-600`}></i>
                                 <span>{d.label}</span>
                               </span>
-                              {isSelected && <i className="fas fa-circle-check text-amber-400 text-xs"></i>}
+                              {isSelected && <i className="fas fa-circle-check text-amber-700 text-xs"></i>}
                             </div>
-                            <p className="text-[11px] text-zinc-400 leading-snug">{d.desc}</p>
+                            <p className="text-[11px] text-[#6B7280] leading-snug">{d.desc}</p>
                           </button>
                         );
                       })}
@@ -1490,89 +1486,89 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
                     <button
                       onClick={startGrandFinalFirstHalf}
-                      className="w-full min-h-[48px] py-4 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-105 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-xl cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full min-h-[48px] py-4 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-trophy"></i>
                       <span>Kick Off World Cup Grand Final 🏆</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-white/[0.02] border border-amber-400/40 rounded-3xl p-5 sm:p-6 text-center space-y-4">
-                    <div className="inline-flex items-center gap-2 text-amber-300 text-xs font-mono font-black tabular-nums">
-                      <span className={`w-2 h-2 rounded-full bg-red-500 ${isFinalLiveRunning ? 'animate-ping' : ''}`}></span>
+                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 sm:p-6 text-center space-y-4">
+                    <div className="inline-flex items-center gap-2 text-rose-700 text-xs font-mono font-black tabular-nums">
+                      <span className={`w-2 h-2 rounded-full bg-rose-600 ${isFinalLiveRunning ? 'animate-ping' : ''}`}></span>
                       <span>{finalMinute === 45 && finalPhase === 'halftime' ? "45' HALF-TIME" : `${finalMinute}' ${finalMinute >= 90 ? 'FT' : 'LIVE'}`}</span>
                     </div>
 
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5 my-2 w-full max-w-md mx-auto">
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{selectedTeam.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-white truncate max-w-full">{selectedTeam.name}</span>
+                        <span className="text-4xl sm:text-5xl">{selectedTeam.flag}</span>
+                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
                       </div>
                       <div className="flex flex-col items-center shrink-0">
-                        <div className="bg-black/65 border border-amber-400/40 rounded-2xl px-5 sm:px-6 py-2.5 font-mono font-black text-3xl sm:text-5xl text-amber-300 whitespace-nowrap tabular-nums inline-flex items-center justify-center tracking-wide">
+                        <div className="bg-white border border-amber-300 rounded-2xl px-5 sm:px-6 py-2.5 font-mono font-black text-3xl sm:text-5xl text-[#18191F] whitespace-nowrap tabular-nums inline-flex items-center justify-center tracking-wide shadow-xs">
                           <span>{finalLiveTeamScore}</span>
-                          <span className="mx-2.5 text-zinc-500 font-sans text-xl sm:text-2xl">–</span>
+                          <span className="mx-2.5 text-[#C7C4BC] font-sans text-xl sm:text-2xl">–</span>
                           <span>{finalLiveOppScore}</span>
                         </div>
                         {currentMatch?.pens && !isFinalLiveRunning && finalPhase === 'result' && (
-                          <span className="text-[11px] font-mono font-bold text-amber-300 mt-1.5 tabular-nums">
+                          <span className="text-[11px] font-mono font-bold text-amber-800 mt-1.5 tabular-nums">
                             Shootout: {currentMatch.teamPenGoals} : {currentMatch.oppPenGoals}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl drop-shadow">{finalOpponent.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-white truncate max-w-full">{finalOpponent.name}</span>
+                        <span className="text-4xl sm:text-5xl">{finalOpponent.flag}</span>
+                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{finalOpponent.name}</span>
                       </div>
                     </div>
 
                     {/* Halftime Director Call */}
                     {finalPhase === 'halftime' && (
-                      <div className="bg-amber-500/[0.08] border border-amber-400/35 rounded-2xl p-4 text-left space-y-2.5">
-                        <div className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left space-y-2.5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
                           <i className="fas fa-bullhorn"></i>
                           <span>Halftime Locker Room Mandate (45')</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <button
                             onClick={() => resolveGrandFinalSecondHalf('steady')}
-                            className="p-3 rounded-xl bg-white/[0.05] hover:bg-amber-400 hover:text-slate-950 border border-white/[0.10] text-left transition cursor-pointer group"
+                            className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
                             <div className="text-xs font-black">Stay the Course</div>
-                            <div className="text-[10px] text-zinc-400 group-hover:text-slate-900">Trust {appointedCoach?.name}'s gameplan</div>
+                            <div className="text-[10px] text-[#6B7280] group-hover:text-zinc-300">Trust {appointedCoach?.name}'s gameplan</div>
                           </button>
                           <button
                             onClick={() => resolveGrandFinalSecondHalf('all_out_attack')}
-                            className="p-3 rounded-xl bg-white/[0.05] hover:bg-amber-400 hover:text-slate-950 border border-white/[0.10] text-left transition cursor-pointer group"
+                            className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
                             <div className="text-xs font-black">All-Out Press ⚡</div>
-                            <div className="text-[10px] text-zinc-400 group-hover:text-slate-900">+Goal Surge / Counter Risk</div>
+                            <div className="text-[10px] text-[#6B7280] group-hover:text-zinc-300">+Goal Surge / Counter Risk</div>
                           </button>
                           <button
                             onClick={() => resolveGrandFinalSecondHalf('park_the_bus')}
-                            className="p-3 rounded-xl bg-white/[0.05] hover:bg-amber-400 hover:text-slate-950 border border-white/[0.10] text-left transition cursor-pointer group"
+                            className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
                             <div className="text-xs font-black">Lock Down &amp; Pens 🛡️</div>
-                            <div className="text-[10px] text-zinc-400 group-hover:text-slate-900">Suppress Opp &amp; +15% Shootout</div>
+                            <div className="text-[10px] text-[#6B7280] group-hover:text-zinc-300">Suppress Opp &amp; +15% Shootout</div>
                           </button>
                         </div>
                       </div>
                     )}
 
                     {/* Commentary Ticker */}
-                    <div className="pt-3 border-t border-white/[0.06] space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-left">
+                    <div className="pt-3 border-t border-[#E6E3DC] space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-left">
                       {finalTickerEvents.map((evt, idx) => (
                         <div
                           key={idx}
-                          className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2.5 ${
+                          className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2.5 border ${
                             evt.isGoal
                               ? evt.forUser
-                                ? 'bg-emerald-500/[0.12] border border-emerald-500/30 text-emerald-200 font-bold'
-                                : 'bg-rose-500/[0.12] border border-rose-500/30 text-rose-200 font-bold'
-                              : 'bg-white/[0.03] text-zinc-300'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold'
+                                : 'bg-rose-50 border-rose-200 text-rose-800 font-bold'
+                              : 'bg-white border-[#E6E3DC] text-[#4B5563]'
                           }`}
                         >
-                          <span className="font-mono font-black text-amber-400 tabular-nums shrink-0">{evt.minute}'</span>
+                          <span className="font-mono font-black text-amber-700 tabular-nums shrink-0">{evt.minute}'</span>
                           <span>{evt.text}</span>
                         </div>
                       ))}
@@ -1581,7 +1577,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     {!isFinalLiveRunning && finalPhase === 'result' && (
                       <button
                         onClick={() => setStep('summary')}
-                        className="w-full min-h-[48px] py-3.5 rounded-2xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:brightness-105 text-slate-950 font-semibold text-xs sm:text-sm uppercase tracking-wider transition shadow-[0_8px_25px_rgba(245,158,11,0.28)] cursor-pointer active:scale-[0.98]"
+                        className="w-full min-h-[48px] py-3.5 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer active:scale-[0.98]"
                       >
                         {wonTrophy ? 'Lift the Trophy' : 'Conclude World Cup Campaign'}
                       </button>
@@ -1605,11 +1601,10 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   <>
                     {/* Grand Prestige Trophy Centerpiece (Matching Champions Cup Celebration) */}
                     <div className="mb-3 sm:mb-4 relative flex items-center justify-center">
-                      <div className="absolute inset-0 bg-amber-400/20 blur-3xl rounded-full scale-125 pointer-events-none" />
                       <PrestigeTrophy
                         type="wc"
                         size={135}
-                        className="animate-pulse drop-shadow-2xl max-h-28 sm:max-h-36 w-auto relative z-10"
+                        className="animate-pulse drop-shadow-xl max-h-28 sm:max-h-36 w-auto relative z-10"
                       />
                     </div>
 
@@ -1621,28 +1616,28 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                           isModActive={isModActive}
                         />
                       )}
-                      <span className="text-[10px] font-bold tracking-widest text-amber-300 uppercase bg-amber-500/10 border border-amber-400/20 px-2.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-bold tracking-widest text-amber-800 uppercase bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
                         Live Trophy Presentation
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-300 mb-1">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-700 mb-1">
                       <span>★</span>
                       <span>World Cup {year} Champions</span>
                       <span>★</span>
                     </div>
 
-                    <h2 className="text-3xl sm:text-4xl font-bold text-white uppercase tracking-tight mb-2">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-[#18191F] uppercase tracking-tight mb-2">
                       WORLD CUP GLORY!
                     </h2>
 
-                    <p className="text-sm text-zinc-300 max-w-md mb-4 font-normal leading-relaxed">
+                    <p className="text-sm text-[#4B5563] max-w-md mb-4 font-normal leading-relaxed">
                       A historic achievement! {selectedTeam.flag} {selectedTeam.name} hoists the prestigious World Cup trophy into the sky at {hostNation.stadium}!
                     </p>
 
                     {isRecoveredVictory && offeredTeams.length > 1 && (
                       <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
-                        <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Champion Nation:</span>
+                        <span className="text-[10px] uppercase tracking-wider text-[#6B7280] font-semibold">Champion Nation:</span>
                         {offeredTeams.map(team => (
                           <button
                             key={team.code}
@@ -1650,8 +1645,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             onClick={() => setSelectedTeam(team)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${
                               selectedTeam.code === team.code
-                                ? 'bg-amber-400/20 border-amber-400 text-amber-200'
-                                : 'bg-white/[0.04] border-white/[0.08] text-zinc-400 hover:text-white'
+                                ? 'bg-[#18191F] border-[#18191F] text-white'
+                                : 'bg-[#FAF9F6] border-[#E6E3DC] text-[#4B5563] hover:text-[#18191F]'
                             }`}
                           >
                             <span>{team.flag}</span>
@@ -1662,40 +1657,40 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     )}
 
                     <div className="grid grid-cols-2 gap-3 mb-6 w-full max-w-sm">
-                      <div className="p-3 rounded-2xl bg-amber-500/[0.10] border border-amber-400/30">
-                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block mb-0.5">Career Legacy</span>
-                        <span className="text-lg font-black text-white font-mono tabular-nums">+5,000 Pts</span>
+                      <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                        <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-0.5">Career Legacy</span>
+                        <span className="text-lg font-black text-[#18191F] font-mono tabular-nums">+5,000 Pts</span>
                       </div>
-                      <div className="p-3 rounded-2xl bg-emerald-500/[0.10] border border-emerald-400/30">
-                        <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider block mb-0.5">Director Reputation</span>
-                        <span className="text-lg font-black text-emerald-400 font-mono tabular-nums">+25 Rep</span>
+                      <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                        <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-0.5">Director Reputation</span>
+                        <span className="text-lg font-black text-emerald-700 font-mono tabular-nums">+25 Rep</span>
                       </div>
                     </div>
 
                     <button
                       onClick={handleFinishTournament}
-                      className="px-10 py-3.5 rounded-2xl font-semibold text-sm uppercase tracking-wider transition-all cursor-pointer shadow-[0_8px_25px_rgba(245,158,11,0.28)] bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:brightness-105 text-slate-950 active:scale-[0.98]"
+                      className="px-10 py-3.5 rounded-2xl font-semibold text-sm uppercase tracking-wider transition-all cursor-pointer shadow-sm bg-[#18191F] hover:bg-[#2A2C35] text-white active:scale-[0.98]"
                     >
                       Complete World Cup
                     </button>
                   </>
                 ) : (
                   <>
-                    <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-400 text-2xl mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] flex items-center justify-center text-[#18191F] text-2xl mb-4">
                       <span>{selectedTeam.flag}</span>
                     </div>
 
-                    <h2 className="text-xl sm:text-2xl font-bold text-zinc-200 uppercase tracking-tight mb-2">
+                    <h2 className="text-xl sm:text-2xl font-bold text-[#18191F] uppercase tracking-tight mb-2">
                       Valiant World Cup Run Concluded
                     </h2>
 
-                    <p className="text-sm text-zinc-400 max-w-sm mb-6 font-normal leading-relaxed">
+                    <p className="text-sm text-[#4B5563] max-w-sm mb-6 font-normal leading-relaxed">
                       Your international tenure with {selectedTeam.name} elevated your global profile (+8 Director Reputation, +800 Career Pts).
                     </p>
 
                     <button
                       onClick={handleFinishTournament}
-                      className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white px-8 py-3 rounded-2xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer"
+                      className="bg-[#18191F] hover:bg-[#2A2C35] text-white px-8 py-3 rounded-2xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer"
                     >
                       Return to Club Duties
                     </button>

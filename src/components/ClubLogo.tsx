@@ -185,6 +185,7 @@ const getLookalikeConfig = (baseName: string, primaryFallback: string) => {
       { keys: ['Gelsenkirchen', 'Schalke'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#004d9d' },
       { keys: ['Madrid White'], shape: 'circle', pattern: 'sash-diag', sColor: '#00529f', inner: true, pColor: '#ffffff' },
       { keys: ['Madrid Red', 'Madrid Rojo y Blanco', 'Madrid Rojiblanco', 'Madrid Rojo', 'Atletico', 'Atlético'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#cb3524' },
+      { keys: ['Athletic Club', 'Athletic Bilbao', 'Bilbao'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#ee2523' },
       { keys: ['Barcelona', 'Catalunya'], shape: 'shield', pattern: 'stripes-v', sColor: '#a50044', inner: true, pColor: '#004d98' },
       { keys: ['Valencia'], shape: 'shield', pattern: 'stripes-v', sColor: '#ffffff', inner: true, pColor: '#000000' },
       { keys: ['Sevilla'], shape: 'shield', pattern: 'halves-v', sColor: '#d11515', inner: false, pColor: '#ffffff' },
@@ -206,7 +207,8 @@ const getLookalikeConfig = (baseName: string, primaryFallback: string) => {
       { keys: ['Lisbon (S)', 'Sporting'], shape: 'circle', pattern: 'stripes-h', sColor: '#ffffff', inner: true, pColor: '#008040' },
       { keys: ['Ajax', 'Amsterdam'], shape: 'shield', pattern: 'center-stripe-v', sColor: '#d2122b', inner: false, pColor: '#ffffff' },
       { keys: ['Celtic'], shape: 'circle', pattern: 'stripes-h', sColor: '#ffffff', inner: true, pColor: '#018749' },
-      { keys: ['Belém OS', 'Belenenses', 'Belem'], shape: 'shield-round', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#008057' },
+      { keys: ['Belém OS', 'C.F. Os Belenenses', 'Os Belenenses', 'Belenenses', 'Belem'], shape: 'shield-round', pattern: 'cross', sColor: '#ffffff', inner: true, pColor: '#0054a6' },
+      { keys: ['Quito Oro', 'SD Aucas', 'S.D. Aucas', 'Aucas'], shape: 'shield', pattern: 'halves-v', sColor: '#dc2626', inner: true, pColor: '#eab308' },
       { keys: ['FC Copenhagen', 'Copenhagen', 'København', 'Kobenhavn'], shape: 'circle', pattern: 'solid', sColor: '#ffffff', inner: true, pColor: '#004b93' },
       { keys: ['Brøndby', 'Brondby'], shape: 'shield', pattern: 'halves-v', sColor: '#004b93', inner: true, pColor: '#facc15' },
       { keys: ['Midtjylland'], shape: 'circle', pattern: 'stripes-h', sColor: '#000000', inner: true, pColor: '#dc2626' },
@@ -389,23 +391,26 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
       if (!u || typeof u !== 'string') return;
       const clean = sanitizeLogoUrl(u);
       if (!clean) return;
+      // Local /assets/logos/ folder is not bundled in public/assets/; skip so valid HTTP fallbackLogo loads immediately
+      if (clean.startsWith('/assets/logos/') || clean.startsWith('./assets/logos/')) return;
 
       // For Wikimedia / Wikipedia SVG assets, prioritize high-res pre-rendered PNG thumbnails via Special:FilePath
       // to ensure 100% browser decoding compatibility across all desktop and mobile browsers
       if (clean.includes('wikimedia.org') || clean.includes('wikipedia.org')) {
         let fileName = '';
-        let wikiDomain = clean.includes('/wikipedia/en/') ? 'en.wikipedia.org' : 'commons.wikimedia.org';
+        const langMatch = clean.match(/\/wikipedia\/([a-z]{2,3})\//i);
+        const hostLangMatch = clean.match(/https?:\/\/([a-z]{2,3})\.wikipedia\.org/i);
+        const wikiLang = (langMatch?.[1] || hostLangMatch?.[1] || '').toLowerCase();
+        let wikiDomain =
+          wikiLang && wikiLang !== 'commons'
+            ? `${wikiLang}.wikipedia.org`
+            : 'commons.wikimedia.org';
+
         if (clean.includes('/wiki/Special:FilePath/')) {
           fileName = clean.split('/wiki/Special:FilePath/')[1]?.split(/[?#]/)[0];
-          if (clean.includes('en.wikipedia.org')) wikiDomain = 'en.wikipedia.org';
-        } else if (clean.includes('/wikipedia/commons/')) {
+        } else if (clean.includes('/wikipedia/')) {
           const parts = clean.split('/');
           fileName = parts[parts.length - 1]?.split(/[?#]/)[0];
-          wikiDomain = 'commons.wikimedia.org';
-        } else if (clean.includes('/wikipedia/en/')) {
-          const parts = clean.split('/');
-          fileName = parts[parts.length - 1]?.split(/[?#]/)[0];
-          wikiDomain = 'en.wikipedia.org';
         }
         if (fileName) {
           try {
@@ -424,7 +429,12 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
       if (clean && clean.includes('upload.wikimedia.org/wikipedia/')) {
         const parts = clean.split('/');
         const fileName = parts[parts.length - 1];
-        const wikiDomain = clean.includes('/wikipedia/en/') ? 'en.wikipedia.org' : 'commons.wikimedia.org';
+        const langMatch = clean.match(/\/wikipedia\/([a-z]{2,3})\//i);
+        const wikiLang = (langMatch?.[1] || '').toLowerCase();
+        const wikiDomain =
+          wikiLang && wikiLang !== 'commons'
+            ? `${wikiLang}.wikipedia.org`
+            : 'commons.wikimedia.org';
         if (fileName) {
           try {
             const decoded = decodeURIComponent(fileName);
@@ -566,10 +576,10 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
 
   const isClipped = Boolean((outerStyle as any)?.clipPath);
 
-  // Render complete monogram artwork filling 100% of its square container
+  // Render complete monogram artwork filling its container cleanly without clipping shield points inside circular/rounded pills
   const monogramInner = (
-    <div 
-      className={`w-full h-full relative flex items-center justify-center font-bold overflow-hidden ${fallbackClassName || ''}`}
+    <div
+      className={`w-[92%] h-[92%] relative flex items-center justify-center font-bold overflow-hidden ${fallbackClassName || ''}`}
       style={{
         background: pBg,
         ...outerStyle,
@@ -620,7 +630,7 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
     return (
       <div 
         style={sizeStyle}
-        className={`relative inline-flex items-center justify-center aspect-square shrink-0 overflow-hidden select-none [contain:paint_layout] ${className}`}
+        className={`relative inline-flex items-center justify-center aspect-square shrink-0 p-[1px] select-none [contain:paint_layout] ${className}`}
       >
         {/* Solid crisp placeholder monogram with zero layout shift while image settles */}
         {!isLoaded && (
@@ -655,7 +665,7 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
             }
             setIsLoaded(true);
           }}
-          className={`relative z-10 w-full h-full max-w-full max-h-full object-contain drop-shadow-md ${
+          className={`relative z-10 w-full h-full max-w-full max-h-full object-contain drop-shadow-sm ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           onError={() => {
@@ -674,7 +684,7 @@ export const ClubLogo: React.FC<ClubLogoProps> = ({
   return (
     <div 
       style={sizeStyle}
-      className={`relative inline-flex items-center justify-center aspect-square shrink-0 overflow-hidden select-none [contain:paint_layout] ${className}`}
+      className={`relative inline-flex items-center justify-center aspect-square shrink-0 p-[1px] select-none [contain:paint_layout] ${className}`}
     >
       {monogramInner}
     </div>

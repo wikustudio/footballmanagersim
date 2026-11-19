@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { GameState } from '../types';
 import { formatMoney, getCountryCurrency, getCountryMult, normalizeCountryCode, calculateClubFinancials } from '../data/gameConstants';
 
@@ -219,7 +219,7 @@ export const IPOModal: React.FC<IPOModalProps> = ({
       onClick={() => {
         if (!isPitching) onClose();
       }}
-      className="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-2xl cursor-pointer overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/45 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm cursor-pointer overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.96, opacity: 0, y: 8 }}
@@ -227,30 +227,26 @@ export const IPOModal: React.FC<IPOModalProps> = ({
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl bg-[#12141c]/90 backdrop-blur-3xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden cursor-default shrink-0 text-left text-white"
+        className="relative w-full max-w-4xl bg-white rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden cursor-default shrink-0 text-left text-[#18191F]"
       >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0 relative z-10">
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-base shadow-inner shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-base shadow-sm shrink-0">
               <i className="fa-solid fa-landmark"></i>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-0.5 flex items-center gap-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-0.5 flex items-center gap-1.5">
                 <span>Stock Exchange Syndicate</span>
-                <span className="text-zinc-600">·</span>
-                <span className="text-zinc-400">{bankName}</span>
+                <span className="text-[#C7C4BC]">·</span>
+                <span className="text-[#6B7280]">{bankName}</span>
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight">
+                <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight">
                   {state.isPublic ? 'Public Shareholder Equity' : 'Initial Public Offering (IPO) Roadshow'}
                 </h2>
                 {state.isPublic && (
-                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider shadow-sm">
+                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 tracking-wider shadow-sm">
                     {ticker}
                   </span>
                 )}
@@ -260,7 +256,7 @@ export const IPOModal: React.FC<IPOModalProps> = ({
           <button
             onClick={onClose}
             disabled={isPitching}
-            className="w-9 h-9 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center text-zinc-400 hover:text-white transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-9 h-9 rounded-full bg-[#F5F4F0] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] hover:text-[#18191F] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <i className="fa-solid fa-xmark text-sm"></i>
           </button>
@@ -273,23 +269,23 @@ export const IPOModal: React.FC<IPOModalProps> = ({
             <div className="space-y-4">
               {/* Requirements Banner */}
               {!canFloatIpo ? (
-                <div className="bg-rose-500/10 border border-rose-500/25 rounded-2xl p-4 text-xs flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-xs flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0 mt-0.5">
                     <i className="fa-solid fa-lock text-sm"></i>
                   </div>
                   <div className="space-y-1">
-                    <div className="font-bold text-rose-300 text-sm">
+                    <div className="font-bold text-rose-800 text-sm">
                       Requires Tier 1 & 1M Fans
                     </div>
-                    <p className="text-[11px] text-zinc-300 leading-relaxed">
+                    <p className="text-[11px] text-[#4B5563] leading-relaxed">
                       Institutional underwriters require top-flight status and an established global audience of at least 1,000,000 supporters to float equity on the stock market.
                     </p>
-                    <div className="flex items-center gap-3 pt-1 text-[11px]">
-                      <span className={isTier1 ? 'text-emerald-400 font-semibold' : 'text-zinc-400'}>
+                    <div className="flex items-center gap-3 pt-1 text-[11px] tabular-nums">
+                      <span className={isTier1 ? 'text-emerald-700 font-semibold' : 'text-[#6B7280]'}>
                         <i className={`fa-solid ${isTier1 ? 'fa-check' : 'fa-xmark'} mr-1`}></i>
                         Tier 1 Division ({state.club.tier})
                       </span>
-                      <span className={hasFanbaseReq ? 'text-emerald-400 font-semibold' : 'text-zinc-400'}>
+                      <span className={hasFanbaseReq ? 'text-emerald-700 font-semibold' : 'text-[#6B7280]'}>
                         <i className={`fa-solid ${hasFanbaseReq ? 'fa-check' : 'fa-xmark'} mr-1`}></i>
                         {currentFanbase.toLocaleString()} / 1,000,000 Fans
                       </span>
@@ -297,18 +293,18 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-3.5 sm:p-4 text-xs flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 sm:p-4 text-xs flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
                     <i className="fa-solid fa-certificate text-sm"></i>
                   </div>
                   <div>
-                    <div className="font-bold text-emerald-300 text-sm flex items-center gap-2">
+                    <div className="font-bold text-emerald-800 text-sm flex items-center gap-2">
                       <span>Investor Roadshow Approved</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-white text-emerald-700 rounded-full border border-emerald-200">
                         25% Equity Float
                       </span>
                     </div>
-                    <p className="text-[11px] text-zinc-300 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-[#4B5563] leading-relaxed mt-0.5">
                       {bankName} has completed due diligence. Select your pricing strategy below to syndicate 2,500,000 shares across institutional and retail markets.
                     </p>
                   </div>
@@ -316,38 +312,38 @@ export const IPOModal: React.FC<IPOModalProps> = ({
               )}
 
               {/* Valuation & Offering Overview Ribbon */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] text-xs">
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block">
+                  <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block">
                     Base Fair Price
                   </span>
-                  <div className="text-base sm:text-lg font-bold tabular-nums text-white mt-0.5">
+                  <div className="text-base sm:text-lg font-bold tabular-nums text-[#18191F] mt-0.5">
                     {formatSharePrice(basePrice)}
-                    <span className="text-[11px] text-zinc-400 font-normal"> / share</span>
+                    <span className="text-[11px] text-[#6B7280] font-normal"> / share</span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block">
+                  <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block">
                     Pre-Money Valuation
                   </span>
-                  <div className="text-base sm:text-lg font-bold tabular-nums text-amber-300 mt-0.5">
+                  <div className="text-base sm:text-lg font-bold tabular-nums text-amber-700 mt-0.5">
                     {formatMoney(Math.round((totalShares * basePrice) / 1000))}
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block">
+                  <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block">
                     Float Offering
                   </span>
-                  <div className="text-base sm:text-lg font-bold tabular-nums text-sky-400 mt-0.5">
-                    25% <span className="text-[11px] text-zinc-400 font-normal">(2.5M Shares)</span>
+                  <div className="text-base sm:text-lg font-bold tabular-nums text-sky-700 mt-0.5">
+                    25% <span className="text-[11px] text-[#6B7280] font-normal">(2.5M Shares)</span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block">
+                  <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block">
                     Club Reputation
                   </span>
-                  <div className="text-base sm:text-lg font-bold tabular-nums text-emerald-400 mt-0.5">
-                    {state.reputation || 50} <span className="text-[11px] text-zinc-400 font-normal">/ 100 Rep</span>
+                  <div className="text-base sm:text-lg font-bold tabular-nums text-emerald-700 mt-0.5">
+                    {state.reputation || 50} <span className="text-[11px] text-[#6B7280] font-normal">/ 100 Rep</span>
                   </div>
                 </div>
               </div>
@@ -355,47 +351,47 @@ export const IPOModal: React.FC<IPOModalProps> = ({
               {/* Step 2: Pre-IPO 3-Column Bento Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-3.5">
                 {/* 1. Conservative Card: Institutional Discount */}
-                <div className="bg-white/[0.03] hover:bg-white/[0.04] border border-white/[0.06] hover:border-cyan-500/30 rounded-2xl p-4 flex flex-col justify-between transition group relative">
+                <div className="bg-[#FAF9F6] hover:bg-white border border-[#E6E3DC] hover:border-sky-300 rounded-2xl p-4 flex flex-col justify-between transition group relative">
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-2">
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
                         Safe · Discount
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-semibold tabular-nums">
+                      <span className="text-[10px] text-[#6B7280] font-semibold tabular-nums">
                         -20% Par
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-white mb-0.5">
+                    <h3 className="text-base font-bold text-[#18191F] mb-0.5">
                       Institutional Discount
                     </h3>
-                    <p className="text-[11px] text-zinc-400 mb-3 leading-snug">
+                    <p className="text-[11px] text-[#6B7280] mb-3 leading-snug">
                       Priced conservatively to guarantee complete institutional absorption.
                     </p>
 
-                    <div className="p-3 bg-black/30 rounded-xl border border-white/[0.04] mb-3 space-y-1">
+                    <div className="p-3 bg-white rounded-xl border border-[#E6E3DC] mb-3 space-y-1">
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Issue Price</span>
-                        <span className="text-sm font-bold tabular-nums text-white">
+                        <span className="text-[10px] text-[#6B7280]">Issue Price</span>
+                        <span className="text-sm font-bold tabular-nums text-[#18191F]">
                           {formatSharePrice(conservativePrice)}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Immediate Cash</span>
-                        <span className="text-sm font-bold tabular-nums text-emerald-400">
+                        <span className="text-[10px] text-[#6B7280]">Immediate Cash</span>
+                        <span className="text-sm font-bold tabular-nums text-emerald-700">
                           +{formatMoney(conservativeCashK)}
                         </span>
                       </div>
                     </div>
 
                     {/* Fixed-Height Div for Perks Preview (Zero UI Jitter) */}
-                    <div className="h-16 w-full rounded-xl bg-white/[0.02] border border-white/[0.04] mb-3 p-2.5 flex flex-col justify-center text-[10px] text-zinc-300 space-y-1 leading-tight">
-                      <div className="flex items-center gap-1.5 text-cyan-300 font-semibold">
+                    <div className="h-16 w-full rounded-xl bg-white border border-[#E6E3DC] mb-3 p-2.5 flex flex-col justify-center text-[10px] text-[#4B5563] space-y-1 leading-tight">
+                      <div className="flex items-center gap-1.5 text-sky-700 font-semibold">
                         <i className="fa-solid fa-shield-halved text-[10px]"></i>
                         <span>Guaranteed 100% Placement</span>
                       </div>
-                      <div className="text-zinc-400">
-                        <strong className="text-white">Day 1 Pop:</strong> Stock pops +20% instantly ({formatSharePrice(conservativePopPrice)}), granting <span className="text-emerald-300 font-bold">+10 Board Trust</span>.
+                      <div className="text-[#6B7280]">
+                        <strong className="text-[#18191F]">Day 1 Pop:</strong> Stock pops +20% instantly ({formatSharePrice(conservativePopPrice)}), granting <span className="text-emerald-700 font-bold">+10 Board Trust</span>.
                       </div>
                     </div>
                   </div>
@@ -403,54 +399,54 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                   <button
                     onClick={handleConservativeIpo}
                     disabled={!canFloatIpo || isPitching}
-                    className="w-full bg-cyan-500/15 hover:bg-cyan-500/25 active:bg-cyan-500/30 border border-cyan-500/30 disabled:opacity-40 text-cyan-300 font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                    className="w-full bg-[#18191F] hover:bg-[#2A2C35] disabled:bg-[#EFECE4] disabled:text-[#9A9890] border border-[#18191F] disabled:border-[#E6E3DC] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
                   >
-                    <i className="fa-solid fa-arrow-trend-up text-cyan-400 text-xs"></i>
+                    <i className="fa-solid fa-arrow-trend-up text-sky-300 text-xs"></i>
                     <span>Issue at {formatSharePrice(conservativePrice)}</span>
                   </button>
                 </div>
 
                 {/* 2. Fair Market Value Card */}
-                <div className="bg-white/[0.03] hover:bg-white/[0.04] border border-white/[0.06] hover:border-sky-500/30 rounded-2xl p-4 flex flex-col justify-between transition group relative">
+                <div className="bg-[#FAF9F6] hover:bg-white border border-[#E6E3DC] hover:border-slate-300 rounded-2xl p-4 flex flex-col justify-between transition group relative">
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-2">
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/[0.08] text-zinc-200 border border-white/[0.12]">
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-[#18191F] border border-[#E6E3DC]">
                         Par · Balanced
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-semibold tabular-nums">
+                      <span className="text-[10px] text-[#6B7280] font-semibold tabular-nums">
                         100% Value
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-white mb-0.5">
+                    <h3 className="text-base font-bold text-[#18191F] mb-0.5">
                       Fair Market Value
                     </h3>
-                    <p className="text-[11px] text-zinc-400 mb-3 leading-snug">
+                    <p className="text-[11px] text-[#6B7280] mb-3 leading-snug">
                       Standard syndicate bookbuilding at current assessed valuation.
                     </p>
 
-                    <div className="p-3 bg-black/30 rounded-xl border border-white/[0.04] mb-3 space-y-1">
+                    <div className="p-3 bg-white rounded-xl border border-[#E6E3DC] mb-3 space-y-1">
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Issue Price</span>
-                        <span className="text-sm font-bold tabular-nums text-white">
+                        <span className="text-[10px] text-[#6B7280]">Issue Price</span>
+                        <span className="text-sm font-bold tabular-nums text-[#18191F]">
                           {formatSharePrice(fairPrice)}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Immediate Cash</span>
-                        <span className="text-sm font-bold tabular-nums text-emerald-400">
+                        <span className="text-[10px] text-[#6B7280]">Immediate Cash</span>
+                        <span className="text-sm font-bold tabular-nums text-emerald-700">
                           +{formatMoney(fairCashK)}
                         </span>
                       </div>
                     </div>
 
                     {/* Fixed-Height Div for Perks Preview (Zero UI Jitter) */}
-                    <div className="h-16 w-full rounded-xl bg-white/[0.02] border border-white/[0.04] mb-3 p-2.5 flex flex-col justify-center text-[10px] text-zinc-300 space-y-1 leading-tight">
-                      <div className="flex items-center gap-1.5 text-zinc-200 font-semibold">
-                        <i className="fa-solid fa-scale-balanced text-[10px] text-sky-400"></i>
+                    <div className="h-16 w-full rounded-xl bg-white border border-[#E6E3DC] mb-3 p-2.5 flex flex-col justify-center text-[10px] text-[#4B5563] space-y-1 leading-tight">
+                      <div className="flex items-center gap-1.5 text-[#18191F] font-semibold">
+                        <i className="fa-solid fa-scale-balanced text-[10px] text-sky-700"></i>
                         <span>Balanced Execution</span>
                       </div>
-                      <div className="text-zinc-400">
+                      <div className="text-[#6B7280]">
                         No immediate pricing bonuses or penalties. Standard 1.0x dividend ratio baseline for future seasons.
                       </div>
                     </div>
@@ -459,67 +455,67 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                   <button
                     onClick={handleFairMarketIpo}
                     disabled={!canFloatIpo || isPitching}
-                    className="w-full bg-white/[0.08] hover:bg-white/[0.14] active:bg-white/[0.18] border border-white/[0.12] disabled:opacity-40 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                    className="w-full bg-[#18191F] hover:bg-[#2A2C35] disabled:bg-[#EFECE4] disabled:text-[#9A9890] border border-[#18191F] disabled:border-[#E6E3DC] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
                   >
-                    <i className="fa-solid fa-landmark text-sky-400 text-xs"></i>
+                    <i className="fa-solid fa-landmark text-sky-300 text-xs"></i>
                     <span>Issue at {formatSharePrice(fairPrice)}</span>
                   </button>
                 </div>
 
                 {/* 3. Aggressive Card: "Greed is Good" */}
-                <div className="bg-white/[0.03] hover:bg-white/[0.04] border border-amber-500/25 hover:border-amber-500/40 rounded-2xl p-4 flex flex-col justify-between transition group relative">
+                <div className="bg-[#FAF9F6] hover:bg-white border border-amber-200 hover:border-amber-300 rounded-2xl p-4 flex flex-col justify-between transition group relative">
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-2">
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                         High Risk · Gamble
                       </span>
-                      <span className="text-[10px] text-amber-400 font-semibold tabular-nums">
+                      <span className="text-[10px] text-amber-700 font-semibold tabular-nums">
                         +60% Target
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-white mb-0.5">
+                    <h3 className="text-base font-bold text-[#18191F] mb-0.5">
                       "Greed is Good"
                     </h3>
-                    <p className="text-[11px] text-zinc-400 mb-3 leading-snug">
+                    <p className="text-[11px] text-[#6B7280] mb-3 leading-snug">
                       Aggressive roadshow targeting a massive 1.6x premium valuation.
                     </p>
 
-                    <div className="p-3 bg-black/30 rounded-xl border border-white/[0.04] mb-3 space-y-1">
+                    <div className="p-3 bg-white rounded-xl border border-[#E6E3DC] mb-3 space-y-1">
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Target Price</span>
-                        <span className="text-sm font-bold tabular-nums text-amber-300">
+                        <span className="text-[10px] text-[#6B7280]">Target Price</span>
+                        <span className="text-sm font-bold tabular-nums text-amber-700">
                           {formatSharePrice(aggressivePrice)}
                         </span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px] text-zinc-400">Target Cash</span>
-                        <span className="text-sm font-bold tabular-nums text-emerald-400">
+                        <span className="text-[10px] text-[#6B7280]">Target Cash</span>
+                        <span className="text-sm font-bold tabular-nums text-emerald-700">
                           +{formatMoney(aggressiveCashK)}
                         </span>
                       </div>
                     </div>
 
                     {/* Step 3: Fixed-Height Div for Flash Text or Risk Warning (Zero UI Jitter) */}
-                    <div className="h-16 w-full rounded-xl bg-white/[0.02] border border-white/[0.04] mb-3 p-2.5 flex flex-col justify-center overflow-hidden relative">
+                    <div className="h-16 w-full rounded-xl bg-white border border-[#E6E3DC] mb-3 p-2.5 flex flex-col justify-center overflow-hidden relative">
                       {isPitching ? (
                         <div className="flex flex-col items-center justify-center h-full">
-                          <div className="text-[9px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5 animate-pulse mb-0.5">
+                          <div className="text-[9px] uppercase tracking-wider text-amber-700 font-bold flex items-center gap-1.5 animate-pulse mb-0.5">
                             <i className="fa-solid fa-arrows-spin fa-spin text-[10px]"></i>
                             <span>Roadshow Pitching...</span>
                           </div>
-                          <div className="text-xs font-bold tabular-nums text-amber-300 tracking-tight truncate w-full text-center animate-pulse">
+                          <div className="text-xs font-bold tabular-nums text-amber-800 tracking-tight truncate w-full text-center animate-pulse">
                             {flashText}
                           </div>
                           <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 animate-pulse" />
                         </div>
                       ) : (
                         <div className="text-[10px] space-y-1 leading-tight">
-                          <div className="text-emerald-400 font-medium flex items-center gap-1">
+                          <div className="text-emerald-700 font-medium flex items-center gap-1">
                             <i className="fa-solid fa-circle-check text-[9px]"></i>
                             <span>35% Unicorn: 1.6x cash, +5 Rep, +10 Morale</span>
                           </div>
-                          <div className="text-rose-400 font-medium flex items-center gap-1">
+                          <div className="text-rose-700 font-medium flex items-center gap-1">
                             <i className="fa-solid fa-triangle-exclamation text-[9px]"></i>
                             <span>65% Disaster: 50% firesale, -20 Trust, -10 Rep</span>
                           </div>
@@ -531,16 +527,16 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                   <button
                     onClick={handleAggressiveIpo}
                     disabled={!canFloatIpo || isPitching}
-                    className="w-full bg-gradient-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500/30 hover:to-rose-500/30 active:from-amber-500/35 active:to-rose-500/35 border border-amber-500/35 disabled:opacity-40 text-amber-200 font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                    className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-[#EFECE4] disabled:text-[#9A9890] border border-amber-700 disabled:border-[#E6E3DC] text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-sm cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
                   >
                     {isPitching ? (
                       <>
-                        <i className="fas fa-circle-notch fa-spin text-amber-400"></i>
+                        <i className="fas fa-circle-notch fa-spin text-amber-200"></i>
                         <span>Pitching Syndicate...</span>
                       </>
                     ) : (
                       <>
-                        <i className="fa-solid fa-dice text-amber-400 text-xs"></i>
+                        <i className="fa-solid fa-dice text-amber-100 text-xs"></i>
                         <span>Pitch at {formatSharePrice(aggressivePrice)}</span>
                       </>
                     )}
@@ -549,16 +545,16 @@ export const IPOModal: React.FC<IPOModalProps> = ({
               </div>
 
               {/* Terms & Dividend Warning */}
-              <div className="bg-black/30 rounded-xl p-3.5 border border-white/[0.04] text-[11px] text-zinc-400 space-y-1.5 leading-relaxed">
-                <div className="font-bold text-zinc-300 flex items-center gap-1.5 text-xs">
-                  <i className="fa-solid fa-scale-balanced text-amber-400"></i>
+              <div className="bg-[#FAF9F6] rounded-xl p-3.5 border border-[#E6E3DC] text-[11px] text-[#4B5563] space-y-1.5 leading-relaxed">
+                <div className="font-bold text-[#18191F] flex items-center gap-1.5 text-xs">
+                  <i className="fa-solid fa-scale-balanced text-amber-700"></i>
                   <span>Shareholder Covenant & Seasonal Dividend Rule</span>
                 </div>
                 <p>
-                  Floating 25% of the club injects immediate equity capital, but mandates an ongoing <span className="text-white font-semibold">15% Shareholder Dividend target</span> on operating profits.
+                  Floating 25% of the club injects immediate equity capital, but mandates an ongoing <span className="text-[#18191F] font-semibold">15% Shareholder Dividend target</span> on operating profits.
                 </p>
-                <p className="text-[10px] text-zinc-500">
-                  <strong className="text-zinc-400">The Catch:</strong> The cash deduction scales dynamically with stock performance: <code className="text-zinc-300 bg-white/[0.05] px-1 py-0.5 rounded">baseDividend × (stockPrice / ipoPrice)</code>. A botched IPO fixes an artificially low baseline, causing severe future dividend spikes if the stock recovers!
+                <p className="text-[10px] text-[#6B7280]">
+                  <strong className="text-[#18191F]">The Catch:</strong> The cash deduction scales dynamically with stock performance: <code className="text-[#18191F] bg-[#EFECE4] px-1 py-0.5 rounded">baseDividend × (stockPrice / ipoPrice)</code>. A botched IPO fixes an artificially low baseline, causing severe future dividend spikes if the stock recovers!
                 </p>
               </div>
             </div>
@@ -566,21 +562,21 @@ export const IPOModal: React.FC<IPOModalProps> = ({
             /* POST-IPO STATE */
             <div className="space-y-4">
               {/* Ticker HUD */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
-                  <div className="border-b sm:border-b-0 sm:border-r border-white/[0.06] pb-3 sm:pb-0 sm:pr-4">
-                    <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block mb-1">
+                  <div className="border-b sm:border-b-0 sm:border-r border-[#E6E3DC] pb-3 sm:pb-0 sm:pr-4">
+                    <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block mb-1">
                       Current Share Price
                     </span>
-                    <div className="text-2xl font-bold tabular-nums text-white flex items-baseline justify-center sm:justify-start gap-1.5">
+                    <div className="text-2xl font-bold tabular-nums text-[#18191F] flex items-baseline justify-center sm:justify-start gap-1.5">
                       <span>{formatSharePrice(currentPrice)}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold tabular-nums">
                       <span
-                        className={`px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                        className={`px-1.5 py-0.5 rounded flex items-center gap-1 border ${
                           allTimeDeltaPct >= 0
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}
                       >
                         <i
@@ -590,30 +586,30 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                         ></i>
                         <span>{allTimeDeltaPct >= 0 ? `+${allTimeDeltaPct}%` : `${allTimeDeltaPct}%`}</span>
                       </span>
-                      <span className="text-zinc-500 text-[10px] font-normal">All-Time</span>
+                      <span className="text-[#6B7280] text-[10px] font-normal">All-Time</span>
                     </div>
                   </div>
 
-                  <div className="border-b sm:border-b-0 sm:border-r border-white/[0.06] pb-3 sm:pb-0 sm:px-4">
-                    <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block mb-1">
+                  <div className="border-b sm:border-b-0 sm:border-r border-[#E6E3DC] pb-3 sm:pb-0 sm:px-4">
+                    <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block mb-1">
                       Public Market Cap
                     </span>
-                    <div className="text-2xl font-bold tabular-nums text-sky-400">
+                    <div className="text-2xl font-bold tabular-nums text-sky-700">
                       {formatMoney(marketCapK)}
                     </div>
-                    <span className="text-[10px] text-zinc-500 block mt-1">
+                    <span className="text-[10px] text-[#6B7280] block mt-1">
                       10M Shares Outstanding
                     </span>
                   </div>
 
                   <div className="sm:pl-4">
-                    <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider block mb-1">
+                    <span className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider block mb-1">
                       IPO Issue Price
                     </span>
-                    <div className="text-2xl font-bold tabular-nums text-zinc-300">
+                    <div className="text-2xl font-bold tabular-nums text-[#18191F]">
                       {formatSharePrice(ipoReferencePrice)}
                     </div>
-                    <span className="text-[10px] text-zinc-500 block mt-1">
+                    <span className="text-[10px] text-[#6B7280] block mt-1 tabular-nums">
                       Float: 25% ({formatMoney(publicFloatValueK)})
                     </span>
                   </div>
@@ -621,17 +617,17 @@ export const IPOModal: React.FC<IPOModalProps> = ({
               </div>
 
               {/* Historical Stock Price Line Chart */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs">
+                    <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center text-xs">
                       <i className="fa-solid fa-chart-line"></i>
                     </div>
-                    <span className="text-xs font-bold text-white tracking-wide">
+                    <span className="text-xs font-bold text-[#18191F] tracking-wide">
                       Historical Share Price Trajectory
                     </span>
                   </div>
-                  <span className="text-[10px] text-zinc-400 font-mono">
+                  <span className="text-[10px] text-[#6B7280] font-mono">
                     {state.stockHistory && state.stockHistory.length > 0
                       ? `${state.stockHistory.length} Recorded ${state.stockHistory.length === 1 ? 'Season' : 'Seasons'}`
                       : 'Season Debut'}
@@ -690,13 +686,13 @@ export const IPOModal: React.FC<IPOModalProps> = ({
 
                   return (
                     <div className="space-y-2">
-                      <div className="h-32 sm:h-40 w-full relative rounded-xl bg-black/25 border border-white/[0.04] p-3 overflow-hidden">
+                      <div className="h-32 sm:h-40 w-full relative rounded-xl bg-white border border-[#E6E3DC] p-3 overflow-hidden">
                         <svg className="absolute inset-0 w-full h-full overflow-visible z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
                           <defs>
                             <linearGradient id="stockChartGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.32" />
-                              <stop offset="60%" stopColor="#0ea5e9" stopOpacity="0.08" />
-                              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.0" />
+                              <stop offset="0%" stopColor="#0284c7" stopOpacity="0.22" />
+                              <stop offset="60%" stopColor="#0284c7" stopOpacity="0.06" />
+                              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
                             </linearGradient>
                           </defs>
 
@@ -707,7 +703,7 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                               y1={100 - ((ipoReferencePrice - minPrice) / priceRange) * 100}
                               x2="100"
                               y2={100 - ((ipoReferencePrice - minPrice) / priceRange) * 100}
-                              stroke="rgba(245, 158, 11, 0.35)"
+                              stroke="rgba(217, 119, 6, 0.45)"
                               strokeDasharray="2 3"
                               vectorEffect="non-scaling-stroke"
                             />
@@ -717,7 +713,7 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                           <path
                             d={linePath}
                             fill="none"
-                            stroke="#38bdf8"
+                            stroke="#0284c7"
                             strokeWidth="2.5"
                             strokeLinejoin="round"
                             strokeLinecap="round"
@@ -743,10 +739,10 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                                 }}
                               >
                                 <div
-                                  className={`rounded-full bg-sky-400 border-2 border-[#12141c] ${
+                                  className={`rounded-full bg-sky-600 border-2 border-white ${
                                     isLatest
-                                      ? 'w-3 h-3 ring-4 ring-sky-400/30 shadow-[0_0_8px_rgba(56,189,248,0.6)]'
-                                      : 'w-2 h-2 opacity-80'
+                                      ? 'w-3 h-3 ring-4 ring-sky-200 shadow-sm'
+                                      : 'w-2 h-2 opacity-85'
                                   }`}
                                 />
                                 {(isHighest || isLowest || isLatest) && (
@@ -755,10 +751,10 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                                       pt.y < 30 ? 'top-3.5' : '-top-5'
                                     } text-[9px] font-bold font-mono px-1.5 py-0.5 whitespace-nowrap rounded border tabular-nums shadow-sm ${
                                       isHighest
-                                        ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                         : isLowest
-                                        ? 'bg-rose-950/90 text-rose-300 border-rose-500/40'
-                                        : 'bg-[#12141c]/95 text-sky-300 border-sky-500/40'
+                                        ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                        : 'bg-white text-sky-800 border-sky-200'
                                     }`}
                                   >
                                     {formatSharePrice(pt.price)}
@@ -771,16 +767,16 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                       </div>
 
                       {/* Timeline Year Markers & Range Legend */}
-                      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono px-1">
+                      <div className="flex items-center justify-between text-[10px] text-[#6B7280] font-mono px-1 tabular-nums">
                         <div className="flex items-center gap-2">
-                          <span>Low: <strong className="text-rose-400">{formatSharePrice(rawMin)}</strong></span>
-                          <span className="text-zinc-600">·</span>
-                          <span>High: <strong className="text-emerald-400">{formatSharePrice(rawMax)}</strong></span>
+                          <span>Low: <strong className="text-rose-700">{formatSharePrice(rawMin)}</strong></span>
+                          <span className="text-[#C7C4BC]">·</span>
+                          <span>High: <strong className="text-emerald-700">{formatSharePrice(rawMax)}</strong></span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-zinc-500">IPO Base: {formatSharePrice(ipoReferencePrice)}</span>
-                          <span className="text-zinc-600">·</span>
-                          <span>Latest ({chartData[chartData.length - 1].year}): <strong className="text-white">{formatSharePrice(chartData[chartData.length - 1].price)}</strong></span>
+                          <span className="text-[#6B7280]">IPO Base: {formatSharePrice(ipoReferencePrice)}</span>
+                          <span className="text-[#C7C4BC]">·</span>
+                          <span>Latest ({chartData[chartData.length - 1].year}): <strong className="text-[#18191F]">{formatSharePrice(chartData[chartData.length - 1].price)}</strong></span>
                         </div>
                       </div>
                     </div>
@@ -789,69 +785,69 @@ export const IPOModal: React.FC<IPOModalProps> = ({
               </div>
 
               {/* Shareholder Dividend Rule Explanation */}
-              <div className="bg-black/30 rounded-2xl p-4 border border-white/[0.06] space-y-2.5 text-xs">
-                <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+              <div className="bg-[#FAF9F6] rounded-2xl p-4 border border-[#E6E3DC] space-y-2.5 text-xs">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
                   <i className="fa-solid fa-chart-line"></i>
                   <span>Dividend Covenant & Seasonal Math</span>
                 </div>
-                <p className="text-zinc-300 leading-relaxed text-[11px]">
-                  <strong className="text-white">15% Shareholder Dividend target:</strong> As your stock price rises, the cash payout owed to public shareholders increases proportionately:
+                <p className="text-[#4B5563] leading-relaxed text-[11px]">
+                  <strong className="text-[#18191F]">15% Shareholder Dividend target:</strong> As your stock price rises, the cash payout owed to public shareholders increases proportionately:
                 </p>
-                <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl font-mono text-[11px] text-zinc-300 space-y-1">
-                  <div className="text-zinc-400">baseDividend = operatingProfit × 15%</div>
-                  <div className="text-emerald-300 font-bold">
+                <div className="p-3 bg-white border border-[#E6E3DC] rounded-xl font-mono text-[11px] text-[#4B5563] space-y-1">
+                  <div className="text-[#6B7280]">baseDividend = operatingProfit × 15%</div>
+                  <div className="text-emerald-700 font-bold">
                     actualPayout = baseDividend × (stockPrice / ipoPrice)
                   </div>
-                  <div className="text-zinc-500 text-[10px] pt-1 flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-[#6B7280] text-[10px] pt-1 flex items-center justify-between flex-wrap gap-2">
                     <span>
                       Current multiplier:{' '}
-                      <span className="text-amber-400 font-bold tabular-nums">
+                      <span className="text-amber-700 font-bold tabular-nums">
                         {(currentPrice / ipoReferencePrice).toFixed(2)}x
                       </span>{' '}
                       relative to IPO launch.
                     </span>
-                    <span className="text-zinc-300">
+                    <span className="text-[#4B5563]">
                       Est. Season Payout:{' '}
-                      <span className="text-rose-400 font-bold tabular-nums">
+                      <span className="text-rose-700 font-bold tabular-nums">
                         -{formatMoney(liveFinancials.shareholderDividend || 0)}
                       </span>
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
                   Dividends are deducted automatically from your projected operating ledger at season conclusion.
                 </p>
               </div>
 
               {/* Performance Factors */}
-              <div className="bg-white/[0.02] rounded-2xl p-4 border border-white/[0.04] space-y-2 text-xs">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+              <div className="bg-[#FAF9F6] rounded-2xl p-4 border border-[#E6E3DC] space-y-2 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] block mb-1">
                   Stock Price Market Catalysts (End of Season)
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">League Title:</span>
-                    <span className="font-bold text-emerald-400 tabular-nums">+15%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">League Title:</span>
+                    <span className="font-bold text-emerald-700 tabular-nums">+15%</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">Continental Qual:</span>
-                    <span className="font-bold text-emerald-400 tabular-nums">+8%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">Continental Qual:</span>
+                    <span className="font-bold text-emerald-700 tabular-nums">+8%</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">Cup / Trophy:</span>
-                    <span className="font-bold text-emerald-400 tabular-nums">+10%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">Cup / Trophy:</span>
+                    <span className="font-bold text-emerald-700 tabular-nums">+10%</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">Relegation:</span>
-                    <span className="font-bold text-rose-400 tabular-nums">-35%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">Relegation:</span>
+                    <span className="font-bold text-rose-700 tabular-nums">-35%</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">In Debt:</span>
-                    <span className="font-bold text-rose-400 tabular-nums">-25%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">In Debt:</span>
+                    <span className="font-bold text-rose-700 tabular-nums">-25%</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20 border border-white/[0.03]">
-                    <span className="text-zinc-400">Market Volatility:</span>
-                    <span className="font-bold text-zinc-300 tabular-nums">±5%</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-white border border-[#E6E3DC]">
+                    <span className="text-[#4B5563]">Market Volatility:</span>
+                    <span className="font-bold text-[#18191F] tabular-nums">±5%</span>
                   </div>
                 </div>
               </div>
@@ -860,15 +856,15 @@ export const IPOModal: React.FC<IPOModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 sm:px-6 py-4 border-t border-white/[0.06] bg-white/[0.02] flex items-center justify-between gap-3 text-xs text-zinc-400 shrink-0">
-          <div className="flex items-center gap-2 text-zinc-400 text-[11px]">
-            <i className="fa-solid fa-building-columns text-amber-400"></i>
+        <div className="px-5 sm:px-6 py-4 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between gap-3 text-xs text-[#6B7280] shrink-0">
+          <div className="flex items-center gap-2 text-[#6B7280] text-[11px]">
+            <i className="fa-solid fa-building-columns text-amber-700"></i>
             <span>Regulated by {regulatorName}.</span>
           </div>
           <button
             onClick={onClose}
             disabled={isPitching}
-            className="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-300 hover:text-white transition cursor-pointer text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-[#18191F] transition cursor-pointer text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Close
           </button>

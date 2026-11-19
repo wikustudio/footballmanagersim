@@ -179,34 +179,31 @@ export const ModModal: React.FC<ModModalProps> = ({
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-5 overflow-y-auto overscroll-contain">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/75 backdrop-blur-2xl transition-opacity cursor-pointer" 
+        className="absolute inset-0 bg-[#18191F]/45 backdrop-blur-sm transition-opacity cursor-pointer" 
         onClick={onClose} 
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-xl bg-[#12141c]/95 text-white rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_64px_rgba(0,0,0,0.6)] backdrop-blur-3xl flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden">
-        
-        {/* Subtle Ambient Sky Glow */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative w-full max-w-xl bg-white text-[#18191F] rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 overflow-hidden">
 
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between shrink-0 relative z-10">
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/[0.04] text-sky-400 border border-white/[0.08] flex items-center justify-center text-base shadow-inner shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center text-base shrink-0">
               <i className="fa-solid fa-layer-group"></i>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90 mb-0.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5">
                 {isDe ? 'Modding & Datenpakete' : 'Modding & Data Packages'}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-extrabold text-[#18191F] tracking-tight flex items-center gap-2">
                 {isDe ? 'Datenbank & Community Mods' : 'Database & Community Mods'}
               </h2>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center transition cursor-pointer text-zinc-400 hover:text-white shrink-0"
+            className="w-8 h-8 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center transition cursor-pointer text-[#6B7280] hover:text-[#18191F] shrink-0"
             aria-label={isDe ? 'Schliessen' : 'Close'}
           >
             <i className="fa-solid fa-xmark text-xs"></i>
@@ -214,45 +211,41 @@ export const ModModal: React.FC<ModModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar flex flex-col gap-4 relative z-10 flex-1 min-h-0">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar flex flex-col gap-4 relative z-10 flex-1 min-h-0 bg-white">
           
           {/* Main Community Mod Toggle Card */}
           <div 
             onClick={handleToggleMod}
             className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer relative select-none shrink-0 ${
               isModActive
-                ? 'bg-emerald-500/[0.06] border-emerald-400/30 shadow-sm'
-                : 'bg-white/[0.03] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/[0.12]'
+                ? 'bg-emerald-50/70 border-emerald-200 shadow-xs'
+                : 'bg-[#FAF9F6] hover:bg-[#F5F4F0] border-[#E6E3DC]'
             }`}
           >
-            {isModActive && (
-              <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-            )}
-
             <div className="flex items-start justify-between gap-3 sm:gap-4 relative z-10">
               <div className="space-y-1.5 flex-1 min-w-0 pr-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm sm:text-base font-bold text-white flex items-center gap-2 tracking-tight">
-                    <i className={`fa-solid fa-shield-halved ${isModActive ? 'text-emerald-400' : 'text-zinc-500'}`}></i>
+                  <span className="text-sm sm:text-base font-bold text-[#18191F] flex items-center gap-2 tracking-tight">
+                    <i className={`fa-solid fa-shield-halved ${isModActive ? 'text-emerald-600' : 'text-[#9A9890]'}`}></i>
                     CR27_Footy Real Name Pack
                   </span>
                   {isModActive && !isCustomJson && (
-                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-400/30 uppercase tracking-wider shrink-0">
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 uppercase tracking-wider shrink-0">
                       {isDe ? 'Aktiv' : 'Active'}
                     </span>
                   )}
                   {isCustomJson && (
-                    <span className="text-[10px] font-bold text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded-lg border border-sky-400/30 uppercase tracking-wider shrink-0">
+                    <span className="text-[10px] font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-lg border border-sky-200 uppercase tracking-wider shrink-0">
                       Custom Patch
                     </span>
                   )}
                 </div>
 
-                <div className="text-[11px] font-semibold text-zinc-400">
+                <div className="text-[11px] font-semibold text-[#4B5563]">
                   {isDe ? 'Erstellt von Community-Modder CR27_Footy' : 'Authored by community creator CR27_Footy'}
                 </div>
                 
-                <p className="text-xs text-zinc-400 leading-relaxed font-normal">
+                <p className="text-xs text-[#6B7280] leading-relaxed font-normal">
                   {isModActive
                     ? isCustomJson
                       ? (isDe ? 'Eigener benutzerdefinierter JSON-Patch geladen.' : 'Custom user-imported JSON patch is currently loaded.')
@@ -269,17 +262,17 @@ export const ModModal: React.FC<ModModalProps> = ({
                   aria-checked={isModActive}
                   onClick={handleToggleMod}
                   disabled={isProcessing}
-                  className={`relative inline-flex h-7 w-12 sm:h-8 sm:w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-md touch-manipulation ${
+                  className={`relative inline-flex h-7 w-12 sm:h-8 sm:w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-xs touch-manipulation ${
                     isModActive
-                      ? 'bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.35)]'
-                      : 'bg-zinc-700 hover:bg-zinc-600'
+                      ? 'bg-emerald-600'
+                      : 'bg-[#D6D3CB] hover:bg-[#C7C4BC]'
                   }`}
                 >
                   <span className="sr-only">
                     {isDe ? 'CR27_Footy Real Name Pack umschalten' : 'Toggle CR27_Footy Real Name Pack'}
                   </span>
                   <span
-                    className={`pointer-events-none inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    className={`pointer-events-none inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
                       isModActive ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0'
                     }`}
                   />
@@ -288,14 +281,14 @@ export const ModModal: React.FC<ModModalProps> = ({
             </div>
 
             {/* Mobile Explicit Status & Tap Action Bar */}
-            <div className="sm:hidden mt-3 pt-2.5 border-t border-white/[0.08] flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-zinc-300">
+            <div className={`sm:hidden mt-3 pt-2.5 border-t flex items-center justify-between ${isModActive ? 'border-emerald-200' : 'border-[#E6E3DC]'}`}>
+              <span className="text-[11px] font-semibold text-[#4B5563]">
                 {isModActive ? (isDe ? 'Pack ist aktiviert' : 'Pack is Active') : (isDe ? 'Standard-Datenbank' : 'Standard Database')}
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wider ${
                 isModActive
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
-                  : 'bg-white/[0.06] text-zinc-300 border-white/[0.1]'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  : 'bg-white text-[#4B5563] border-[#E6E3DC]'
               }`}>
                 {isModActive ? (isDe ? 'Tippen zum Ausschalten' : 'Tap to Turn Off') : (isDe ? 'Tippen zum Einschalten' : 'Tap to Turn On')}
               </span>
@@ -304,16 +297,16 @@ export const ModModal: React.FC<ModModalProps> = ({
             {/* Custom JSON Active Alert / Revert Action */}
             {isCustomJson && (
               <div 
-                className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs"
+                className="mt-3 pt-3 border-t border-emerald-200 flex items-center justify-between gap-2 text-xs"
                 onClick={e => e.stopPropagation()}
               >
-                <span className="text-sky-300 text-[11px] font-medium">
+                <span className="text-sky-800 text-[11px] font-semibold">
                   {isDe ? 'Aktuell ist ein benutzerdefinierter Patch aktiv.' : 'A custom JSON file is currently active.'}
                 </span>
                 <button
                   type="button"
                   onClick={handleResetToOfficialCommunity}
-                  className="text-white hover:text-emerald-400 font-semibold text-[11px] transition-colors underline underline-offset-2 cursor-pointer"
+                  className="text-[#18191F] hover:text-emerald-700 font-bold text-[11px] transition-colors underline underline-offset-2 cursor-pointer"
                 >
                   {isDe ? 'Auf CR27_Footy Real Name Pack zurücksetzen' : 'Reset to CR27_Footy Real Name Pack'}
                 </button>
@@ -321,18 +314,18 @@ export const ModModal: React.FC<ModModalProps> = ({
             )}
           </div>
 
-          {/* Download, Export & Import JSON Management Section (Prominently placed per user instruction) */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] space-y-3 shrink-0 shadow-sm">
+          {/* Download, Export & Import JSON Management Section */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] space-y-3 shrink-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white">
-                <i className="fa-solid fa-file-code text-sky-400 text-sm"></i>
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#18191F]">
+                <i className="fa-solid fa-file-code text-sky-700 text-sm"></i>
                 <span>{isDe ? 'Roster-Daten & JSON-Verwaltung' : 'Roster Data & JSON Backup'}</span>
               </div>
-              <span className="text-[10px] font-semibold text-zinc-400 bg-white/[0.05] px-2 py-0.5 rounded border border-white/[0.06] tabular-nums">
-                {clubsDb.length} Clubs
+              <span className="text-[10px] font-bold text-[#4B5563] bg-white px-2.5 py-0.5 rounded-full border border-[#E6E3DC] tabular-nums">
+                {clubsDb.length.toLocaleString()} Clubs
               </span>
             </div>
-            <p className="text-xs text-zinc-400 leading-relaxed font-normal">
+            <p className="text-xs text-[#6B7280] leading-relaxed font-normal">
               {isDe 
                 ? 'Lade die vollständige Vereinsdatenbank als JSON herunter und exportiere sie für eigene Edits, oder importiere benutzerdefinierte Patches.' 
                 : 'Download and export the verified roster database as JSON for editing, or import custom community patches.'}
@@ -342,14 +335,14 @@ export const ModModal: React.FC<ModModalProps> = ({
               <button 
                 type="button"
                 onClick={handleExportTemplate}
-                className="w-full bg-emerald-500/15 hover:bg-emerald-500/25 active:bg-emerald-500/30 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-400/50 px-4 py-3 rounded-xl font-bold cursor-pointer transition flex items-center justify-center gap-2.5 text-xs shadow-sm touch-manipulation active:scale-[0.98]"
+                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-4 py-3 rounded-xl font-bold cursor-pointer transition flex items-center justify-center gap-2.5 text-xs touch-manipulation active:scale-[0.98]"
               >
-                <i className="fa-solid fa-download text-emerald-400 text-sm"></i>
+                <i className="fa-solid fa-download text-emerald-700 text-sm"></i>
                 <span>{isDe ? 'JSON herunterladen & exportieren' : 'Download & Export JSON'}</span>
               </button>
 
-              <label className="w-full text-center bg-white/[0.06] hover:bg-white/[0.1] active:bg-white/[0.14] text-white border border-white/[0.1] hover:border-white/[0.18] px-4 py-3 rounded-xl font-bold cursor-pointer transition flex items-center justify-center gap-2.5 text-xs shadow-sm touch-manipulation active:scale-[0.98]">
-                <i className="fa-solid fa-upload text-sky-400 text-sm"></i>
+              <label className="w-full text-center bg-white hover:bg-[#EFECE4] text-[#18191F] border border-[#E6E3DC] px-4 py-3 rounded-xl font-bold cursor-pointer transition flex items-center justify-center gap-2.5 text-xs touch-manipulation active:scale-[0.98]">
+                <i className="fa-solid fa-upload text-sky-700 text-sm"></i>
                 <span>{isDe ? 'JSON-Patch importieren' : 'Import Custom JSON'}</span>
                 <input 
                   type="file" 
@@ -363,54 +356,54 @@ export const ModModal: React.FC<ModModalProps> = ({
 
           {/* Database Status & Pack Features */}
           {isModActive ? (
-            <div className="p-4 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-3 shrink-0">
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 shrink-0">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold uppercase tracking-wider text-[10px] text-emerald-400">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-emerald-800">
                   {isDe ? 'Aktive Pack-Funktionen' : 'Active Pack Features'}
                 </span>
-                <span className="tabular-nums font-bold text-emerald-300">
-                  {clubsDb.length} {isDe ? 'Vereine' : 'Clubs'}
+                <span className="tabular-nums font-bold text-emerald-800">
+                  {clubsDb.length.toLocaleString()} {isDe ? 'Vereine' : 'Clubs'}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
-                <div className="flex items-start gap-2 text-zinc-300">
-                  <i className="fa-solid fa-check text-emerald-400 text-[11px] mt-0.5 shrink-0"></i>
-                  <span className="leading-snug">
+                <div className="flex items-start gap-2 text-[#18191F]">
+                  <i className="fa-solid fa-check text-emerald-700 text-[11px] mt-0.5 shrink-0"></i>
+                  <span className="leading-snug font-medium">
                     {isDe ? 'Echte Vereinsnamen & Wappen' : 'Authentic club names & crests'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2 text-zinc-300">
-                  <i className="fa-solid fa-check text-emerald-400 text-[11px] mt-0.5 shrink-0"></i>
-                  <span className="leading-snug">
+                <div className="flex items-start gap-2 text-[#18191F]">
+                  <i className="fa-solid fa-check text-emerald-700 text-[11px] mt-0.5 shrink-0"></i>
+                  <span className="leading-snug font-medium">
                     {isDe ? 'Reale Stadionkapazitäten & Lore' : 'Real stadium capacities & historical lore'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2 text-zinc-300">
-                  <i className="fa-solid fa-check text-emerald-400 text-[11px] mt-0.5 shrink-0"></i>
-                  <span className="leading-snug">
+                <div className="flex items-start gap-2 text-[#18191F]">
+                  <i className="fa-solid fa-check text-emerald-700 text-[11px] mt-0.5 shrink-0"></i>
+                  <span className="leading-snug font-medium">
                     {isDe ? '1.202 Vereine weltweit integriert' : '1,202 verified clubs worldwide'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2 text-zinc-300">
-                  <i className="fa-solid fa-check text-emerald-400 text-[11px] mt-0.5 shrink-0"></i>
-                  <span className="leading-snug">
+                <div className="flex items-start gap-2 text-[#18191F]">
+                  <i className="fa-solid fa-check text-emerald-700 text-[11px] mt-0.5 shrink-0"></i>
+                  <span className="leading-snug font-medium">
                     {isDe ? 'Jederzeit umschaltbar ohne Spielverlust' : '100% save-game compatible anytime'}
                   </span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2 text-xs text-zinc-400 shrink-0">
+            <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] space-y-2 text-xs text-[#6B7280] shrink-0">
               <div className="flex items-center justify-between">
-                <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-400">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-[#4B5563]">
                   {isDe ? 'Aktiver Datenstand' : 'Active Database Status'}
                 </span>
-                <span className="tabular-nums font-semibold text-zinc-300">
-                  {clubsDb.length} {isDe ? 'Vereine (Standard)' : 'Clubs (Standard)'}
+                <span className="tabular-nums font-bold text-[#18191F]">
+                  {clubsDb.length.toLocaleString()} {isDe ? 'Vereine (Standard)' : 'Clubs (Standard)'}
                 </span>
               </div>
-              <p className="text-zinc-400 leading-relaxed text-xs">
+              <p className="text-[#6B7280] leading-relaxed text-xs">
                 {isDe
                   ? 'Standard-Datenbank aktiv: Neutrale, lizenzfreie Vereinsnamen (z.B. Bavaria München, SV Leverkusen 04) und prozedurale Wappen.'
                   : 'Standard database active: Independent, copyright-safe club names (e.g. Bavaria München, SV Leverkusen 04) and procedural crests.'}
@@ -419,13 +412,13 @@ export const ModModal: React.FC<ModModalProps> = ({
           )}
 
           {/* Unambiguous Legal Notice & Third-Party Disclaimer */}
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-[11px] text-zinc-400 leading-relaxed flex items-start gap-3 shrink-0">
-            <i className="fa-solid fa-scale-balanced text-zinc-400 text-sm mt-0.5 shrink-0"></i>
+          <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] text-[11px] text-[#6B7280] leading-relaxed flex items-start gap-3 shrink-0">
+            <i className="fa-solid fa-scale-balanced text-[#6B7280] text-sm mt-0.5 shrink-0"></i>
             <div className="space-y-1">
-              <div className="font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
+              <div className="font-bold text-[#4B5563] uppercase tracking-wider text-[10px]">
                 {isDe ? 'Rechtlicher Hinweis & Unabhängigkeits-Erklärung' : 'Legal Notice & Third-Party Disclaimer'}
               </div>
-              <p className="text-zinc-400">
+              <p className="text-[#6B7280]">
                 {isDe 
                   ? 'Der "CR27_Footy Real Name Pack" ist ein eigenständiges, von der Community erstelltes Datenpaket des Drittanbieters CR27_Footy. Football Manager Sim und seine Entwickler sind weder Urheber, Herausgeber, Hoster noch Sponsor dieses Pakets und stehen in keinerlei rechtlicher oder geschäftlicher Verbindung zu CR27_Footy oder Football Manager Sim. Football Manager Sim ist ein eigenständiges Simulationsspiel. Alle realen Vereins-, Stadion- und Markennamen in diesem Community-Pack sind ausschließlich nutzergenerierte Inhalte von Drittanbietern und verbleiben das ausschließliche Eigentum der jeweiligen Rechteinhaber.'
                   : 'The "CR27_Footy Real Name Pack" is an independent, unofficial, player-created community modification authored exclusively by third-party contributor CR27_Footy. Football Manager Sim and its developers did not create, host, license, publish, or sponsor this pack, and bear no affiliation with CR27_Footy. Football Manager Sim is an independent simulation game. All real-world trademarks, club identities, stadium names, and crest references contained within community modifications are strictly third-party player-generated content and remain the intellectual property of their respective trademark holders.'}
@@ -436,11 +429,11 @@ export const ModModal: React.FC<ModModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-white/[0.06] bg-white/[0.02] flex items-center justify-end shrink-0 relative z-10">
+        <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-end shrink-0 relative z-10">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 bg-white/[0.06] hover:bg-white/[0.1] text-white font-semibold text-xs rounded-xl border border-white/[0.08] transition-colors shadow-sm cursor-pointer"
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold text-xs rounded-xl transition-colors shadow-sm cursor-pointer"
           >
             {isDe ? 'Schliessen' : 'Close'}
           </button>

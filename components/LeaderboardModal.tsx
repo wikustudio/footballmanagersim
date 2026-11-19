@@ -4,6 +4,7 @@ import { HighscoreEntry } from '../App';
 import { Club, GameState, Language } from '../types';
 import { HISTORICAL_DIRECTORS, formatNum } from '../data/gameConstants';
 import { ClubLogo } from './ClubLogo';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface LeaderboardModalProps {
   highscores: HighscoreEntry[];
   gameState?: GameState | null;
   clubsDb?: Club[];
+  isModActive?: boolean;
   lang?: Language;
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
@@ -24,11 +26,15 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   highscores,
   gameState,
   clubsDb,
+  isModActive: isModActiveProp,
   lang = 'en',
   onRefresh,
   isRefreshing = false,
 }) => {
   const isDe = lang === 'de';
+  const effectiveModActive = isModActiveProp !== undefined
+    ? isModActiveProp
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
@@ -45,23 +51,44 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   // Current active career stats
   const currentCareerScore = gameState?.careerScore || 0;
   const currentManagerName = gameState?.managerName || (isDe ? 'Aktueller Manager' : 'Current Manager');
-  const currentClubName = gameState?.club?.name || (isDe ? 'Aktueller Club' : 'Current Club');
+  const currentClubName = gameState?.club?.name
+    ? resolveHistoryClubDisplay(
+        {
+          id: gameState.club.id,
+          name: gameState.club.name,
+          country: gameState.club.country,
+          color: gameState.club.color,
+          logo: gameState.club.logo,
+          fallbackLogo: gameState.club.fallbackLogo,
+        },
+        effectiveModActive,
+        clubsDb
+      ).name
+    : (isDe ? 'Aktueller Club' : 'Current Club');
   const currentTrophies = gameState?.totals?.trophies || 0;
   const currentSeasons = gameState?.history?.length || 0;
 
   // Filtered and normalized highscores
   const allEntries = useMemo(() => {
-    return (highscores || []).map((hs, idx) => ({
-      id: hs.id || `hs-${idx}-${hs.score}`,
-      managerName: hs.managerName || (hs as any).manager_name || 'Manager',
-      clubName: hs.clubName || (hs as any).club_name || 'Club',
-      score: typeof hs.score === 'number' ? hs.score : parseInt(String(hs.score), 10) || 0,
-      trophies: typeof hs.trophies === 'number' ? hs.trophies : parseInt(String(hs.trophies), 10) || 0,
-      date: hs.date || (hs as any).created_at || '',
-      startTier: hs.start_tier || (hs as any).startTier,
-      isHistorical: false,
-    }));
-  }, [highscores]);
+    return (highscores || []).map((hs, idx) => {
+      const rawClubName = hs.clubName || (hs as any).club_name || 'Club';
+      const resolvedClubName = resolveHistoryClubDisplay(
+        { name: rawClubName },
+        effectiveModActive,
+        clubsDb
+      ).name;
+      return {
+        id: hs.id || `hs-${idx}-${hs.score}`,
+        managerName: hs.managerName || (hs as any).manager_name || 'Manager',
+        clubName: resolvedClubName,
+        score: typeof hs.score === 'number' ? hs.score : parseInt(String(hs.score), 10) || 0,
+        trophies: typeof hs.trophies === 'number' ? hs.trophies : parseInt(String(hs.trophies), 10) || 0,
+        date: hs.date || (hs as any).created_at || '',
+        startTier: hs.start_tier || (hs as any).startTier,
+        isHistorical: false,
+      };
+    });
+  }, [highscores, effectiveModActive, clubsDb]);
 
   // Hall of Fame entries
   const hofEntries = useMemo(() => {
@@ -389,11 +416,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         {matchedClub && (
                           <div className="shrink-0 hidden xs:block">
                             <ClubLogo
-                              name={matchedClub.name}
+                              name={entry.clubName}
                               id={matchedClub.id}
                               color={matchedClub.color}
-                              logo={matchedClub.logo}
-                              fallbackLogo={matchedClub.fallbackLogo}
+                              logo={effectiveModActive ? matchedClub.logo : undefined}
+                              fallbackLogo={effectiveModActive ? matchedClub.fallbackLogo : undefined}
+                              isModActive={effectiveModActive}
                               className="w-7 h-7 object-contain drop-shadow-sm"
                               fallbackClassName="w-7 h-7 text-[10px] rounded-lg flex items-center justify-center font-bold text-white"
                             />

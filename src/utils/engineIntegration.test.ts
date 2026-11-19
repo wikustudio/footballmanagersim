@@ -833,7 +833,7 @@ describe('Game Engine Integration & Data Integrity Tests', () => {
     const gerEuroCupTheme = getCompetitionTheme('el', 'GER', 'Euro Cup');
     expect(gerEuroCupTheme.id).toBe('el');
     expect(gerEuroCupTheme.badgeLabel.en).toBe('Euro Cup');
-    expect(gerEuroCupTheme.accentHex).toBe('#F97316');
+    expect(gerEuroCupTheme.accentHex).toBe('#EA580C');
 
     // DFB-Pokal in Germany must be DFB-Pokal
     const gerDfbTheme = getCompetitionTheme('dfb', 'GER', 'DFB-Pokal');

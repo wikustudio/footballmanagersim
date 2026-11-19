@@ -1,17 +1,19 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { getContinentalCupNames } from '../utils/regionHelpers';
 import { getTrophyImage } from '../utils/trophyHelpers';
+import { getCompetitionLogo } from '../utils/competitionLogos';
 import { motion, animate } from 'motion/react';
 import confetti from 'canvas-confetti';
 import * as htmlToImage from 'html-to-image';
-import { Club, GameState, Language, TrophiesObj, UniverseMovement } from '../types';
-import { getLeagueInfo, getDomesticCupInfo, TOURNAMENT_LOGOS, formatMoney, isReserveClub, getMinAllowedTierForReserve, getLeagueMaxAttendance, getLeagueScaledVal, getMaxTier, isCanadianMLSClub } from '../data/gameConstants';
+import { Club, GameState, Language, PressureSeasonVerdict, TrophiesObj, UniverseMovement } from '../types';
+import { getLeagueInfo, getDomesticCupInfo, TOURNAMENT_LOGOS, formatMoney, isReserveClub, getLeagueMaxAttendance, calculateExpectedAttendance, getLeagueScaledVal, getMaxTier, isCanadianMLSClub } from '../data/gameConstants';
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
-import { REAL_CLUB_ALIASES, simplifyClubName } from '../engine/moddingEngine';
 import { PrestigeTrophy } from './PrestigeTrophy';
 import { getAllUniverseMovements, getHeadlineCategory, isMajorUniverseHeadline } from '../utils/universeMovements';
 import { ChampionsAlmanacView, TrophyLeadersChartView } from './HistoryAndAlmanacViews';
+import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
+import { buildDeterministicDivisionTable, resolveDivisionClubs } from '../engine/standingsEngine';
 
 interface SeasonFinishModalProps {
   state: GameState;
@@ -62,6 +64,7 @@ interface SeasonFinishModalProps {
     isSackedRelegation?: boolean;
     isSacked?: boolean;
     pointsDeducted?: number;
+    pressureVerdict?: PressureSeasonVerdict | null;
   };
   lang?: Language;
   onClose: () => void;
@@ -158,6 +161,25 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
   const country = state.club.country || 'GER';
   const league = getLeagueInfo(seasonData.tier, country);
+  const effectiveModActive = isModActive !== undefined
+    ? isModActive
+    : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
+  const resolvedHeroClub = useMemo(() => resolveHistoryClubDisplay(
+    {
+      id: state.club.id,
+      name: seasonData.clubName || state.club.name || 'Club',
+      country,
+      color: seasonData.clubColor || state.club.color,
+      logo: seasonData.clubLogo || state.club.logo,
+      fallbackLogo: state.club.fallbackLogo,
+    },
+    effectiveModActive,
+    clubsDb
+  ), [state.club.id, state.club.name, state.club.color, state.club.logo, state.club.fallbackLogo, seasonData.clubName, seasonData.clubColor, seasonData.clubLogo, country, effectiveModActive, clubsDb]);
+  const displayClubName = resolvedHeroClub.name || seasonData.clubName || state.club.name;
+  const displayClubColor = resolvedHeroClub.color || seasonData.clubColor || state.club.color;
+  const displayClubLogo = resolvedHeroClub.logo;
+  const displayClubFallbackLogo = resolvedHeroClub.fallbackLogo;
   const nextTier = seasonData.nextTier !== undefined
     ? seasonData.nextTier
     : seasonData.nextLeague !== undefined
@@ -240,7 +262,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.repeat && !isDownloading && !hasClosedRef.current) {
-        if (typeof document !== 'undefined' && document.querySelector('[data-wc-modal="true"]')) {
+        if (typeof document !== 'undefined' && (document.querySelector('[data-wc-modal="true"]') || document.querySelector('[data-pressure-modal="true"]'))) {
           return;
         }
         const target = e.target as HTMLElement | null;
@@ -336,13 +358,13 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     const list: { type: string; name: string; icon?: string; logo?: string; color: string; badge?: string }[] = [];
     const { cl, el, ecl } = getContinentalCupNames(country);
     
-    if (seasonData.trophiesThisYear?.cwc) list.push({ type: 'cwc', name: 'Global Club Cup', logo: TOURNAMENT_LOGOS.cwc || '', color: 'text-amber-400', badge: 'World Champions' });
-    if (seasonData.trophiesThisYear?.cl) list.push({ type: 'cl', name: cl, logo: getTrophyImage('cl', country), color: 'text-yellow-300', badge: 'Continental Champions' });
-    if (seasonData.trophiesThisYear?.el) list.push({ type: 'el', name: el, logo: getTrophyImage('el', country), color: 'text-orange-400', badge: 'Continental Cup' });
-    if (seasonData.trophiesThisYear?.ecl) list.push({ type: 'ecl', name: ecl, logo: getTrophyImage('ecl', country), color: 'text-emerald-400', badge: 'Continental Challenge' });
-    if (seasonData.trophiesThisYear?.bl) list.push({ type: 'title', name: `${t1League.name}`, logo: t1League.logo, color: 'text-amber-400', badge: 'League Champions' });
-    if (seasonData.trophiesThisYear?.lower) list.push({ type: 'lower', name: `${league.name} Title`, logo: league.logo, color: 'text-sky-300', badge: 'League Champions' });
-    if (seasonData.trophiesThisYear?.dfb) list.push({ type: 'dfb', name: cupInfo.name, logo: cupInfo.logo, color: 'text-amber-400', badge: 'National Cup' });
+    if (seasonData.trophiesThisYear?.cwc) list.push({ type: 'cwc', name: 'Global Club Cup', logo: effectiveModActive ? (TOURNAMENT_LOGOS.cwc || getCompetitionLogo({ kind: 'continental', competitionId: 'cwc', country, isModActive: effectiveModActive })) : '', color: 'text-amber-400', badge: 'World Champions' });
+    if (seasonData.trophiesThisYear?.cl) list.push({ type: 'cl', name: cl, logo: getTrophyImage('cl', country, effectiveModActive), color: 'text-yellow-300', badge: 'Continental Champions' });
+    if (seasonData.trophiesThisYear?.el) list.push({ type: 'el', name: el, logo: getTrophyImage('el', country, effectiveModActive), color: 'text-orange-400', badge: 'Continental Cup' });
+    if (seasonData.trophiesThisYear?.ecl) list.push({ type: 'ecl', name: ecl, logo: getTrophyImage('ecl', country, effectiveModActive), color: 'text-emerald-400', badge: 'Continental Challenge' });
+    if (seasonData.trophiesThisYear?.bl) list.push({ type: 'title', name: `${t1League.name}`, logo: getCompetitionLogo({ kind: 'league', country, tier: 1, isModActive: effectiveModActive }) || (effectiveModActive ? t1League.logo : ''), color: 'text-amber-400', badge: 'League Champions' });
+    if (seasonData.trophiesThisYear?.lower) list.push({ type: 'lower', name: `${league.name} Title`, logo: effectiveModActive ? league.logo : '', color: 'text-sky-300', badge: 'League Champions' });
+    if (seasonData.trophiesThisYear?.dfb) list.push({ type: 'dfb', name: cupInfo.name, logo: getCompetitionLogo({ kind: 'cup', country, tier: 1, isModActive: effectiveModActive }) || (effectiveModActive ? cupInfo.logo : ''), color: 'text-amber-400', badge: 'National Cup' });
     if (seasonData.trophiesThisYear?.efl) list.push({ type: 'efl', name: 'League Cup', color: 'text-emerald-400', badge: 'League Cup' });
     if (seasonData.trophiesThisYear?.reg) list.push({ type: 'reg', name: 'Regional Cup', icon: 'fa-shield-halved', color: 'text-amber-600', badge: 'Regional Cup' });
 
@@ -355,32 +377,31 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
         let cupName = cup.nameEn || cup.nameDe || 'Cup';
         let trophyColor = 'text-amber-400';
         let badge = 'Cup Champions';
-        if (cup.id === 'cl') { trophyColor = 'text-yellow-300'; badge = 'Continental Champions'; }
-        else if (cup.id === 'el') { trophyColor = 'text-orange-400'; badge = 'Continental Cup'; }
-        else if (cup.id === 'ecl') { trophyColor = 'text-emerald-400'; badge = 'Continental Challenge'; }
+        let logo = '';
+        if (cup.id === 'cl') { trophyColor = 'text-yellow-300'; badge = 'Continental Champions'; logo = getTrophyImage('cl', country, effectiveModActive); }
+        else if (cup.id === 'el') { trophyColor = 'text-orange-400'; badge = 'Continental Cup'; logo = getTrophyImage('el', country, effectiveModActive); }
+        else if (cup.id === 'ecl') { trophyColor = 'text-emerald-400'; badge = 'Continental Challenge'; logo = getTrophyImage('ecl', country, effectiveModActive); }
         else if (cup.id === 'reg') { trophyColor = 'text-amber-600'; badge = 'Regional Cup'; }
-        else if (cup.id === 'dfb') { badge = 'National Cup'; }
-        list.push({ type: cupType, name: cupName, color: trophyColor, badge });
+        else if (cup.id === 'dfb') { badge = 'National Cup'; logo = getTrophyImage('dfb', country, effectiveModActive); }
+        list.push({ type: cupType, name: cupName, logo, color: trophyColor, badge });
       }
     }
 
     return list;
-  }, [seasonData.trophiesThisYear, country, t1League, league, cupInfo, state.cupRunResults, seasonData.year, state.year]);
+  }, [seasonData.trophiesThisYear, country, t1League, league, cupInfo, state.cupRunResults, seasonData.year, state.year, effectiveModActive]);
 
   // Attendance Metrics
-  const leagueMaxAtt = getLeagueMaxAttendance(seasonData.tier, isReserveClub(state.club.name), country, state.club.name);
-  const baseAvgAttendance = Math.min(state.club.fanBase || league.attBase, state.club.stadium, leagueMaxAtt);
-  const sCount = seasonData.year || 2026;
-  const pseudoRandom = Math.abs(Math.sin(sCount * 12.9898 + state.club.baseOvr)) % 1;
-  const seasonalVariance = 0.90 + (pseudoRandom * 0.20);
-  const rawAttendance = Math.round(baseAvgAttendance * seasonalVariance);
-  const nonRoundOffset = (Math.floor(pseudoRandom * 97) - 48);
-  let avgAttendance = Math.min(state.club.stadium, Math.max(10, rawAttendance + nonRoundOffset));
-  if (avgAttendance === state.club.stadium && seasonData.tier > 2) {
-    const noShows = Math.floor(pseudoRandom * (state.club.stadium * 0.03)) + 3;
-    avgAttendance = Math.max(10, avgAttendance - noShows);
-  }
-  const fillPercentage = Math.min(100, Math.round((avgAttendance / state.club.stadium) * 100));
+  const avgAttendance =
+    typeof (seasonData as any).att === 'number' && (seasonData as any).att > 0
+      ? (seasonData as any).att
+      : calculateExpectedAttendance({
+          club: state.club,
+          tier: seasonData.tier,
+          year: seasonData.year || 2026,
+          ownership: state.ownership,
+          stadiumPolicy: state.stadiumPolicy,
+        });
+  const fillPercentage = Math.min(100, Math.round((avgAttendance / Math.max(1, state.club.stadium)) * 100));
 
   const goalDiff = seasonData.gf - seasonData.ga;
   const ovrDelta = (seasonData.newBaseOvr || state.club.baseOvr) - (seasonData.startOvr || state.club.baseOvr);
@@ -394,8 +415,18 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   const superVillainClub = useMemo(() => {
     const targetId = rivalChallengerEvent?.clubId || null;
     if (!targetId) return null;
-    return (clubsDb || ALL_CLUBS).find(c => c.id === targetId) || null;
-  }, [rivalChallengerEvent, clubsDb]);
+    const raw = (clubsDb || ALL_CLUBS).find(c => c.id === targetId || String(c.id) === String(targetId));
+    if (!raw) return null;
+    const res = resolveHistoryClubDisplay(raw, effectiveModActive, clubsDb);
+    return {
+      ...raw,
+      id: res.id ?? raw.id,
+      name: res.name || raw.name,
+      color: res.color || raw.color,
+      logo: res.logo,
+      fallbackLogo: res.fallbackLogo,
+    };
+  }, [rivalChallengerEvent, clubsDb, effectiveModActive]);
   const decayReasons = seasonData.decayReasons || [];
 
   const tableData = useMemo(() => {
@@ -427,24 +458,40 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     };
 
     const sanitizedClubsDb = clubsDb && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
-    const isMajorPyramid = ['GER', 'ENG', 'ESP', 'ITA', 'FRA'].includes(currentCountry);
-    const minReserveTier = getMinAllowedTierForReserve(currentCountry);
     const targetTotalClubs = 18;
-    const targetAiCount = Math.max(0, targetTotalClubs - 1);
 
     // 1. Direct retrieval from permanent season standings archive if available
     const archivedRows = state.seasonStandingsArchive?.[seasonData.year]?.[currentTier];
     if (archivedRows && archivedRows.length > 0) {
+      const resolvedRivalTargetName = seasonData.rivalData?.name
+        ? resolveHistoryClubDisplay({ name: seasonData.rivalData.name, country: currentCountry }, effectiveModActive, clubsDb).name
+        : undefined;
       const mappedRows = archivedRows.slice(0, targetTotalClubs).map((r: any, idx: number) => {
+        const resRow = resolveHistoryClubDisplay(
+          {
+            id: r.id,
+            name: r.name || 'Club',
+            country: r.country || currentCountry,
+            color: r.color,
+            logo: r.logo,
+            fallbackLogo: r.fallbackLogo,
+          },
+          effectiveModActive,
+          clubsDb
+        );
+        const resolvedRowName = resRow.name || r.name;
         const isUserClub = Boolean(
           r.isUser ||
           (seasonData.clubName && r.name?.toLowerCase().trim() === seasonData.clubName.toLowerCase().trim()) ||
-          (!seasonData.clubName && r.id === state.club.id)
+          (displayClubName && resolvedRowName?.toLowerCase().trim() === displayClubName.toLowerCase().trim()) ||
+          (r.id != null && state.club.id != null && String(r.id) === String(state.club.id))
         );
         if (isUserClub) {
           const rawGd = seasonData.gf - seasonData.ga;
           return {
             ...r,
+            name: displayClubName,
+            color: displayClubColor || resRow.color || r.color,
             isUser: true,
             pos: idx + 1,
             pts: seasonData.pts,
@@ -454,15 +501,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             gf: seasonData.gf,
             ga: seasonData.ga,
             gd: rawGd > 0 ? `+${rawGd}` : `${rawGd}`,
-            logo: isModActive ? (r.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
+            logo: effectiveModActive ? (resRow.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : displayClubLogo
           };
         }
         return {
           ...r,
+          name: resolvedRowName,
+          color: resRow.color || r.color,
           pos: idx + 1,
           isUser: false,
-          isRival: Boolean(!seasonData.rivalData?.isPaused && (r.isRival || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name))),
-          logo: isModActive ? (r.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
+          isRival: Boolean(!seasonData.rivalData?.isPaused && (r.isRival || (resolvedRivalTargetName && resolvedRowName === resolvedRivalTargetName) || (seasonData.rivalData?.name && r.name === seasonData.rivalData.name))),
+          logo: effectiveModActive ? (resRow.logo || (r.id ? (clubsDb || ALL_CLUBS).find(c => c.id === r.id)?.logo : undefined)) : undefined
         };
       });
       mappedRows.sort((a: any, b: any) => {
@@ -477,391 +526,70 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       return mappedRows;
     }
 
-    const db = clubsDb && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
-    let leagueClubs = db
-      .filter((c) => c.tier === currentTier && (c.country || 'GER') === currentCountry && c.id !== state.club.id && !(currentTier < minReserveTier && isReserveTeam(c.name)))
-      .map((c) => ({ ...c }));
-
-    // Deduplicate clubs by canonical identity & name (e.g. prune duplicate unmodded Dortmund II when mod is active)
-    const getCanonicalDedupeKey = (clubName: string): string => {
-      const lower = clubName.toLowerCase().trim();
-      if (REAL_CLUB_ALIASES[lower] != null) {
-        return `alias_${REAL_CLUB_ALIASES[lower]}`;
-      }
-      const lowerNoRes = lower.replace(/\s+res\.?$/i, '').replace(/\s+reserve$/i, '').trim();
-      if (REAL_CLUB_ALIASES[lowerNoRes] != null) {
-        return `alias_${REAL_CLUB_ALIASES[lowerNoRes]}`;
-      }
-      const isReserve = isReserveClub(clubName);
-      const cleanParent = clubName
-        .replace(/\s+Res\.?$/i, '')
-        .replace(/\s+Reserve$/i, '')
-        .replace(/\s+II$/, '')
-        .replace(/\s+\(?B\)?$/, '')
-        .replace(/\s+Castilla$/, '')
-        .replace(/\s+B$/, '')
-        .replace(/\s+2$/, '')
-        .trim()
-        .toLowerCase();
-      const parentAlias = REAL_CLUB_ALIASES[cleanParent];
-      if (parentAlias != null) {
-        return `parent_${parentAlias}_${isReserve}`;
-      }
-      return `simp_${simplifyClubName(cleanParent)}_${isReserve}`;
-    };
-
-    if (isModActive) {
-      leagueClubs.sort((a, b) => {
-        const aLower = a.name.toLowerCase().trim();
-        const bLower = b.name.toLowerCase().trim();
-        const aIsFallback = aLower.startsWith('prussia') || aLower.startsWith('bavaria') || aLower.startsWith('baden');
-        const bIsFallback = bLower.startsWith('prussia') || bLower.startsWith('bavaria') || bLower.startsWith('baden');
-        if (!aIsFallback && bIsFallback) return -1;
-        if (aIsFallback && !bIsFallback) return 1;
-        return 0;
-      });
-    }
-
-    const seenIdentities = new Set<string>();
-    const seenClubIds = new Set<number | string>();
-    seenIdentities.add(getCanonicalDedupeKey(state.club.name));
-    if (state.club.id != null) seenClubIds.add(state.club.id);
-
-    leagueClubs = leagueClubs.filter(c => {
-      if (c.id != null && seenClubIds.has(c.id)) return false;
-      const key = isMajorPyramid ? getCanonicalDedupeKey(c.name) : c.name.toLowerCase().trim();
-      if (seenIdentities.has(key)) return false;
-      seenIdentities.add(key);
-      if (c.id != null) seenClubIds.add(c.id);
-      return true;
+    const peers = resolveDivisionClubs({
+      clubsDb: sanitizedClubsDb,
+      country: currentCountry,
+      tier: currentTier,
+      year: seasonData.year || state.year || 2026,
+      userClub: state.club,
+      excludeUserClub: true,
+      isModActive: effectiveModActive,
+      rivalClub: state.currentRival,
     });
 
-    const heavyweightSet = new Set([
-      'Madrid FC', 'Catalonia FC', 'Atlético M.', 'FC Bavaria', 'Borussia West',
-      'Manchester Blue', 'North London Red', 'Merseyside Red', 'London Blue', 'Manchester United', 'PSG', 'Piemonte Calcio', 'Milan Blue', 'AC Milan'
-    ]);
-    if (leagueClubs.length > targetAiCount) {
-      leagueClubs = leagueClubs.slice(0, targetAiCount);
-    }
+    const rows = buildDeterministicDivisionTable({
+      year: seasonData.year || state.year || 2026,
+      country: currentCountry,
+      tier: currentTier,
+      playedMatchdays: 34,
+      totalMatchdays: 34,
+      userClub: {
+        ...state.club,
+        name: displayClubName,
+        color: displayClubColor,
+        logo: displayClubLogo,
+      },
+      userInTier: true,
+      peers,
+      userOverrideFinal: {
+        pos: Math.max(1, Math.min(targetTotalClubs, userPos || 1)),
+        w: userWins,
+        d: userDraws,
+        l: userLosses,
+        gf: userGf,
+        ga: userGa,
+        pts: userPts,
+        pointsDeducted: seasonData.pointsDeducted,
+      },
+      rivalClub: seasonData.rivalData?.isPaused ? undefined : state.currentRival,
+      userPointsDeducted: seasonData.pointsDeducted || 0,
+      isModActive: effectiveModActive,
+    });
 
-    const existingClubIds = new Set([state.club.id, ...leagueClubs.map((c) => c.id)]);
-    if (leagueClubs.length < targetAiCount) {
-      const rivalNameLower = (state.currentRival?.name || '').toLowerCase().trim();
-      const sameCountryOtherClubs = db
-        .filter(
-          (c) =>
-            (c.country || 'GER') === currentCountry &&
-            !existingClubIds.has(c.id) &&
-            c.tier === currentTier + 1 &&
-            (currentTier < minReserveTier ? !isReserveTeam(c.name) : true) &&
-            (currentTier === 1 ? c.baseOvr >= 70 : true) &&
-            !heavyweightSet.has(c.name) &&
-            c.id !== state.currentRival?.id &&
-            (!rivalNameLower || c.name.toLowerCase().trim() !== rivalNameLower)
-        )
-        .sort((a, b) => b.baseOvr - a.baseOvr);
-
-      for (const c of sameCountryOtherClubs) {
-        if (leagueClubs.length >= targetAiCount) break;
-        existingClubIds.add(c.id);
-        leagueClubs.push({
-          ...c,
-          tier: currentTier,
-        });
+    if (seasonData.rivalData && !seasonData.rivalData.isPaused) {
+      const rivalPos =
+        rows.findIndex(
+          (r) =>
+            !r.isUser &&
+            (r.isRival ||
+              r.name?.toLowerCase().trim() === seasonData.rivalData?.name?.toLowerCase().trim())
+        ) + 1;
+      if (rivalPos >= 1 && rivalPos <= 18) {
+        rows[rivalPos - 1] = { ...rows[rivalPos - 1], isRival: true };
       }
     }
 
-    const engFallbackNames = currentTier === 1 ? [
-      'Leeds United', 'Leicester City', 'Southampton', 'Norwich City', 'West Bromwich Albion',
-      'Middlesbrough', 'Coventry City', 'Sunderland', 'Watford', 'Stoke City'
-    ] : [
-      'Scunthorpe United', 'Torquay United', 'Yeovil Town', 'Rochdale', 'Oldham Athletic',
-      'Southend United', 'Maidstone United', 'Kidderminster Harriers', 'Dorking Wanderers', 'York City'
-    ];
-    const gerFallbackNames = currentTier === 1 ? [
-      'FC Schalke 04', 'Hertha BSC', '1. FC Nürnberg', 'Hannover 96', 'Fortuna Düsseldorf',
-      'Hamburger SV', 'SpVgg Greuther Fürth', 'SC Paderborn 07', '1. FC Magdeburg', 'Eintracht Braunschweig'
-    ] : [
-      'VfR Aalen', 'Kickers Offenbach', 'Wuppertaler SV', 'FC Homburg', 'Chemnitzer FC',
-      'Carl Zeiss Jena', 'SV Meppen', 'FSV Zwickau', 'Fortuna Koeln', 'Alemannia Aachen'
-    ];
-    const espFallbackNames = currentTier === 1 ? [
-      'RCD Espanyol', 'Real Valladolid', 'Levante UD', 'Sporting Gijón', 'Real Oviedo',
-      'Real Zaragoza', 'Elche CF', 'CD Tenerife', 'SD Eibar', 'Albacete Balompié'
-    ] : [
-      'CE Europa', 'UE Sant Andreu', 'Marbella FC', 'SD Logroñés', 'Real Avilés Industrial',
-      'CD Guadalajara', 'Yeclano Deportivo', 'CD Tudelano', 'CF Talavera', 'CF Badalona'
-    ];
-    const itaFallbackNames = currentTier === 1 ? [
-      'Parma Calcio', 'Palermo', 'Sampdoria', 'Bari', 'Brescia',
-      'Venezia', 'Spezia', 'Cremonese', 'Modena', 'Catanzaro'
-    ] : [
-      'Virtus Entella', 'Pro Vercelli', 'Triestina', 'Vicenza Calcio', 'Lucchese',
-      'Pescara', 'Foggia', 'SPAL', 'Novara', 'Ancona'
-    ];
-    const fraFallbackNames = currentTier === 1 ? [
-      'Girondins de Bordeaux', 'AS Saint-Étienne', 'AJ Auxerre', 'Angers SCO', 'SM Caen',
-      'EA Guingamp', 'Paris FC', 'Grenoble Foot', 'Rodez AF', 'Pau FC'
-    ] : [
-      'Le Mans FC', 'FC Villefranche', 'LB Châteauroux', 'SAS Épinal', 'GOAL FC',
-      'FC Rouen', 'Red Star FC', 'US Avranches', 'SO Cholet', 'Nîmes Olympique'
-    ];
-    const porFallbackNames = [
-      'SC Lusitânia', 'União de Leiria', 'CD Mafra', 'Varzim SC', 'FC Felgueiras',
-      'Atlético CP', 'AD Sanjoanense', 'SG Sacavenense', 'Belém OS', 'Sertanense FC'
-    ];
-    const ecuFallbackNames = [
-      'Guayaquil City', 'Gualaceo SC', '9 de Octubre', 'Cumbayá FC', 'Imbabura SC',
-      'Independiente Juniors', 'Chacaritas FC', 'Leones del Norte', 'San Antonio FC', 'Vargas Torres'
-    ];
-    const usaFallbackNames = [
-      'Tulsa City FC', 'Austin United', 'Miami Coast FC', 'Denver Peak FC',
-      'Phoenix Rising Stars', 'Seattle Sound SC', 'Boston Breakers SC', 'Chicago Athletic',
-      'Dallas Pioneers', 'Atlanta Metro FC', 'San Antonio Rovers', 'Nashville Sound FC',
-      'Detroit City FC', 'Memphis 901', 'Tampa Bay Sun'
-    ];
-    const scoFallbackNames = [
-      'Airdrieonians', 'Queen of the South', 'Alloa Athletic', 'Montrose FC', 'Kelty Hearts',
-      'Cove Rangers', 'Falkirk FC', 'Hamilton Academical', 'Stirling Albion', 'Peterhead FC'
-    ];
-    const braFallbackNames = [
-      'América Mineiro', 'Coritiba FC', 'Goiás EC', 'Chapecoense', 'Ponte Preta',
-      'Vila Nova', 'Avaí FC', 'CRB', 'Operário Ferroviário', 'Paysandu'
-    ];
-    const argFallbackNames = [
-      'Chacarita Juniors', 'Quilmes AC', 'Ferro Carril Oeste', 'San Martín de Tucumán', 'Colón de Santa Fe',
-      'All Boys', 'Nueva Chicago', 'Defensores de Belgrano', 'Gimnasia y Esgrima', 'Temperley'
-    ];
-    const colFallbackNames = [
-      'Deportes Quindío', 'Cúcuta Deportivo', 'Cortuluá', 'Real Cartagena', 'Valledupar FC',
-      'Bogotá FC', 'Leones FC', 'Barranquilla FC', 'Tigres FC', 'Atlético Huila'
-    ];
-    const jpnFallbackNames = [
-      'Oita Trinita', 'Roasso Kumamoto', 'Ventforet Kofu', 'Renofa Yamaguchi', 'Tochigi SC',
-      'Mito HollyHock', 'Blaublitz Akita', 'Iwaki FC', 'Thespakusatsu Gunma', 'Fujieda MYFC'
-    ];
-    const mexFallbackNames = [
-      'Atlante FC', 'Celaya FC', 'Venados FC', 'Leones Negros', 'Cimarrones de Sonora',
-      'Cancún FC', 'Alebrijes de Oaxaca', 'Mineros de Zacatecas', 'Tepatitlán FC', 'Correcaminos UAT'
-    ];
-    const canFallbackNames = [
-      'Victoria Highlanders', 'Calgary Foothills', 'FC Manitoba', 'Thunder Bay Chill', 'Simcoe County Rovers',
-      'Guelph United', 'Blue Devils FC', 'Vaughan Azzurri', 'TFC Academy', 'FC Laval'
-    ];
-    const turFallbackNames = [
-      'Bursaspor', 'Eskişehirspor', 'Altay SK', 'Giresunspor', 'Menemenspor',
-      'Tuzlaspor', 'Boluspor', 'Adanaspor', 'Bandırmaspor', 'Keçiörengücü'
-    ];
-
-    const fallbackList =
-      currentCountry === 'ENG' ? engFallbackNames :
-      currentCountry === 'POR' ? porFallbackNames :
-      currentCountry === 'ESP' ? espFallbackNames :
-      currentCountry === 'ITA' ? itaFallbackNames :
-      currentCountry === 'FRA' ? fraFallbackNames :
-      currentCountry === 'ECU' ? ecuFallbackNames :
-      currentCountry === 'USA' ? usaFallbackNames :
-      currentCountry === 'SCO' ? scoFallbackNames :
-      currentCountry === 'BRA' ? braFallbackNames :
-      currentCountry === 'ARG' ? argFallbackNames :
-      currentCountry === 'COL' ? colFallbackNames :
-      currentCountry === 'JPN' ? jpnFallbackNames :
-      currentCountry === 'MEX' ? mexFallbackNames :
-      currentCountry === 'CAN' ? canFallbackNames :
-      currentCountry === 'TUR' ? turFallbackNames :
-      (currentCountry === 'GER' ? gerFallbackNames : []);
-
-    const neededFillers = Math.max(0, targetAiCount - leagueClubs.length);
-    const allKnownDbNames = new Set([
-      ...db.map((c) => c.name.toLowerCase().trim()),
-      state.club.name.toLowerCase().trim(),
-      ...(state.currentRival?.name ? [state.currentRival.name.toLowerCase().trim()] : []),
-    ]);
-    for (let i = 0; i < neededFillers; i++) {
-      const existingNames = new Set([
-        ...allKnownDbNames,
-        ...leagueClubs.map((c) => c.name.toLowerCase().trim()),
-      ]);
-      const availableFallback = fallbackList.find((n) => !existingNames.has(n.toLowerCase().trim())) || `Club ${i + 1}`;
-      leagueClubs.push({
-        id: 9900 + i,
-        name: availableFallback,
-        tier: currentTier,
-        baseOvr: currentLeagueInfo.avgOvr + seededRand((seasonData.year || 2024) + i, -5, 5),
-        color: '#' + Math.floor(seededRandom((seasonData.year || 2024) * 10 + i) * 16777215).toString(16).padStart(6, '0'),
-        stadium: 15000,
-        country: currentCountry,
-      });
-    }
-
-    // Safety guard: ensure leagueClubs reaches targetAiCount under all circumstances
-    while (leagueClubs.length < targetAiCount) {
-      const idx = leagueClubs.length;
-      leagueClubs.push({
-        id: 9900 + idx,
-        name: `${country} Club ${idx + 1}`,
-        tier: currentTier,
-        baseOvr: currentLeagueInfo.avgOvr + seededRand((seasonData.year || 2024) + idx, -5, 5),
-        color: '#' + Math.floor(seededRandom((seasonData.year || 2024) * 10 + idx) * 16777215).toString(16).padStart(6, '0'),
-        stadium: 15000,
-        country: currentCountry,
-      });
-    }
-
-    const clubsPool = [...leagueClubs].sort((a, b) => {
-      const bEff = b.baseOvr + seededRand(seasonData.year * 10 + (typeof b.id === 'number' ? b.id : 1), -4, 4);
-      const aEff = a.baseOvr + seededRand(seasonData.year * 10 + (typeof a.id === 'number' ? a.id : 1), -4, 4);
-      return bEff - aEff;
-    });
-
-    const basePtsMap: Record<number, number> = {
-      1: 82, 2: 74, 3: 66, 4: 60, 5: 55, 6: 51,
-      7: 48, 8: 45, 9: 42, 10: 40, 11: 37, 12: 35,
-      13: 33, 14: 31, 15: 28, 16: 25, 17: 21, 18: 16
-    };
-    const getRealisticBasePoints = (p: number) => basePtsMap[p] || 40;
-
-    const isRivalActiveInTier = !seasonData.rivalData?.isPaused;
-    const rivalName = isRivalActiveInTier ? (seasonData.rivalData?.name || state.currentRival?.name) : undefined;
-    const rivalClubIndex = rivalName ? clubsPool.findIndex(c => c.name === rivalName) : -1;
-    let rivalClub: any = null;
-    if (rivalClubIndex !== -1) {
-      rivalClub = clubsPool.splice(rivalClubIndex, 1)[0];
-    }
-
-    const safeUserPos = Math.max(1, Math.min(targetTotalClubs, userPos || 1));
-    let rivalPos = -1;
-    if (rivalClub) {
-      if (safeUserPos === 1) rivalPos = 2;
-      else if (safeUserPos === 2) rivalPos = 1;
-      else if (safeUserPos === 15) rivalPos = 16;
-      else if (safeUserPos === 16) rivalPos = 15;
-      else if (safeUserPos === 3) rivalPos = 4;
-      else if (safeUserPos === 4) rivalPos = 3;
-      else rivalPos = safeUserPos - 1 > 0 ? safeUserPos - 1 : 2;
-    }
-
-    const posPts: number[] = new Array(targetTotalClubs + 1).fill(0);
-    posPts[safeUserPos] = userPts;
-
-    // Fill upwards from safeUserPos - 1 down to 1
-    for (let p = safeUserPos - 1; p >= 1; p--) {
-      let ideal = getRealisticBasePoints(p) + seededRand(seasonData.year * 70 + p, -1, 1);
-      ideal = Math.max(posPts[p + 1] + 1, ideal);
-      posPts[p] = ideal;
-    }
-
-    // Fill downwards from safeUserPos + 1 up to targetTotalClubs
-    for (let p = safeUserPos + 1; p <= targetTotalClubs; p++) {
-      let ideal = getRealisticBasePoints(p) + seededRand(seasonData.year * 70 + p, -1, 1);
-      ideal = Math.min(posPts[p - 1] - 1, ideal);
-      posPts[p] = Math.max(4, ideal);
-    }
-
-    if (rivalClub && rivalPos >= 1 && rivalPos <= 18 && rivalPos <= targetTotalClubs && (seasonData.rivalData as any)?.pts !== undefined) {
-      const rTarget = (seasonData.rivalData as any).pts;
-      posPts[rivalPos] = rivalPos < safeUserPos
-        ? Math.max(posPts[rivalPos + 1] + 1, Math.min(rivalPos > 1 ? posPts[rivalPos - 1] - 1 : 98, rTarget))
-        : Math.min(posPts[rivalPos - 1] - 1, Math.max(rivalPos < targetTotalClubs ? posPts[rivalPos + 1] + 1 : 4, rTarget));
-    }
-
-    const rows: any[] = [];
-    for (let p = 1; p <= targetTotalClubs; p++) {
-      if (p === safeUserPos) {
-        rows.push({
-          pos: safeUserPos,
-          id: state.club.id,
-          name: seasonData.clubName || state.club.name,
-          color: seasonData.clubColor || state.club.color,
-          logo: seasonData.clubLogo || (isModActive ? state.club.logo : undefined),
-          mp: 34,
-          w: userWins,
-          d: userDraws,
-          l: userLosses,
-          gf: userGf,
-          ga: userGa,
-          pts: userPts,
-          gd: userGDStr,
-          isUser: true,
-          isRival: false,
-          pointsDeducted: seasonData.pointsDeducted,
-        });
-      } else if (p === rivalPos && rivalClub) {
-        const rPts = posPts[rivalPos];
-        let w = Math.min(34, Math.max(1, Math.floor(rPts / 3)));
-        let d = Math.max(0, rPts - w * 3);
-        while (d < 4 && w > 2 && w + d < 34) {
-          w -= 1;
-          d += 3;
-        }
-        const l = Math.max(0, 34 - w - d);
-        const gf = Math.max(18, Math.round(w * 1.9 + d * 1.1 + seededRand(seasonData.year * 2, 4, 10)));
-        const ga = Math.max(14, Math.round(l * 1.8 + d * 0.9 + seededRand(seasonData.year * 2 + 10, 4, 10)));
-        const rGd = gf - ga;
-
-        rows.push({
-          pos: rivalPos,
-          id: typeof rivalClub.id === 'number' ? rivalClub.id : undefined,
-          name: rivalClub.name,
-          color: rivalClub.color,
-          logo: isModActive ? rivalClub.logo : undefined,
-          mp: 34,
-          w,
-          d,
-          l,
-          gf,
-          ga,
-          pts: rPts,
-          gd: rGd > 0 ? `+${rGd}` : `${rGd}`,
-          isUser: false,
-          isRival: true,
-        });
-      } else {
-        const club = clubsPool.shift() || {
-          id: 9950 + p,
-          name: `Club ${p}`,
-          color: '#64748b',
-          tier: currentTier,
-          baseOvr: currentLeagueInfo.avgOvr,
-        };
-        const pts = posPts[p];
-        let w = Math.min(34, Math.max(1, Math.floor(pts / 3)));
-        let d = Math.max(0, pts - w * 3);
-        while (d < 4 && w > 2 && w + d < 34) {
-          w -= 1;
-          d += 3;
-        }
-        const l = Math.max(0, 34 - w - d);
-        const gf = Math.max(18, Math.round(w * 1.9 + d * 1.1 + seededRand(seasonData.year * 10 + p, 4, 12)));
-        const ga = Math.max(14, Math.round(l * 1.8 + d * 0.9 + seededRand(seasonData.year * 10 + p + 50, 4, 12)));
-        const gdVal = gf - ga;
-
-        rows.push({
-          pos: p,
-          id: typeof club.id === 'number' ? club.id : undefined,
-          name: club.name,
-          color: club.color,
-          logo: isModActive ? club.logo : undefined,
-          mp: 34,
-          w,
-          d,
-          l,
-          gf,
-          ga,
-          pts,
-          gd: gdVal > 0 ? `+${gdVal}` : `${gdVal}`,
-          isUser: false,
-          isRival: false,
-        });
-      }
-    }
-
-    rows.forEach((r, idx) => {
-      r.pos = idx + 1;
-    });
-
-    return rows;
-  }, [seasonData, country, league, clubsDb, state.club, state.currentRival, state.seasonStandingsArchive, isModActive]);
+    return rows.map((r) => ({
+      ...r,
+      logo: effectiveModActive
+        ? r.isUser
+          ? displayClubLogo
+          : r.logo || (r.id ? sanitizedClubsDb.find((c) => c.id === r.id)?.logo : undefined)
+        : r.isUser
+        ? displayClubLogo
+        : undefined,
+    }));
+  }, [seasonData, country, league, clubsDb, state.club, state.currentRival, state.seasonStandingsArchive, state.year, effectiveModActive, displayClubName, displayClubColor, displayClubLogo]);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -880,26 +608,26 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       originalMaxHeight = elem.style.maxHeight;
       originalHeight = elem.style.height;
 
-      elem.classList.remove('overflow-y-auto', 'max-h-[92vh]', 'sm:max-h-[88vh]', 'overscroll-contain');
+      elem.classList.remove('overflow-y-auto', 'overscroll-contain');
       elem.style.overflow = 'visible';
       elem.style.maxHeight = 'none';
       elem.style.height = 'auto';
 
       const blob = await htmlToImage.toBlob(elem, {
         quality: 1.0,
-        backgroundColor: '#141416',
+        backgroundColor: '#F5F3EE',
         style: { transform: 'scale(1)', transformOrigin: 'top left' },
         filter: (node) => node.tagName !== 'BUTTON' && node.tagName !== 'NAV'
       });
       if (!blob) return;
 
-      const filename = `season-${seasonData.year}-${seasonData.clubName.replace(/\s+/g, '-').toLowerCase()}.png`;
+      const filename = `season-${seasonData.year}-${displayClubName.replace(/\s+/g, '-').toLowerCase()}.png`;
       const file = new File([blob], filename, { type: 'image/png' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
-            title: `${seasonData.clubName} Season ${seasonData.year}`,
+            title: `${displayClubName} Season ${seasonData.year}`,
             files: [file]
           });
           return;
@@ -966,28 +694,28 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
     return universeMovementsList.filter(m => m.type === 'transfer_saga');
   }, [universeMovementsList]);
 
-  // Outcome banner styles (100% English)
+  // Outcome banner styles (100% English - Warm Editorial Daylight)
   const outcomeBanner = useMemo(() => {
     if (isChamp) {
       return {
         badge: 'CHAMPIONS',
         tagline: 'Champions & League Glory',
-        color: 'from-amber-500/25 via-yellow-500/15 to-transparent',
-        border: 'border-amber-500/40',
-        text: 'text-amber-300',
+        color: 'from-amber-50 via-amber-50/40 to-white',
+        border: 'border-amber-200',
+        text: 'text-amber-700',
         icon: 'fa-crown',
-        pillBg: 'bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]'
+        pillBg: 'bg-amber-400 text-[#18191F] shadow-sm'
       };
     }
     if (isPromoted) {
       return {
         badge: 'PROMOTION ACHIEVED',
         tagline: `Promoted to ${nextLeague.name}!`,
-        color: 'from-emerald-500/25 via-teal-500/15 to-transparent',
-        border: 'border-emerald-500/40',
-        text: 'text-emerald-300',
+        color: 'from-emerald-50 via-emerald-50/40 to-white',
+        border: 'border-emerald-200',
+        text: 'text-emerald-700',
         icon: 'fa-arrow-trend-up',
-        pillBg: 'bg-emerald-400 text-black shadow-[0_0_15px_rgba(52,211,153,0.4)]'
+        pillBg: 'bg-emerald-600 text-white shadow-sm'
       };
     }
     if (seasonData.isSackedRelegation) {
@@ -996,45 +724,45 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
         tagline: isTier1Only
           ? `Contract Terminated · Bottom-3 Finish (No Relegation · Shields Ineffective)`
           : `Contract Terminated · Bottom-Tier Relegation Sacking`,
-        color: 'from-rose-500/25 via-red-500/15 to-transparent',
-        border: 'border-rose-500/40',
-        text: 'text-rose-300',
+        color: 'from-rose-50 via-rose-50/40 to-white',
+        border: 'border-rose-200',
+        text: 'text-rose-700',
         icon: 'fa-triangle-exclamation',
-        pillBg: 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+        pillBg: 'bg-rose-600 text-white shadow-sm'
       };
     }
     if (isRelegated) {
       return {
         badge: 'RELEGATION',
         tagline: `Relegated to ${nextLeague.name}`,
-        color: 'from-rose-500/25 via-red-500/15 to-transparent',
-        border: 'border-rose-500/40',
-        text: 'text-rose-300',
+        color: 'from-rose-50 via-rose-50/40 to-white',
+        border: 'border-rose-200',
+        text: 'text-rose-700',
         icon: 'fa-arrow-trend-down',
-        pillBg: 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+        pillBg: 'bg-rose-600 text-white shadow-sm'
       };
     }
     if (seasonData.tier === 1 && seasonData.pos <= 4) {
       return {
         badge: 'CONTINENTAL QUALIFIED',
         tagline: 'Elite Continental Stage Secured',
-        color: 'from-sky-500/25 via-blue-500/15 to-transparent',
-        border: 'border-sky-500/40',
-        text: 'text-sky-300',
+        color: 'from-sky-50 via-sky-50/40 to-white',
+        border: 'border-sky-200',
+        text: 'text-sky-700',
         icon: 'fa-star',
-        pillBg: 'bg-sky-400 text-black'
+        pillBg: 'bg-sky-600 text-white'
       };
     }
     return {
       badge: `FINISH #${seasonData.pos}`,
       tagline: `Season completed in ${league.name}`,
-      color: 'from-blue-500/20 via-indigo-500/10 to-transparent',
-      border: 'border-white/10',
-      text: 'text-zinc-200',
+      color: 'from-[#FAF9F6] to-white',
+      border: 'border-[#E6E3DC]',
+      text: 'text-[#18191F]',
       icon: 'fa-flag-checkered',
-      pillBg: 'bg-white/15 text-white'
+      pillBg: 'bg-[#18191F] text-white'
     };
-  }, [isChamp, isPromoted, isRelegated, seasonData, nextLeague, league]);
+  }, [isChamp, isPromoted, isRelegated, isTier1Only, seasonData, nextLeague, league]);
 
   return (
     <motion.div
@@ -1042,66 +770,84 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-2xl overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-1.5 sm:p-4 md:p-6 bg-[#18191F]/50 backdrop-blur-sm overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-5xl xl:max-w-6xl bg-[#12141c]/95 rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] backdrop-blur-xl flex flex-col h-[90vh] sm:h-auto max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden relative shrink-0"
+        className="w-full max-w-5xl xl:max-w-6xl bg-white rounded-[24px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_60px_rgba(24,25,31,0.16)] flex flex-col h-[94dvh] sm:h-auto max-h-[94dvh] sm:max-h-[88vh] min-h-0 my-auto overflow-hidden relative shrink-0 text-[#18191F]"
       >
-        {/* Subtle Ambient Accent Glow */}
-        <div 
-          className="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-15 pointer-events-none"
-          style={{ backgroundColor: state.club.color || '#38bdf8' }}
-        />
-
         {/* TOP BRANDING & OUTCOME HEADER */}
-        <div className="relative p-4 sm:p-5 border-b border-white/[0.08] bg-white/[0.02] overflow-hidden shrink-0">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative px-3.5 py-2.5 sm:p-5 border-b border-[#E6E3DC] bg-[#FAF9F6] overflow-hidden shrink-0">
+          {/* Compact Single-Line Header shown only on mobile table/world views for zero micro-scroll */}
+          {(activeTab === 'table' || activeTab === 'world') && (
+            <div className="flex sm:hidden items-center justify-between gap-2 pb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <ClubLogo
+                  name={displayClubName}
+                  id={state.club.id}
+                  color={displayClubColor}
+                  logo={displayClubLogo}
+                  fallbackLogo={displayClubFallbackLogo}
+                  isModActive={effectiveModActive}
+                  className="w-6 h-6 object-contain shrink-0"
+                  fallbackClassName="w-6 h-6 rounded-md flex items-center justify-center font-bold text-white text-[10px]"
+                />
+                <span className="text-sm font-bold text-[#18191F] truncate">{displayClubName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] font-semibold tabular-nums shrink-0 text-[#4B5563]">
+                <span className={outcomeBanner.text}>#{seasonData.pos}</span>
+                <span>·</span>
+                <span className="text-[#18191F] font-bold">{seasonData.pts} pts</span>
+              </div>
+            </div>
+          )}
+
+          <div className={`relative z-10 ${(activeTab === 'table' || activeTab === 'world') ? 'hidden sm:flex' : 'flex'} flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4`}>
             {/* Club Identity & Outcome */}
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 shadow-md p-2 relative">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center shrink-0 shadow-xs p-2 relative">
                 <ClubLogo
-                  name={seasonData.clubName || state.club.name}
+                  name={displayClubName}
                   id={state.club.id}
-                  color={seasonData.clubColor || state.club.color}
-                  logo={state.club.logo}
-                  fallbackLogo={state.club.fallbackLogo}
-                  isModActive={isModActive}
-                  className="w-10 h-10 object-contain drop-shadow"
-                  fallbackClassName="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-base"
+                  color={displayClubColor}
+                  logo={displayClubLogo}
+                  fallbackLogo={displayClubFallbackLogo}
+                  isModActive={effectiveModActive}
+                  className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                  fallbackClassName="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-white text-base"
                 />
                 {isChamp && (
-                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px] shadow-md font-bold">
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-400 text-[#18191F] flex items-center justify-center text-[10px] shadow-sm font-bold border border-white">
                     <i className="fas fa-crown"></i>
                   </div>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                  <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">
                     Season Wrap-Up · {seasonData.year}
                   </span>
-                  <span className="text-white/20">•</span>
-                  <span className="text-[10px] sm:text-[11px] font-semibold text-sky-400 uppercase tracking-wide">
+                  <span className="text-[#D1CEC6]">•</span>
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-sky-700 uppercase tracking-wide">
                     {league.name}
                   </span>
                 </div>
 
-                <h1 className="text-xl sm:text-2xl font-bold text-white break-words leading-tight tracking-tight">
-                  {seasonData.clubName}
+                <h1 className="text-lg sm:text-2xl font-bold text-[#18191F] break-words leading-tight tracking-tight">
+                  {displayClubName}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide ${outcomeBanner.text}`}>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 sm:mt-1">
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide ${outcomeBanner.text}`}>
                     <i className={`fas ${outcomeBanner.icon} text-[10px]`}></i>
                     {outcomeBanner.badge}
                   </span>
-                  <span className="text-zinc-600 hidden sm:inline">·</span>
-                  <span className="text-xs text-zinc-300 font-normal hidden sm:inline truncate">
+                  <span className="text-[#D1CEC6] hidden sm:inline">·</span>
+                  <span className="text-xs text-[#4B5563] font-normal hidden sm:inline truncate">
                     {outcomeBanner.tagline}
                   </span>
                 </div>
@@ -1109,33 +855,33 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             </div>
 
             {/* Quick Record Ribbon */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-2xl p-2.5 sm:p-3 self-start md:self-auto shrink-0 shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-3 bg-white border border-[#E6E3DC] rounded-2xl p-2 sm:p-3 self-start md:self-auto shrink-0 shadow-xs">
               <div className="text-center px-2">
-                <div className="text-[9px] uppercase font-semibold text-zinc-400 tracking-wider">Pts</div>
-                <div className="text-base sm:text-lg font-bold text-amber-300 tabular-nums">{seasonData.pts}</div>
+                <div className="text-[9px] uppercase font-semibold text-[#6B7280] tracking-wider">Pts</div>
+                <div className="text-base sm:text-lg font-bold text-amber-700 tabular-nums">{seasonData.pts}</div>
               </div>
-              <div className="w-px h-6 bg-white/[0.08]" />
+              <div className="w-px h-6 bg-[#E6E3DC]" />
               <div className="text-center px-2">
-                <div className="text-[9px] uppercase font-semibold text-zinc-400 tracking-wider">W-D-L</div>
-                <div className="text-xs sm:text-sm font-semibold text-white tabular-nums">
-                  <span className="text-emerald-400">{seasonData.wins}</span>-
-                  <span className="text-zinc-300">{seasonData.draws}</span>-
-                  <span className="text-rose-400">{seasonData.losses}</span>
+                <div className="text-[9px] uppercase font-semibold text-[#6B7280] tracking-wider">W-D-L</div>
+                <div className="text-xs sm:text-sm font-semibold text-[#18191F] tabular-nums">
+                  <span className="text-emerald-700">{seasonData.wins}</span>-
+                  <span className="text-[#4B5563]">{seasonData.draws}</span>-
+                  <span className="text-rose-700">{seasonData.losses}</span>
                 </div>
               </div>
-              <div className="w-px h-6 bg-white/[0.08]" />
+              <div className="w-px h-6 bg-[#E6E3DC]" />
               <div className="text-center px-2">
-                <div className="text-[9px] uppercase font-semibold text-zinc-400 tracking-wider">GD</div>
-                <div className={`text-xs sm:text-sm font-semibold tabular-nums ${goalDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <div className="text-[9px] uppercase font-semibold text-[#6B7280] tracking-wider">GD</div>
+                <div className={`text-xs sm:text-sm font-semibold tabular-nums ${goalDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                   {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
                 </div>
               </div>
               {trophyList.length > 0 && (
                 <>
-                  <div className="w-px h-6 bg-white/[0.08]" />
+                  <div className="w-px h-6 bg-[#E6E3DC]" />
                   <div className="text-center px-2">
-                    <div className="text-[9px] uppercase font-semibold text-amber-300 tracking-wider">Trophies</div>
-                    <div className="text-sm sm:text-base font-bold text-amber-300 flex items-center justify-center gap-1 tabular-nums">
+                    <div className="text-[9px] uppercase font-semibold text-amber-700 tracking-wider">Trophies</div>
+                    <div className="text-sm sm:text-base font-bold text-amber-700 flex items-center justify-center gap-1 tabular-nums">
                       <span>{trophyList.length}</span>
                       <span className="text-xs">🏆</span>
                     </div>
@@ -1145,15 +891,15 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             </div>
           </div>
 
-          {/* 4 Clean, Punchy Segmented Navigation Tabs */}
-          <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/[0.06] overflow-x-auto custom-scrollbar">
+          {/* 4 Clean Segmented Navigation Tabs */}
+          <div className="flex items-center gap-1.5 mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-[#E6E3DC] overflow-x-auto custom-scrollbar">
             <button
               type="button"
               onClick={() => switchTab('overview')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'overview'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-compass text-[10px]"></i>
@@ -1162,10 +908,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             <button
               type="button"
               onClick={() => switchTab('squad')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'squad'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-users text-[10px]"></i>
@@ -1174,10 +920,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             <button
               type="button"
               onClick={() => switchTab('table')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'table'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-table text-[10px]"></i>
@@ -1186,10 +932,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             <button
               type="button"
               onClick={() => switchTab('world')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'world'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-sm'
-                  : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+                  ? 'bg-[#18191F] text-white shadow-xs'
+                  : 'bg-white text-[#4B5563] hover:text-[#18191F] hover:bg-[#EFECE4] border border-[#E6E3DC]'
               }`}
             >
               <i className="fa-solid fa-earth-americas text-[10px]"></i>
@@ -1199,26 +945,26 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
         </div>
 
         {/* SCROLLABLE BENTO BODY */}
-        <div ref={cardRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 custom-scrollbar bg-[#12141c]/60">
-          <div className="space-y-6">
+        <div ref={cardRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 custom-scrollbar bg-[#F5F3EE]/60">
+          <div className="space-y-4 sm:space-y-6">
             {/* Top 3 Global Leaderboard Milestone Banner */}
             {isTop3Leaderboard && (
-              <div className="bg-gradient-to-r from-amber-500/15 via-yellow-400/20 to-amber-500/15 border border-yellow-400/30 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center text-yellow-400 text-xl font-bold">
+                  <div className="w-11 h-11 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl font-bold">
                     🏆
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-yellow-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>
+                    <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                       Top 3 Global Leaderboard!
                     </div>
-                    <div className="text-xs sm:text-sm font-semibold text-white mt-0.5">
+                    <div className="text-xs sm:text-sm font-semibold text-[#18191F] mt-0.5">
                       Historic achievement! Rank #{top3Rank} globally with {(state.careerScore || 0).toLocaleString()} pts!
                     </div>
                   </div>
                 </div>
-                <div className="text-xl sm:text-2xl font-bold text-yellow-300 px-3 py-1 bg-yellow-400/10 rounded-xl border border-yellow-400/25 tabular-nums">
+                <div className="text-xl sm:text-2xl font-bold text-amber-800 px-3 py-1 bg-white rounded-xl border border-amber-200 tabular-nums shadow-xs">
                   #{top3Rank}
                 </div>
               </div>
@@ -1226,11 +972,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
             {/* Grand League Champions & Multi-Trophy Celebration Banner */}
             {activeTab === 'overview' && (isChamp || trophyList.length > 0) && (
-              <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/20 via-yellow-400/25 to-amber-500/20 border border-yellow-400/40 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[0_0_50px_rgba(250,204,21,0.25)] flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="absolute -top-12 -left-12 w-48 h-48 bg-yellow-400/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative overflow-hidden bg-gradient-to-r from-amber-50 via-[#FFFDF7] to-amber-50/70 border border-amber-300 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 text-center sm:text-left relative z-10">
                   {/* Visual Trophies Display */}
-                  <div className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 bg-gradient-to-br from-yellow-400/20 via-amber-500/30 to-yellow-600/20 border border-yellow-400/30 rounded-2xl shadow-lg shrink-0">
+                  <div className="flex items-center justify-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 bg-white border border-amber-200 rounded-2xl shadow-xs shrink-0">
                     {trophyList.length > 0 ? (
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         {trophyList.map((tr, i) => (
@@ -1248,7 +993,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     )}
                   </div>
                   <div>
-                    <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-300 flex items-center justify-center sm:justify-start gap-1.5 mb-1">
+                    <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-800 flex items-center justify-center sm:justify-start gap-1.5 mb-1">
                       <span>★</span>
                       <span>
                         {trophyList.length >= 6
@@ -1267,7 +1012,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       </span>
                       <span>★</span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-black text-[#18191F] tracking-tight">
                       {trophyList.length >= 6
                         ? 'HISTORIC SEXTUPLE GLORY!'
                         : trophyList.length === 5
@@ -1282,20 +1027,20 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         ? (country === 'ECU' ? 'CAMPEÓN NACIONAL DEL ECUADOR!' : 'LEAGUE TITLE GLORY!')
                         : `${(trophyList[0]?.name || 'Cup').toUpperCase()} GLORY!`}
                     </h2>
-                    <p className="text-xs sm:text-sm text-yellow-100/90 mt-1 max-w-lg font-medium leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#4B5563] mt-1 max-w-lg font-medium leading-relaxed">
                       {trophyList.length > 1
-                        ? `Historic multi-trophy triumph! ${seasonData.clubName} lifts ${trophyList.map(t => t.name).join(' & ')} in an extraordinary campaign!`
+                        ? `Historic multi-trophy triumph! ${displayClubName} lifts ${trophyList.map(t => t.name).join(' & ')} in an extraordinary campaign!`
                         : isChamp
-                        ? `Historic triumph! ${seasonData.clubName} lifts the championship trophy after dominating the season with ${seasonData.pts} points!`
+                        ? `Historic triumph! ${displayClubName} lifts the championship trophy after dominating the season with ${seasonData.pts} points!`
                         : ['cl', 'el', 'ecl', 'cwc'].includes(trophyList[0]?.type || '')
-                        ? `Historic continental triumph! ${seasonData.clubName} conquers the ${trophyList[0]?.name || 'continental cup'} to claim the crown!`
-                        : `Historic cup triumph! ${seasonData.clubName} lifts the ${trophyList[0]?.name || 'cup'} trophy!`
+                        ? `Historic continental triumph! ${displayClubName} conquers the ${trophyList[0]?.name || 'continental cup'} to claim the crown!`
+                        : `Historic cup triumph! ${displayClubName} lifts the ${trophyList[0]?.name || 'cup'} trophy!`
                       }
                     </p>
                   </div>
                 </div>
                 <div className="flex sm:flex-col items-center sm:items-end justify-center gap-1.5 shrink-0 relative z-10">
-                  <span className="text-xs uppercase font-bold tracking-wider px-3.5 py-1 rounded-full bg-yellow-400 text-black shadow-md">
+                  <span className="text-xs uppercase font-bold tracking-wider px-3.5 py-1 rounded-full bg-amber-400 text-[#18191F] shadow-xs">
                     {trophyList.length >= 6
                       ? 'Sextuple'
                       : trophyList.length === 5
@@ -1310,7 +1055,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       ? '1st Place'
                       : 'Winners'}
                   </span>
-                  <span className="text-[11px] text-amber-200 font-semibold tabular-nums mt-0.5">
+                  <span className="text-[11px] text-amber-800 font-semibold tabular-nums mt-0.5">
                     +{formatMoney(getLeagueScaledVal(1, trophyList.length >= 6 ? 30000 : trophyList.length === 5 ? 25000 : trophyList.length === 4 ? 20000 : 15000, country))} Prize
                   </span>
                 </div>
@@ -1322,11 +1067,11 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
               <div id="section-exec" className="space-y-4 scroll-mt-6">
                 {/* Silverware & Trophy Cabinet (Featured directly in Executive Summary whenever trophies are won!) */}
                 {trophyList.length > 0 && (
-                  <div className="bg-gradient-to-br from-amber-500/10 via-yellow-950/20 to-amber-950/10 border border-amber-400/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-3 mb-4">
+                  <div className="bg-white border border-amber-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E6E3DC] pb-3 mb-4">
                       <div>
-                        <div className="text-[10px] uppercase font-bold tracking-wider text-amber-300 flex items-center gap-1.5">
-                          <i className="fa-solid fa-crown text-amber-400 text-xs"></i>
+                        <div className="text-[10px] uppercase font-bold tracking-wider text-amber-700 flex items-center gap-1.5">
+                          <i className="fa-solid fa-crown text-amber-600 text-xs"></i>
                           <span>
                             {trophyList.length >= 6
                               ? 'Historic Sextuple / Multiple Honours'
@@ -1341,14 +1086,14 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                               : trophyList[0]?.badge || (isChamp ? 'Championship Honour' : 'Season Trophy Honour')}
                           </span>
                         </div>
-                        <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                        <h3 className="text-base sm:text-lg font-black text-[#18191F] tracking-tight mt-0.5">
                           {trophyList.length === 1
                             ? `1 Trophy Lifted This Season · ${trophyList[0]?.name || 'Champion'}`
                             : `${trophyList.length} Trophies Lifted This Season!`}
                         </h3>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30">
+                        <span className="text-xs uppercase font-bold tracking-wider px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                           {trophyList.length >= 6
                             ? 'Sextuple Winners'
                             : trophyList.length === 5
@@ -1369,16 +1114,16 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       {trophyList.map((tr, idx) => (
                         <div
                           key={idx}
-                          className="bg-white/[0.03] hover:bg-white/[0.06] border border-amber-400/25 rounded-2xl p-3.5 flex flex-col items-center justify-between text-center transition-all shadow-sm group"
+                          className="bg-[#FAF9F6] hover:bg-amber-50/60 border border-[#E6E3DC] rounded-2xl p-3.5 flex flex-col items-center justify-between text-center transition-all shadow-xs group"
                         >
                           <div className="py-2 transform group-hover:scale-105 transition-transform">
                             <PrestigeTrophy type={tr.type} size={64} showStars={false} />
                           </div>
                           <div className="mt-2 w-full">
-                            <div className="text-[9px] uppercase font-semibold tracking-wider text-amber-300/80 truncate">
+                            <div className="text-[9px] uppercase font-semibold tracking-wider text-amber-700 truncate">
                               {tr.badge || 'Silverware'}
                             </div>
-                            <div className="text-xs font-bold text-white tracking-tight truncate mt-0.5" title={tr.name}>
+                            <div className="text-xs font-bold text-[#18191F] tracking-tight truncate mt-0.5" title={tr.name}>
                               {tr.name}
                             </div>
                           </div>
@@ -1390,34 +1135,32 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* Promotion Showcase Card (Prominently featured exclusively in Executive Summary for Promoted Clubs) */}
                 {isPromoted && !isChamp && (
-                  <div className="bg-gradient-to-br from-emerald-500/15 via-teal-950/25 to-sky-950/15 border border-emerald-400/35 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-[0_0_35px_rgba(16,185,129,0.2)] relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4 mb-4 relative z-10">
+                  <div className="bg-gradient-to-br from-emerald-50 via-white to-teal-50/60 border border-emerald-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xs relative overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-200/70 pb-4 mb-4 relative z-10">
                       <div className="flex items-center gap-3.5">
-                        <div className="flex items-center justify-center p-2.5 bg-gradient-to-br from-emerald-400/25 via-teal-500/35 to-emerald-600/25 border border-emerald-400/40 rounded-2xl shadow-lg shrink-0">
+                        <div className="flex items-center justify-center p-2.5 bg-white border border-emerald-200 rounded-2xl shadow-xs shrink-0">
                           <PrestigeTrophy type="promotion" size={44} showStars={false} />
                         </div>
                         <div>
-                          <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 flex items-center gap-1.5 mb-0.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <i className="fa-solid fa-arrow-trend-up text-xs text-emerald-400"></i>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 flex items-center gap-1.5 mb-0.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                            <i className="fa-solid fa-arrow-trend-up text-xs text-emerald-700"></i>
                             <span>{seasonData.pos === 2 ? t('Runner-Up Promotion', 'Vizemeister-Aufstieg') : t('Promotion Achieved', 'Aufstieg gesichert')}</span>
                           </div>
-                          <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                          <h3 className="text-xl sm:text-2xl font-black text-[#18191F] tracking-tight">
                             {t(`Promotion Secured! Ascending to ${nextLeague.name}`, `Aufstieg geschafft! Aufstieg in die ${nextLeague.name}`)}
                           </h3>
-                          <p className="text-xs text-zinc-300 mt-1 max-w-xl leading-relaxed">
+                          <p className="text-xs text-[#4B5563] mt-1 max-w-xl leading-relaxed">
                             {`${state.club.name} finishes #${seasonData.pos} in ${league.name} and secures promotion to ${nextLeague.name} (Tier ${nextTier})!`}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex sm:flex-col items-center sm:items-end gap-1.5 shrink-0">
-                        <span className="text-xs uppercase font-bold tracking-wider px-3.5 py-1.5 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 shadow-sm">
+                        <span className="text-xs uppercase font-bold tracking-wider px-3.5 py-1.5 rounded-full bg-emerald-600 text-white shadow-xs">
                           {seasonData.pos === 2 ? t('Runner-Up · Promoted', 'Vizemeister · Aufsteiger') : t('Promotion Secured', 'Aufstieg gesichert')}
                         </span>
-                        <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-200">
                           Tier {seasonData.tier} ➔ Tier {nextTier}
                         </span>
                       </div>
@@ -1425,21 +1168,21 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                     {/* Key Promotion Parameters */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 relative z-10">
-                      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 text-center">
-                        <div className="text-[10px] text-zinc-400 uppercase font-semibold">New Division</div>
-                        <div className="text-xs sm:text-sm font-bold text-white truncate mt-0.5">{nextLeague.name}</div>
+                      <div className="bg-white border border-emerald-200/80 rounded-xl p-3 text-center">
+                        <div className="text-[10px] text-[#6B7280] uppercase font-semibold">New Division</div>
+                        <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate mt-0.5">{nextLeague.name}</div>
                       </div>
-                      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 text-center">
-                        <div className="text-[10px] text-zinc-400 uppercase font-semibold">New Tier Level</div>
-                        <div className="text-xs sm:text-sm font-bold text-sky-400 mt-0.5">Tier {nextTier}</div>
+                      <div className="bg-white border border-emerald-200/80 rounded-xl p-3 text-center">
+                        <div className="text-[10px] text-[#6B7280] uppercase font-semibold">New Tier Level</div>
+                        <div className="text-xs sm:text-sm font-bold text-sky-700 mt-0.5">Tier {nextTier}</div>
                       </div>
-                      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 text-center">
-                        <div className="text-[10px] text-zinc-400 uppercase font-semibold">Avg League OVR</div>
-                        <div className="text-xs sm:text-sm font-bold text-amber-300 font-mono mt-0.5">{nextLeague.avgOvr || 70} OVR</div>
+                      <div className="bg-white border border-emerald-200/80 rounded-xl p-3 text-center">
+                        <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Avg League OVR</div>
+                        <div className="text-xs sm:text-sm font-bold text-amber-700 font-mono mt-0.5">{nextLeague.avgOvr || 70} OVR</div>
                       </div>
-                      <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-3 text-center">
-                        <div className="text-[10px] text-zinc-400 uppercase font-semibold">Next Season Target</div>
-                        <div className="text-xs sm:text-sm font-bold text-emerald-400 mt-0.5">Top {state.boardTargetFinish || 15} Mandate</div>
+                      <div className="bg-white border border-emerald-200/80 rounded-xl p-3 text-center">
+                        <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Next Season Target</div>
+                        <div className="text-xs sm:text-sm font-bold text-emerald-700 mt-0.5">Top {state.boardTargetFinish || 15} Mandate</div>
                       </div>
                     </div>
                   </div>
@@ -1452,26 +1195,26 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     onClick={() => {
                       switchTab('table');
                     }}
-                    className="bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-sky-400/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+                    className="bg-white hover:bg-[#FAF9F6] border border-[#E6E3DC] hover:border-sky-300 rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition-all duration-200 cursor-pointer group flex flex-col justify-between shadow-xs"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-zinc-400 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90">Final Position</span>
-                        <span className="text-[11px] text-sky-400 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      <div className="flex items-center justify-between text-[#6B7280] mb-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-700">Final Position</span>
+                        <span className="text-[11px] text-sky-700 font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                           <span>Standings & Table</span>
                           <i className="fa-solid fa-arrow-right text-[9px]"></i>
                         </span>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-bold text-white tracking-tight tabular-nums">
-                        #{seasonData.pos} <span className="text-xs text-zinc-400 font-sans font-normal">in {league.name}</span>
+                      <div className="text-2xl sm:text-3xl font-bold text-[#18191F] tracking-tight tabular-nums">
+                        #{seasonData.pos} <span className="text-xs text-[#6B7280] font-sans font-normal">in {league.name}</span>
                       </div>
-                      <div className="text-xs text-zinc-300 mt-1.5 tabular-nums">
+                      <div className="text-xs text-[#4B5563] mt-1.5 tabular-nums">
                         {seasonData.pts} Pts · {seasonData.wins}W-{seasonData.draws}D-{seasonData.losses}L ({seasonData.gf}:{seasonData.ga})
                       </div>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-white/[0.05] text-xs flex items-center justify-between text-zinc-400">
+                    <div className="mt-4 pt-3 border-t border-[#E6E3DC] text-xs flex items-center justify-between text-[#6B7280]">
                       <span>Target: Top {state.boardTargetFinish || 15}</span>
-                      <span className={`font-semibold tabular-nums ${seasonData.pos <= (state.boardTargetFinish || 15) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <span className={`font-semibold tabular-nums ${seasonData.pos <= (state.boardTargetFinish || 15) ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {seasonData.pos <= (state.boardTargetFinish || 15) ? 'Target Met ✓' : 'Target Missed ✗'}
                       </span>
                     </div>
@@ -1480,69 +1223,128 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   {/* Board Trust & Mandate Tile */}
                   <div 
                     onClick={() => scrollToSection('board', 'section-board')}
-                    className="bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-sky-400/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+                    className="bg-white hover:bg-[#FAF9F6] border border-[#E6E3DC] hover:border-sky-300 rounded-2xl sm:rounded-3xl p-4 sm:p-5 transition-all duration-200 cursor-pointer group flex flex-col justify-between shadow-xs"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-zinc-400 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90">Board Status & Trust</span>
-                        <span className="text-[11px] text-sky-400 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      <div className="flex items-center justify-between text-[#6B7280] mb-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-700">Board Status & Trust</span>
+                        <span className="text-[11px] text-sky-700 font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                           <span>Board Review</span>
                           <i className="fa-solid fa-arrow-right text-[9px]"></i>
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between">
-                        <span className="text-2xl sm:text-3xl font-bold text-white tabular-nums">
-                          {state.clubImpactScore ?? 50}<span className="text-sm text-zinc-500 font-normal">/100</span>
+                        <span className="text-2xl sm:text-3xl font-bold text-[#18191F] tabular-nums">
+                          {state.clubImpactScore ?? 50}<span className="text-sm text-[#6B7280] font-normal">/100</span>
                         </span>
                         <span className={`text-xs font-semibold ${
-                          (state.clubImpactScore ?? 50) >= 70 ? 'text-emerald-400' : (state.clubImpactScore ?? 50) >= 40 ? 'text-sky-300' : 'text-rose-400'
+                          (state.clubImpactScore ?? 50) >= 70 ? 'text-emerald-700' : (state.clubImpactScore ?? 50) >= 40 ? 'text-sky-700' : 'text-rose-700'
                         }`}>
                           {(state.clubImpactScore ?? 50) >= 70 ? 'Untouchable' : (state.clubImpactScore ?? 50) >= 40 ? 'Stable Standing' : 'Under Pressure'}
                         </span>
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden mt-3">
+                      <div className="w-full h-1.5 bg-[#EAE7E0] rounded-full overflow-hidden mt-3">
                         <div 
                           className={`h-full transition-all duration-500 ${
-                            (state.clubImpactScore ?? 50) >= 70 ? 'bg-emerald-400' : (state.clubImpactScore ?? 50) >= 40 ? 'bg-sky-400' : 'bg-rose-500'
+                            (state.clubImpactScore ?? 50) >= 70 ? 'bg-emerald-600' : (state.clubImpactScore ?? 50) >= 40 ? 'bg-sky-600' : 'bg-rose-600'
                           }`}
                           style={{ width: `${Math.min(100, Math.max(0, state.clubImpactScore ?? 50))}%` }}
                         />
                       </div>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-white/[0.05] text-xs flex items-center justify-between text-zinc-400">
-                      <span>Shields: <strong className="text-white tabular-nums">{state.immunityShields ?? 0}</strong></span>
-                      <span>Next Mandate: <strong className="text-white">Top {state.boardTargetFinish || 15}</strong></span>
+                    <div className="mt-4 pt-3 border-t border-[#E6E3DC] text-xs flex items-center justify-between text-[#6B7280]">
+                      <span>Shields: <strong className="text-[#18191F] tabular-nums">{state.immunityShields ?? 0}</strong></span>
+                      <span>Next Mandate: <strong className="text-[#18191F]">Top {state.boardTargetFinish || 15}</strong></span>
                     </div>
                   </div>
                 </div>
 
                 {/* ================= STRATEGIC INTELLIGENCE & DYNASTY RADAR ================= */}
                 <div className="space-y-3 pt-2">
+                  {/* Press & Board Pressure Verdict Card */}
+                  {seasonData.pressureVerdict && (() => {
+                    const pv = seasonData.pressureVerdict;
+                    const toneStyles =
+                      pv.tone === 'crisis'
+                        ? 'bg-rose-50/70 border-rose-200'
+                        : pv.tone === 'warning'
+                        ? 'bg-amber-50/70 border-amber-200'
+                        : pv.tone === 'triumph'
+                        ? 'bg-emerald-50/70 border-emerald-200'
+                        : 'bg-sky-50/60 border-sky-200';
+                    const badgeColor =
+                      pv.tone === 'crisis'
+                        ? 'bg-rose-100 text-rose-800 border-rose-200'
+                        : pv.tone === 'warning'
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : pv.tone === 'triumph'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-sky-100 text-sky-800 border-sky-200';
+                    return (
+                      <div className={`${toneStyles} border rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs space-y-3`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+                              {pv.badge}
+                            </span>
+                            <span className="text-[11px] font-semibold text-[#4B5563] tabular-nums">
+                              Media Heat: {pv.pressureBefore}% ➔ {pv.pressureAfter}%
+                            </span>
+                          </div>
+                          {((pv.boardTrustBonus ?? 0) !== 0 || (pv.repBonus ?? 0) !== 0) && (
+                            <span className={`text-[11px] font-bold tabular-nums ${(pv.boardTrustBonus ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              Trust {(pv.boardTrustBonus ?? 0) >= 0 ? `+${pv.boardTrustBonus}` : pv.boardTrustBonus}
+                              {(pv.repBonus ?? 0) !== 0 ? ` · Rep ${(pv.repBonus ?? 0) >= 0 ? `+${pv.repBonus}` : pv.repBonus}` : ''}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-bold text-[#18191F] leading-snug">{pv.headline}</h4>
+                          <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">{pv.summary}</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                          <div className="bg-white border border-[#E6E3DC] rounded-xl p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">
+                              Press on Coaching Bench
+                            </div>
+                            <p className="text-[11px] text-[#4B5563] leading-relaxed">{pv.coachVerdict}</p>
+                          </div>
+                          <div className="bg-white border border-[#E6E3DC] rounded-xl p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-1">
+                              Press on Sporting Director
+                            </div>
+                            <p className="text-[11px] text-[#4B5563] leading-relaxed">{pv.gmVerdict}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Head Coach Poached / Departed Alert */}
                   {seasonData.coachDepartureAlert && (
-                    <div className="bg-gradient-to-r from-rose-950/50 via-amber-950/35 to-rose-950/40 border border-rose-500/40 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-3.5 sm:p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start sm:items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 text-sm shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 text-sm shrink-0">
                           <i className="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[10px] uppercase font-bold text-rose-300 flex items-center gap-2 flex-wrap">
+                          <div className="text-[10px] uppercase font-bold text-rose-700 flex items-center gap-2 flex-wrap">
                             <span>
                               {seasonData.coachDepartureAlert.isPoached
                                 ? 'Breaking: Head Coach Poached (Release Clause Triggered)'
                                 : 'Breaking: Head Coach Resigned'}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-400/30 text-[9px] text-rose-200">
+                            <span className="px-2 py-0.5 rounded-md bg-white border border-rose-200 text-[9px] text-rose-700">
                               {seasonData.coachDepartureAlert.ovrBoost >= 0 ? `-${seasonData.coachDepartureAlert.ovrBoost}` : `+${Math.abs(seasonData.coachDepartureAlert.ovrBoost)}`} OVR Impact
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-200 mt-0.5 leading-relaxed">
-                            <strong className="text-white">{seasonData.coachDepartureAlert.coachName}</strong> ({seasonData.coachDepartureAlert.style}, {seasonData.coachDepartureAlert.ovrBoost >= 0 ? `+${seasonData.coachDepartureAlert.ovrBoost}` : seasonData.coachDepartureAlert.ovrBoost} OVR) departed at the end of the campaign due to {seasonData.coachDepartureAlert.reason}. Appoint a replacement in the Staff Market before next season!
+                          <p className="text-xs text-[#4B5563] mt-0.5 leading-relaxed">
+                            <strong className="text-[#18191F]">{seasonData.coachDepartureAlert.coachName}</strong> ({seasonData.coachDepartureAlert.style}, {seasonData.coachDepartureAlert.ovrBoost >= 0 ? `+${seasonData.coachDepartureAlert.ovrBoost}` : seasonData.coachDepartureAlert.ovrBoost} OVR) departed at the end of the campaign due to {seasonData.coachDepartureAlert.reason}. Appoint a replacement in the Staff Market before next season!
                           </p>
                         </div>
                       </div>
                       {seasonData.coachDepartureAlert.isPoached && seasonData.coachDepartureAlert.buyoutFeeK > 0 && (
-                        <div className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold shrink-0 self-start sm:self-center">
+                        <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shrink-0 self-start sm:self-center">
                           +{formatMoney(seasonData.coachDepartureAlert.buyoutFeeK)} Buyout
                         </div>
                       )}
@@ -1551,14 +1353,14 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Active Tactical Staleness Warning */}
                   {isStaleActive && (
-                    <div className="bg-gradient-to-r from-rose-950/40 via-red-900/30 to-amber-950/30 border border-rose-500/40 rounded-2xl p-3.5 sm:p-4 shadow-sm flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 text-sm shrink-0">
+                    <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 text-sm shrink-0">
                         <i className="fa-solid fa-triangle-exclamation"></i>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase font-bold text-rose-300">Tactical Obsolescence · System Decoded</div>
-                        <p className="text-xs text-zinc-300 mt-0.5">
-                          The league has decoded your tactic ({state.tactic})! You face an unavoidable <strong className="text-rose-400">-4 OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-300 font-semibold">-5 MP</span>).
+                        <div className="text-[10px] uppercase font-bold text-rose-700">Tactical Obsolescence · System Decoded</div>
+                        <p className="text-xs text-[#4B5563] mt-0.5">
+                          The league has decoded your tactic ({state.tactic})! You face an unavoidable <strong className="text-rose-700">-4 OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-700 font-semibold">-5 MP</span>).
                         </p>
                       </div>
                     </div>
@@ -1566,13 +1368,13 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Impending Tactical Staleness Warning (1 title away) */}
                   {isStaleWarning && (
-                    <div className="bg-gradient-to-r from-amber-950/30 via-yellow-900/20 to-orange-950/20 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4 shadow-sm flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 text-sm shrink-0">
+                    <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 sm:p-4 shadow-xs flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 text-sm shrink-0">
                         <i className="fa-solid fa-crosshairs"></i>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase font-bold text-amber-300">Tactical Surveillance Notice</div>
-                        <p className="text-xs text-zinc-300 mt-0.5">
+                        <div className="text-[10px] uppercase font-bold text-amber-800">Tactical Surveillance Notice</div>
+                        <p className="text-xs text-[#4B5563] mt-0.5">
                           Back-to-back league titles with {state.tactic} have drawn heavy scrutiny; winning again triggers Tactical Obsolescence (-4 OVR penalty).
                         </p>
                       </div>
@@ -1581,26 +1383,22 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Diverse Rival Challenger Storyline (Only shown in seasons when a challenger event triggers) */}
                   {superVillainClub && rivalChallengerEvent && (
-                    <div className="bg-gradient-to-r from-purple-950/40 via-fuchsia-950/30 to-indigo-950/30 border border-fuchsia-500/40 rounded-2xl p-3.5 sm:p-4 shadow-sm flex items-center justify-between gap-3">
+                    <div className="bg-indigo-50/60 border border-indigo-200 rounded-2xl p-3.5 sm:p-4 shadow-xs flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/30 flex items-center justify-center p-1.5 shrink-0">
-                          {superVillainClub.logo ? (
-                            <ClubLogo name={superVillainClub.name} club={superVillainClub} size={28} />
-                          ) : (
-                            <span className="text-base">⚔️</span>
-                          )}
+                        <div className="w-9 h-9 rounded-xl bg-white border border-indigo-200 flex items-center justify-center p-1.5 shrink-0">
+                          <ClubLogo name={superVillainClub.name} club={superVillainClub} isModActive={effectiveModActive} size={28} />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] uppercase font-bold text-fuchsia-300">
+                          <div className="text-[10px] uppercase font-bold text-indigo-700">
                             {rivalChallengerEvent.badge || 'League Challenger · Title Threat'}
                           </div>
-                          <p className="text-xs text-zinc-300 mt-0.5 truncate sm:whitespace-normal">
-                            {rivalChallengerEvent.desc || `${superVillainClub.name} (${superVillainClub.baseOvr} OVR) has mounted a major title challenge for next season.`}
+                          <p className="text-xs text-[#4B5563] mt-0.5 truncate sm:whitespace-normal">
+                            {(effectiveModActive ? rivalChallengerEvent.desc : undefined) || `${superVillainClub.name} (${superVillainClub.baseOvr} OVR) has mounted a major title challenge for next season.`}
                           </p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-[10px] font-bold text-fuchsia-300 bg-fuchsia-500/20 px-2.5 py-1 rounded-full border border-fuchsia-400/30">
+                        <span className="text-[10px] font-bold text-indigo-700 bg-white px-2.5 py-1 rounded-full border border-indigo-200">
                           {rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR
                         </span>
                       </div>
@@ -1609,19 +1407,19 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Dynasty Target on the Back (When consecutiveTitles >= 2) */}
                   {consecutiveTitles >= 2 && (
-                    <div className="bg-gradient-to-r from-amber-500/10 via-yellow-950/20 to-amber-950/15 border border-amber-400/25 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                    <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-400 text-sm shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 text-sm shrink-0">
                           <i className="fa-solid fa-crown"></i>
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] uppercase font-bold text-amber-300">Dynasty Target · {consecutiveTitles}x Consecutive Champion</div>
-                          <p className="text-xs text-zinc-300 mt-0.5 truncate sm:whitespace-normal">
+                          <div className="text-[10px] uppercase font-bold text-amber-800">Dynasty Target · {consecutiveTitles}x Consecutive Champion</div>
+                          <p className="text-xs text-[#4B5563] mt-0.5 truncate sm:whitespace-normal">
                             The entire continent is gunned to knock you off the summit; opponents treat every clash against you as their cup final.
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/25 shrink-0">
+                      <span className="text-[10px] font-bold text-amber-800 bg-white px-2.5 py-1 rounded-full border border-amber-200 shrink-0">
                         {consecutiveTitles}x Champion
                       </span>
                     </div>
@@ -1629,17 +1427,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Sacking Resolution Banner if Sacked */}
                   {(seasonData.isSackedRelegation || seasonData.isSacked) && (
-                    <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 sm:p-5">
+                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 sm:p-5">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 text-base shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 text-base shrink-0">
                           <i className="fas fa-triangle-exclamation"></i>
                         </div>
                         <div>
-                          <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-400">Board Resolution</div>
-                          <div className="text-base font-bold text-white">Managerial Contract Terminated</div>
+                          <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-700">Board Resolution</div>
+                          <div className="text-base font-bold text-[#18191F]">Managerial Contract Terminated</div>
                         </div>
                       </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed">
+                      <p className="text-xs text-[#4B5563] leading-relaxed">
                         {isTier1Only
                           ? `Following a bottom-3 finish in ${league.name}, the Board of Directors has immediately dismissed management for sporting failure. Since this country has no lower tier, the club remains in the league, but managerial immunity shields offer no protection against bottom-tier collapse.`
                           : isBottomTier
@@ -1651,34 +1449,34 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* Arch Rival Derby Record */}
                   {seasonData.rivalData && (
-                    <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.06] shadow-sm">
+                    <div className="bg-white rounded-2xl p-4 border border-[#E6E3DC] shadow-xs">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-400 flex items-center gap-1.5">
-                          <i className="fas fa-fire text-rose-400"></i>
+                        <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-700 flex items-center gap-1.5">
+                          <i className="fas fa-fire text-rose-600"></i>
                           <span>Arch Rival Derby · {seasonData.rivalData.name}</span>
                         </div>
                         {seasonData.rivalData.isPaused && (
-                          <span className="text-[9px] uppercase font-semibold text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                          <span className="text-[9px] uppercase font-semibold text-[#6B7280] bg-[#FAF9F6] border border-[#E6E3DC] px-2 py-0.5 rounded-full">
                             Paused
                           </span>
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                        <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                          <span className="text-[9px] text-zinc-400 uppercase block">This Season</span>
-                          <span className="font-bold text-emerald-400">{seasonData.rivalData.wins}W</span>{' '}
-                          <span className="text-zinc-500">·</span>{' '}
-                          <span className="font-bold text-zinc-300">{seasonData.rivalData.draws}D</span>{' '}
-                          <span className="text-zinc-500">·</span>{' '}
-                          <span className="font-bold text-rose-400">{seasonData.rivalData.losses}L</span>
+                        <div className="p-2 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                          <span className="text-[9px] text-[#6B7280] uppercase block">This Season</span>
+                          <span className="font-bold text-emerald-700">{seasonData.rivalData.wins}W</span>{' '}
+                          <span className="text-[#9CA3AF]">·</span>{' '}
+                          <span className="font-bold text-[#4B5563]">{seasonData.rivalData.draws}D</span>{' '}
+                          <span className="text-[#9CA3AF]">·</span>{' '}
+                          <span className="font-bold text-rose-700">{seasonData.rivalData.losses}L</span>
                         </div>
-                        <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                          <span className="text-[9px] text-zinc-400 uppercase block">All-Time H2H</span>
-                          <span className="font-bold text-emerald-400">{seasonData.rivalData.h2hWins}W</span>{' '}
-                          <span className="text-zinc-500">·</span>{' '}
-                          <span className="font-bold text-zinc-300">{seasonData.rivalData.h2hDraws}D</span>{' '}
-                          <span className="text-zinc-500">·</span>{' '}
-                          <span className="font-bold text-rose-400">{seasonData.rivalData.h2hLosses}L</span>
+                        <div className="p-2 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                          <span className="text-[9px] text-[#6B7280] uppercase block">All-Time H2H</span>
+                          <span className="font-bold text-emerald-700">{seasonData.rivalData.h2hWins}W</span>{' '}
+                          <span className="text-[#9CA3AF]">·</span>{' '}
+                          <span className="font-bold text-[#4B5563]">{seasonData.rivalData.h2hDraws}D</span>{' '}
+                          <span className="text-[#9CA3AF]">·</span>{' '}
+                          <span className="font-bold text-rose-700">{seasonData.rivalData.h2hLosses}L</span>
                         </div>
                       </div>
                     </div>
@@ -1686,20 +1484,20 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                   {/* OVR Decay & Roster Audit Breakdown (if any deductions happened) */}
                   {decayReasons.length > 0 && (
-                    <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3.5 sm:p-4">
+                    <div className="bg-white border border-[#E6E3DC] rounded-2xl p-3.5 sm:p-4 shadow-xs">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[10px] uppercase font-bold tracking-wider text-rose-400 flex items-center gap-1.5">
-                          <i className="fa-solid fa-arrow-trend-down text-rose-400 text-xs"></i>
+                        <div className="text-[10px] uppercase font-bold tracking-wider text-rose-700 flex items-center gap-1.5">
+                          <i className="fa-solid fa-arrow-trend-down text-rose-600 text-xs"></i>
                           <span>Off-Season OVR Audit & Attrition Breakdown</span>
                         </div>
-                        <span className="text-xs text-zinc-400 font-mono tabular-nums">
+                        <span className="text-xs text-[#4B5563] font-mono tabular-nums">
                           {seasonData.startOvr || state.club.baseOvr} ➔ {seasonData.newBaseOvr || state.club.baseOvr} OVR
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {decayReasons.map((reason, idx) => (
-                          <div key={idx} className="bg-rose-500/10 border border-rose-500/25 rounded-lg px-2.5 py-1 text-xs text-rose-200 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0"></span>
+                          <div key={idx} className="bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1 text-xs text-rose-800 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0"></span>
                             <span>{reason}</span>
                           </div>
                         ))}
@@ -1712,278 +1510,280 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
             {/* ================= 3. LEAGUE TABLE: DIRECT INLINE STANDINGS ================= */}
             {activeTab === 'table' && (
-              <div id="section-sporting" className="space-y-4 scroll-mt-6">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-sky-400/90 px-1">
+              <div id="section-sporting" className="space-y-3 sm:space-y-4 scroll-mt-6">
+                <div className="hidden sm:flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-sky-700 px-1">
                   <span className="flex items-center gap-2">
                     <i className="fas fa-chart-line text-[11px]"></i>
                     {league.name} · Final Standings & Campaign Review
                   </span>
-                  <span className="text-[10px] text-zinc-400 font-mono">Matchday 34 Final Table</span>
+                  <span className="text-[10px] text-[#6B7280] font-mono">Matchday 34 Final Table</span>
                 </div>
 
-                {/* League Campaign Results */}
-                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm">
-                  <div className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 mb-1">
+                {/* League Campaign Results (Hidden on mobile so full standings fit above the fold) */}
+                <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs">
+                  <div className="text-[10px] uppercase font-semibold tracking-wider text-[#6B7280] mb-1">
                     Campaign Summary
                   </div>
-                  <h3 className="text-lg font-bold text-white tracking-tight">
+                  <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                     {league.name}
                   </h3>
 
                   {/* Primary Stats Grid */}
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05] my-3 text-center">
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Position</div>
-                      <div className="text-base sm:text-lg font-bold text-amber-300 tabular-nums">#{seasonData.pos}</div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 bg-[#FAF9F6] p-3 rounded-2xl border border-[#E6E3DC] my-3 text-center">
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Position</div>
+                      <div className="text-base sm:text-lg font-bold text-amber-700 tabular-nums">#{seasonData.pos}</div>
                     </div>
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Points</div>
-                      <div className="text-base sm:text-lg font-bold text-white tabular-nums">{seasonData.pts}</div>
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Points</div>
+                      <div className="text-base sm:text-lg font-bold text-[#18191F] tabular-nums">{seasonData.pts}</div>
                     </div>
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Wins</div>
-                      <div className="text-base sm:text-lg font-bold text-emerald-400 tabular-nums">{seasonData.wins}</div>
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Wins</div>
+                      <div className="text-base sm:text-lg font-bold text-emerald-700 tabular-nums">{seasonData.wins}</div>
                     </div>
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Draws</div>
-                      <div className="text-base sm:text-lg font-bold text-zinc-300 tabular-nums">{seasonData.draws}</div>
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Draws</div>
+                      <div className="text-base sm:text-lg font-bold text-[#4B5563] tabular-nums">{seasonData.draws}</div>
                     </div>
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Losses</div>
-                      <div className="text-base sm:text-lg font-bold text-rose-400 tabular-nums">{seasonData.losses}</div>
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Losses</div>
+                      <div className="text-base sm:text-lg font-bold text-rose-700 tabular-nums">{seasonData.losses}</div>
                     </div>
-                    <div className="bg-white/[0.02] rounded-xl p-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-semibold">Goals</div>
-                      <div className="text-sm font-bold text-white tabular-nums">
+                    <div className="bg-white border border-[#E6E3DC] rounded-xl p-2">
+                      <div className="text-[9px] text-[#6B7280] uppercase font-semibold">Goals</div>
+                      <div className="text-sm font-bold text-[#18191F] tabular-nums">
                         {seasonData.gf}:{seasonData.ga}
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+                  <div className="pt-2 border-t border-[#E6E3DC] flex items-center justify-between text-xs text-[#6B7280]">
                     <span>Goal Difference</span>
-                    <span className={`tabular-nums font-semibold ${goalDiff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <span className={`tabular-nums font-semibold ${goalDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
                     </span>
                   </div>
                 </div>
 
-                {/* Direct Full League Standings Table (Inline without toggle) */}
-                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.08] shadow-lg overflow-hidden">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-3">
+                {/* Direct Full League Standings Table */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 border border-[#E6E3DC] shadow-xs overflow-hidden">
+                  <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-[#E6E3DC] mb-1.5 sm:mb-3 px-1">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/25 flex items-center justify-center text-sky-400 text-xs">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xs">
                         <i className="fa-solid fa-table-list"></i>
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-white tracking-tight">
+                        <h4 className="text-xs sm:text-sm font-bold text-[#18191F] tracking-tight">
                           {league.name} · Final Standings
                         </h4>
-                        <span className="text-[10px] text-zinc-400">Matchday 34 Final Table</span>
+                        <span className="hidden sm:inline text-[10px] text-[#6B7280]">Matchday 34 Final Table</span>
                       </div>
                     </div>
+                    <span className="sm:hidden text-[10px] text-[#6B7280] font-semibold tabular-nums">
+                      {tableData.length} Clubs
+                    </span>
                   </div>
 
-                    <div className="overflow-x-auto custom-scrollbar">
-                      <div className="min-w-[560px]">
-                        {/* Table Header */}
-                        <div className="flex items-center py-1.5 px-3 text-[10px] uppercase font-semibold text-zinc-400 border-b border-white/[0.04]">
-                          <div className="w-8 text-center shrink-0">#</div>
-                          <div className="flex-1 px-2">Club</div>
-                          <div className="w-9 text-center shrink-0">MP</div>
-                          <div className="w-8 text-center shrink-0 text-emerald-400">W</div>
-                          <div className="w-8 text-center shrink-0 text-zinc-300">D</div>
-                          <div className="w-8 text-center shrink-0 text-rose-400">L</div>
-                          <div className="w-14 text-center shrink-0">GF:GA</div>
-                          <div className="w-10 text-center shrink-0">GD</div>
-                          <div className="w-12 text-center shrink-0 font-bold text-white">Pts</div>
-                        </div>
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <div className="w-full sm:min-w-[560px]">
+                      {/* Table Header */}
+                      <div className="flex items-center py-1.5 px-2 sm:px-3 text-[10px] uppercase font-semibold text-[#6B7280] bg-[#F6F5F1] rounded-t-xl border-b border-[#E6E3DC]">
+                        <div className="w-7 sm:w-8 text-center shrink-0">#</div>
+                        <div className="flex-1 px-1.5 sm:px-2">Club</div>
+                        <div className="hidden sm:block w-9 text-center shrink-0">MP</div>
+                        <div className="hidden sm:block w-8 text-center shrink-0 text-emerald-700">W</div>
+                        <div className="hidden sm:block w-8 text-center shrink-0 text-[#4B5563]">D</div>
+                        <div className="hidden sm:block w-8 text-center shrink-0 text-rose-700">L</div>
+                        <div className="hidden sm:block w-14 text-center shrink-0">GF:GA</div>
+                        <div className="w-9 sm:w-10 text-center shrink-0">GD</div>
+                        <div className="w-10 sm:w-12 text-center shrink-0 font-bold text-[#18191F]">Pts</div>
+                      </div>
 
-                        {/* Table Rows */}
-                        <div className="divide-y divide-white/[0.02]">
-                          {tableData.map((r, i) => {
-                            const isTier1Only = getMaxTier(country, clubsDb) === 1;
-                            const isBottomTier = seasonData.tier >= getMaxTier(country, clubsDb);
-                            const isContinental = seasonData.tier === 1 && i < 4;
-                            const isUserPromoted = r.isUser && seasonData.tier > 1 && (seasonData.pos <= 2 || nextTier < seasonData.tier);
-                            const isUserChamp = r.isUser && seasonData.pos === 1;
-                            const isPromo = (seasonData.tier > 1 && i < 2) || isUserPromoted;
-                            const isPlayoff = !isUserPromoted && seasonData.tier > 1 && ((['ENG', 'ESP', 'ITA', 'USA', 'FRA'].includes(country) && i >= 2 && i < 6) || i === 2);
-                            const numRelegationSpots = (country === 'TUR' && seasonData.tier === 3) ? 2 : 3;
-                            const isManagerSackingZone = (isTier1Only || isBottomTier) && (i >= tableData.length - numRelegationSpots);
-                            const isRelegation = !isBottomTier && !isTier1Only && (i >= tableData.length - numRelegationSpots);
-                            const isRelegationPlayoff = !isBottomTier && !isTier1Only && (i === tableData.length - numRelegationSpots);
-                            const isDirectRelegation = !isBottomTier && !isTier1Only && (i > tableData.length - numRelegationSpots);
-
-                            const rowBg = r.isUser
-                              ? isUserChamp
-                                ? 'bg-amber-500/15 border-amber-400/40 shadow-[0_0_12px_rgba(251,191,36,0.15)]'
-                                : isUserPromoted
-                                ? 'bg-emerald-500/15 border-emerald-400/40'
-                                : 'bg-sky-500/15 border-sky-400/40'
-                              : r.isRival
-                              ? 'bg-rose-500/10'
-                              : isManagerSackingZone
-                              ? 'bg-rose-950/20'
-                              : i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]';
-
-                            return (
-                              <div
-                                key={`${r.name}-${r.pos}`}
-                                className={`flex items-center py-2 px-3 transition-colors relative text-xs ${rowBg} ${r.isUser ? (isUserChamp ? 'border-l-4 border-l-amber-400' : isUserPromoted ? 'border-l-4 border-l-emerald-400' : 'border-l-4 border-l-sky-400') : isContinental ? 'border-l-2 border-l-emerald-400/60' : isPromo ? 'border-l-2 border-l-emerald-400/60' : isPlayoff ? 'border-l-2 border-l-amber-400/60' : isRelegationPlayoff ? 'border-l-2 border-l-amber-500/80' : isDirectRelegation ? 'border-l-2 border-l-rose-500/60' : isManagerSackingZone ? 'border-l-2 border-l-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.7)]' : ''}`}
-                              >
-                                {/* Position */}
-                                <div className={`w-8 text-center font-bold tabular-nums shrink-0 ${
-                                  r.isUser ? (isUserChamp ? 'text-amber-300 font-black' : isUserPromoted ? 'text-emerald-300 font-extrabold' : 'text-sky-300') : r.isRival ? 'text-rose-300' : isContinental ? 'text-emerald-400' : isPromo ? 'text-emerald-400' : isPlayoff ? 'text-amber-400' : isRelegationPlayoff ? 'text-amber-400 font-bold' : (isDirectRelegation || isManagerSackingZone) ? 'text-rose-400 font-extrabold' : 'text-zinc-400'
-                                }`}>
-                                  {r.pos}
-                                </div>
-
-                                {/* Club Crest & Name */}
-                                <div className="flex-1 flex items-center gap-2 px-2 min-w-0 py-0.5">
-                                  <ClubLogo
-                                    name={r.name}
-                                    id={typeof r.id === 'number' ? r.id : undefined}
-                                    color={r.color}
-                                    logo={r.logo}
-                                    isModActive={isModActive}
-                                    className="w-5 h-5 object-contain shrink-0"
-                                    fallbackClassName="w-5 h-5 text-[8px] rounded-md"
-                                  />
-                                  <span className={`truncate font-semibold text-xs py-0.5 leading-normal ${r.isUser ? 'text-white font-extrabold' : r.isRival ? 'text-rose-200 font-bold' : 'text-zinc-200'}`}>
-                                    {r.name}
-                                  </span>
-
-                                  {r.isUser && (
-                                    <span className="px-1.5 py-0.5 text-[8px] font-black bg-sky-500/25 text-sky-300 border border-sky-400/40 rounded tracking-wider uppercase shrink-0">
-                                      YOU
-                                    </span>
-                                  )}
-
-                                  {r.isRival && (
-                                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded tracking-wider uppercase shrink-0">
-                                      Rival ⚔️
-                                    </span>
-                                  )}
-
-                                  {/* FM-style Outcome Badge (C / P / R) */}
-                                  {(() => {
-                                    const badge = r.status || (
-                                      r.pos === 1 ? 'C' :
-                                      (r.isUser && isUserPromoted && !isUserChamp) ? 'P' :
-                                      (!r.isUser && seasonData.tier > 1 && r.pos === 2 && !r.isReserve) ? 'P' :
-                                      (!isBottomTier && !isTier1Only && isDirectRelegation) ? 'R' :
-                                      undefined
-                                    );
-                                    if (!badge) return null;
-                                    return (
-                                      <span
-                                        className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider shrink-0 shadow-sm ${
-                                          badge === 'C'
-                                            ? 'bg-amber-400 text-black'
-                                            : badge === 'P'
-                                            ? 'bg-emerald-500 text-white'
-                                            : 'bg-rose-600 text-white'
-                                        }`}
-                                        title={badge === 'C' ? (seasonData.tier > 1 ? 'Division Champion & Promoted' : 'League Champion') : badge === 'P' ? 'Promoted' : 'Relegated'}
-                                      >
-                                        {badge}
-                                      </span>
-                                    );
-                                  })()}
-                                </div>
-
-                                {/* Numbers */}
-                                <div className="w-9 text-center text-zinc-400 tabular-nums shrink-0">{r.mp}</div>
-                                <div className="w-8 text-center text-emerald-400 font-semibold tabular-nums shrink-0">{r.w}</div>
-                                <div className="w-8 text-center text-zinc-300 tabular-nums shrink-0">{r.d}</div>
-                                <div className="w-8 text-center text-rose-400 tabular-nums shrink-0">{r.l}</div>
-                                <div className="w-14 text-center text-zinc-300 tabular-nums shrink-0">{r.gf}:{r.ga}</div>
-                                {(() => {
-                                  const gdStr = String(r.gd ?? '0');
-                                  const isPosGd = gdStr.startsWith('+') || (typeof r.gd === 'number' && r.gd > 0);
-                                  const isNegGd = gdStr.startsWith('-') || (typeof r.gd === 'number' && r.gd < 0);
-                                  const gdDisplay = (typeof r.gd === 'number' && r.gd > 0) ? `+${r.gd}` : gdStr;
-                                  return (
-                                    <div className={`w-10 text-center font-medium tabular-nums shrink-0 ${isPosGd ? 'text-emerald-400' : isNegGd ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                      {gdDisplay}
-                                    </div>
-                                  );
-                                })()}
-                                <div className="w-12 text-center font-bold text-white tabular-nums shrink-0">{r.pts}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Table Legend Footer */}
-                        {(() => {
+                      {/* Table Rows */}
+                      <div className="divide-y divide-[#EFECE4]">
+                        {tableData.map((r, i) => {
                           const isTier1Only = getMaxTier(country, clubsDb) === 1;
                           const isBottomTier = seasonData.tier >= getMaxTier(country, clubsDb);
+                          const isContinental = seasonData.tier === 1 && i < 4;
+                          const isUserPromoted = r.isUser && seasonData.tier > 1 && (seasonData.pos <= 2 || nextTier < seasonData.tier);
+                          const isUserChamp = r.isUser && seasonData.pos === 1;
+                          const isPromo = (seasonData.tier > 1 && i < 2) || isUserPromoted;
+                          const isPlayoff = !isUserPromoted && seasonData.tier > 1 && ((['ENG', 'ESP', 'ITA', 'USA', 'FRA'].includes(country) && i >= 2 && i < 6) || i === 2);
+                          const numRelegationSpots = (country === 'TUR' && seasonData.tier === 3) ? 2 : 3;
+                          const isManagerSackingZone = (isTier1Only || isBottomTier) && (i >= tableData.length - numRelegationSpots);
+                          const isRelegationPlayoff = !isBottomTier && !isTier1Only && (i === tableData.length - numRelegationSpots);
+                          const isDirectRelegation = !isBottomTier && !isTier1Only && (i > tableData.length - numRelegationSpots);
+
+                          const rowBg = r.isUser
+                            ? isUserChamp
+                              ? 'bg-amber-50'
+                              : isUserPromoted
+                              ? 'bg-emerald-50'
+                              : 'bg-sky-50'
+                            : r.isRival
+                            ? 'bg-rose-50/70'
+                            : isManagerSackingZone
+                            ? 'bg-rose-50/50'
+                            : i % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F6]';
+
                           return (
-                            <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex items-center justify-between text-[11px] text-zinc-400 gap-3 flex-wrap shrink-0">
-                              <div className="flex items-center gap-3 flex-wrap">
-                                <span className="flex items-center gap-1.5">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                                  <span>{seasonData.tier === 1 ? getContinentalCupNames(country).cl : 'Promotion (Top 2)'}</span>
+                            <div
+                              key={`${r.name}-${r.pos}`}
+                              className={`flex items-center py-1 sm:py-2 px-2 sm:px-3 transition-colors relative text-xs ${rowBg} ${r.isUser ? (isUserChamp ? 'border-l-4 border-l-amber-500' : isUserPromoted ? 'border-l-4 border-l-emerald-600' : 'border-l-4 border-l-sky-600') : isContinental ? 'border-l-2 border-l-emerald-500' : isPromo ? 'border-l-2 border-l-emerald-500' : isPlayoff ? 'border-l-2 border-l-amber-500' : isRelegationPlayoff ? 'border-l-2 border-l-amber-500' : isDirectRelegation ? 'border-l-2 border-l-rose-500' : isManagerSackingZone ? 'border-l-2 border-l-rose-600' : ''}`}
+                            >
+                              {/* Position */}
+                              <div className={`w-7 sm:w-8 text-center font-bold tabular-nums shrink-0 ${
+                                r.isUser ? (isUserChamp ? 'text-amber-700 font-black' : isUserPromoted ? 'text-emerald-700 font-extrabold' : 'text-sky-700') : r.isRival ? 'text-rose-700' : isContinental ? 'text-emerald-700' : isPromo ? 'text-emerald-700' : isPlayoff ? 'text-amber-700' : isRelegationPlayoff ? 'text-amber-700 font-bold' : (isDirectRelegation || isManagerSackingZone) ? 'text-rose-700 font-extrabold' : 'text-[#6B7280]'
+                              }`}>
+                                {r.pos}
+                              </div>
+
+                              {/* Club Crest & Name */}
+                              <div className="flex-1 flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 min-w-0 py-0.5">
+                                <ClubLogo
+                                  name={r.name}
+                                  id={typeof r.id === 'number' ? r.id : undefined}
+                                  color={r.color}
+                                  logo={r.logo}
+                                  isModActive={isModActive}
+                                  className="w-4 h-4 sm:w-5 sm:h-5 object-contain shrink-0"
+                                  fallbackClassName="w-4 h-4 sm:w-5 sm:h-5 text-[8px] rounded-md"
+                                />
+                                <span className={`truncate font-semibold text-xs py-0.5 leading-normal ${r.isUser ? 'text-[#18191F] font-extrabold' : r.isRival ? 'text-rose-800 font-bold' : 'text-[#18191F]'}`}>
+                                  {r.name}
                                 </span>
 
-                                {hasPromotionPlayoffs && (
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-                                    <span>Promotion Playoff</span>
+                                {r.isUser && (
+                                  <span className="px-1.5 py-0.5 text-[8px] font-black bg-[#18191F] text-white rounded tracking-wider uppercase shrink-0">
+                                    YOU
                                   </span>
                                 )}
 
-                                {(isTier1Only || isBottomTier) ? (
-                                  <span className="flex items-center gap-1.5 text-rose-300 font-medium">
-                                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                                    <span>{country === 'TUR' && seasonData.tier === 3 ? 'Spots 17–18' : 'Spots 16–18'}: Sporting Relegation · Pyramid Floor ({isTier1Only ? 'No Club Relegation' : 'Clubs Retained'} · Manager Dismissal Only)</span>
+                                {r.isRival && (
+                                  <span className="px-1.5 py-0.5 text-[8px] font-bold bg-rose-100 text-rose-800 border border-rose-200 rounded tracking-wider uppercase shrink-0">
+                                    Rival ⚔️
                                   </span>
-                                ) : (
-                                  <>
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                      <span>16th: Relegation Playoff</span>
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                                      <span>{country === 'TUR' && seasonData.tier === 3 ? '18th: Direct Relegation' : 'Bottom 2: Direct Relegation'}</span>
-                                    </span>
-                                  </>
                                 )}
 
-                                <span className="flex items-center gap-1.5 border-l border-white/10 pl-2">
-                                  <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-400 text-black">C</span>
-                                  <span>Champion</span>
-                                  <span className="px-1 py-0.2 rounded text-[7px] font-black bg-emerald-500 text-white ml-0.5">P</span>
-                                  <span>Promoted</span>
-                                  <span className="px-1 py-0.2 rounded text-[7px] font-black bg-rose-600 text-white ml-0.5">R</span>
-                                  <span>Relegated</span>
-                                </span>
+                                {/* FM-style Outcome Badge (C / P / R) */}
+                                {(() => {
+                                  const badge = r.status || (
+                                    r.pos === 1 ? 'C' :
+                                    (r.isUser && isUserPromoted && !isUserChamp) ? 'P' :
+                                    (!r.isUser && seasonData.tier > 1 && r.pos === 2 && !r.isReserve) ? 'P' :
+                                    (!isBottomTier && !isTier1Only && isDirectRelegation) ? 'R' :
+                                    undefined
+                                  );
+                                  if (!badge) return null;
+                                  return (
+                                    <span
+                                      className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded tracking-wider shrink-0 ${
+                                        badge === 'C'
+                                          ? 'bg-amber-400 text-[#18191F]'
+                                          : badge === 'P'
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'bg-rose-600 text-white'
+                                      }`}
+                                      title={badge === 'C' ? (seasonData.tier > 1 ? 'Division Champion & Promoted' : 'League Champion') : badge === 'P' ? 'Promoted' : 'Relegated'}
+                                    >
+                                      {badge}
+                                    </span>
+                                  );
+                                })()}
                               </div>
 
-                              <div className="text-[10px] text-zinc-500 font-medium tabular-nums">
-                                {tableData.length} Clubs · 34 Matches Played
-                              </div>
+                              {/* Numbers */}
+                              <div className="hidden sm:block w-9 text-center text-[#6B7280] tabular-nums shrink-0">{r.mp}</div>
+                              <div className="hidden sm:block w-8 text-center text-emerald-700 font-semibold tabular-nums shrink-0">{r.w}</div>
+                              <div className="hidden sm:block w-8 text-center text-[#4B5563] tabular-nums shrink-0">{r.d}</div>
+                              <div className="hidden sm:block w-8 text-center text-rose-700 tabular-nums shrink-0">{r.l}</div>
+                              <div className="hidden sm:block w-14 text-center text-[#4B5563] tabular-nums shrink-0">{r.gf}:{r.ga}</div>
+                              {(() => {
+                                const gdStr = String(r.gd ?? '0');
+                                const isPosGd = gdStr.startsWith('+') || (typeof r.gd === 'number' && r.gd > 0);
+                                const isNegGd = gdStr.startsWith('-') || (typeof r.gd === 'number' && r.gd < 0);
+                                const gdDisplay = (typeof r.gd === 'number' && r.gd > 0) ? `+${r.gd}` : gdStr;
+                                return (
+                                  <div className={`w-9 sm:w-10 text-center font-medium tabular-nums shrink-0 text-[11px] sm:text-xs ${isPosGd ? 'text-emerald-700' : isNegGd ? 'text-rose-700' : 'text-[#6B7280]'}`}>
+                                    {gdDisplay}
+                                  </div>
+                                );
+                              })()}
+                              <div className="w-10 sm:w-12 text-center font-bold text-[#18191F] tabular-nums shrink-0">{r.pts}</div>
                             </div>
                           );
-                        })()}
+                        })}
                       </div>
+
+                      {/* Table Legend Footer */}
+                      {(() => {
+                        const isTier1Only = getMaxTier(country, clubsDb) === 1;
+                        const isBottomTier = seasonData.tier >= getMaxTier(country, clubsDb);
+                        return (
+                          <div className="hidden sm:flex p-3 bg-[#FAF9F6] border-t border-[#E6E3DC] items-center justify-between text-[11px] text-[#4B5563] gap-3 flex-wrap shrink-0 rounded-b-xl">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                                <span>{seasonData.tier === 1 ? getContinentalCupNames(country).cl : 'Promotion (Top 2)'}</span>
+                              </span>
+
+                              {hasPromotionPlayoffs && (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                  <span>Promotion Playoff</span>
+                                </span>
+                              )}
+
+                              {(isTier1Only || isBottomTier) ? (
+                                <span className="flex items-center gap-1.5 text-rose-700 font-medium">
+                                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" />
+                                  <span>{country === 'TUR' && seasonData.tier === 3 ? 'Spots 17–18' : 'Spots 16–18'}: Sporting Relegation · Pyramid Floor ({isTier1Only ? 'No Club Relegation' : 'Clubs Retained'} · Manager Dismissal Only)</span>
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                    <span>16th: Relegation Playoff</span>
+                                  </span>
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-rose-600" />
+                                    <span>{country === 'TUR' && seasonData.tier === 3 ? '18th: Direct Relegation' : 'Bottom 2: Direct Relegation'}</span>
+                                  </span>
+                                </>
+                              )}
+
+                              <span className="flex items-center gap-1.5 border-l border-[#E6E3DC] pl-2">
+                                <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-400 text-[#18191F]">C</span>
+                                <span>Champion</span>
+                                <span className="px-1 py-0.2 rounded text-[7px] font-black bg-emerald-600 text-white ml-0.5">P</span>
+                                <span>Promoted</span>
+                                <span className="px-1 py-0.2 rounded text-[7px] font-black bg-rose-600 text-white ml-0.5">R</span>
+                                <span>Relegated</span>
+                              </span>
+                            </div>
+
+                            <div className="text-[10px] text-[#6B7280] font-medium tabular-nums">
+                              {tableData.length} Clubs · 34 Matches Played
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
+                </div>
 
-                  {/* Editorial Pundit Review */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3.5 sm:p-4 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-sky-400 shrink-0 text-xs">
+                {/* Editorial Pundit Review */}
+                <div className="bg-white border border-[#E6E3DC] rounded-2xl p-3 sm:p-4 flex items-center gap-3 shadow-xs">
+                  <div className="w-8 h-8 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] flex items-center justify-center text-sky-700 shrink-0 text-xs">
                     <i className="fas fa-quote-left"></i>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-white">{pundit.author}</span>
-                      <span className="text-[10px] text-zinc-500">{pundit.handle}</span>
+                      <span className="text-xs font-bold text-[#18191F]">{pundit.author}</span>
+                      <span className="text-[10px] text-[#6B7280]">{pundit.handle}</span>
                     </div>
-                    <p className="text-xs text-zinc-300 italic font-normal line-clamp-2">
+                    <p className="text-xs text-[#4B5563] italic font-normal line-clamp-2">
                       "{pundit.text}"
                     </p>
                   </div>
@@ -1994,58 +1794,58 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             {/* ================= 3. PILLAR 2: FINANCE & TREASURY ================= */}
             {activeTab === 'squad' && (
               <div id="section-finance" className="space-y-3 scroll-mt-6">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400/90 px-1 flex items-center gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 px-1 flex items-center gap-2">
                   <i className="fas fa-coins text-[11px]"></i>
                   Finance & Treasury · Fiscal Audit & Facilities
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Financial Audit */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold tracking-wider text-emerald-400 mb-1">
+                      <div className="text-[10px] uppercase font-semibold tracking-wider text-emerald-700 mb-1">
                         Financial Audit
                       </div>
-                      <h3 className="text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                         {isPositiveNetProfit ? 'Profitable Campaign' : 'Fiscal Deficit'}
                       </h3>
                     </div>
 
                     <div className="space-y-2 my-3">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs">
-                        <span className="text-zinc-400 flex items-center gap-1.5">
-                          <i className="fas fa-arrow-up text-emerald-400 text-[10px]"></i>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] text-xs">
+                        <span className="text-[#4B5563] flex items-center gap-1.5">
+                          <i className="fas fa-arrow-up text-emerald-700 text-[10px]"></i>
                           Revenue
                         </span>
-                        <span className="font-semibold text-emerald-400 tabular-nums">
+                        <span className="font-semibold text-emerald-700 tabular-nums">
                           +{formatMoney(seasonData.revenue)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs">
-                        <span className="text-zinc-400 flex items-center gap-1.5">
-                          <i className="fas fa-arrow-down text-rose-400 text-[10px]"></i>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] text-xs">
+                        <span className="text-[#4B5563] flex items-center gap-1.5">
+                          <i className="fas fa-arrow-down text-rose-700 text-[10px]"></i>
                           Expenses & Wages
                         </span>
-                        <span className="font-semibold text-rose-400 tabular-nums">
+                        <span className="font-semibold text-rose-700 tabular-nums">
                           -{formatMoney(seasonData.wages)}
                         </span>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-white/[0.05] flex items-end justify-between">
+                    <div className="pt-3 border-t border-[#E6E3DC] flex items-end justify-between">
                       <div>
-                        <div className="text-[9px] uppercase font-semibold text-zinc-500 mb-0.5">
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280] mb-0.5">
                           Net Profit
                         </div>
-                        <div className={`text-2xl font-bold tracking-tight tabular-nums ${isPositiveNetProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className={`text-2xl font-bold tracking-tight tabular-nums ${isPositiveNetProfit ? 'text-emerald-700' : 'text-rose-700'}`}>
                           <AnimatedNumber from={0} to={seasonData.netProfit} isMoney duration={1.2} prefix={isPositiveNetProfit ? '+' : ''} />
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[9px] uppercase font-semibold text-zinc-500 mb-0.5">
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280] mb-0.5">
                           Ending Treasury
                         </div>
-                        <div className={`text-base font-bold tabular-nums ${seasonData.endBudget >= 0 ? 'text-white' : 'text-rose-400'}`}>
+                        <div className={`text-base font-bold tabular-nums ${seasonData.endBudget >= 0 ? 'text-[#18191F]' : 'text-rose-700'}`}>
                           {formatMoney(seasonData.endBudget)}
                         </div>
                       </div>
@@ -2053,100 +1853,100 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   </div>
 
                   {/* Stadium & Attendance */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-1">
+                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-1">
                         Stadium & Attendance
                       </div>
-                      <h3 className="text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                         Matchday Utilization
                       </h3>
                     </div>
 
                     <div className="space-y-3 my-3">
-                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <div className="p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
                         <div className="flex justify-between items-center text-xs mb-1.5">
-                          <span className="text-zinc-400">Average Turnout</span>
-                          <span className="font-semibold text-white tabular-nums">
+                          <span className="text-[#4B5563]">Average Turnout</span>
+                          <span className="font-semibold text-[#18191F] tabular-nums">
                             {Math.round(avgAttendance || 0).toLocaleString()} / {(state.club.stadium || 15000).toLocaleString()}
                           </span>
                         </div>
-                        <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden mb-1">
+                        <div className="w-full h-2 bg-[#EAE7E0] rounded-full overflow-hidden mb-1">
                           <div
                             className={`h-full transition-all duration-500 ${
-                              fillPercentage >= 90 ? 'bg-emerald-400' : fillPercentage >= 70 ? 'bg-sky-400' : 'bg-amber-400'
+                              fillPercentage >= 90 ? 'bg-emerald-600' : fillPercentage >= 70 ? 'bg-sky-600' : 'bg-amber-500'
                             }`}
                             style={{ width: `${Math.min(100, Math.max(5, fillPercentage))}%` }}
                           />
                         </div>
-                        <div className="flex justify-between items-center text-[10px] text-zinc-400">
+                        <div className="flex justify-between items-center text-[10px] text-[#6B7280]">
                           <span>Capacity Occupancy</span>
-                          <span className="font-semibold text-zinc-300 tabular-nums">{fillPercentage}% Full</span>
+                          <span className="font-semibold text-[#4B5563] tabular-nums">{fillPercentage}% Full</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs">
-                        <span className="text-zinc-400">Est. Gate Revenue</span>
-                        <span className="font-semibold text-emerald-400 tabular-nums">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] text-xs">
+                        <span className="text-[#4B5563]">Est. Gate Revenue</span>
+                        <span className="font-semibold text-emerald-700 tabular-nums">
                           +{formatMoney(Math.round((avgAttendance * 17 * (country === 'ENG' ? 45 : country === 'GER' ? 35 : 30)) / 1000))}
                         </span>
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+                    <div className="pt-2.5 border-t border-[#E6E3DC] flex items-center justify-between text-xs text-[#6B7280]">
                       <span>Ground Capacity</span>
-                      <span className="tabular-nums font-semibold text-white">
+                      <span className="tabular-nums font-semibold text-[#18191F]">
                         {(state.club.stadium || 15000).toLocaleString()} seats
                       </span>
                     </div>
                   </div>
 
                   {/* Club Infrastructure */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-1">
+                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-1">
                         Club Infrastructure
                       </div>
-                      <h3 className="text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                         Academy & Medical
                       </h3>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5 my-3">
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex flex-col justify-between">
+                      <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] flex flex-col justify-between">
                         <div>
-                          <div className="text-[9px] uppercase font-semibold text-zinc-400 flex items-center gap-1">
-                            <i className="fas fa-graduation-cap text-sky-400"></i>
+                          <div className="text-[9px] uppercase font-semibold text-[#6B7280] flex items-center gap-1">
+                            <i className="fas fa-graduation-cap text-sky-700"></i>
                             <span>Academy</span>
                           </div>
-                          <div className="text-lg font-bold text-white tabular-nums mt-1">
-                            Lvl {state.club.academyLevel || 1}<span className="text-xs text-zinc-500 font-normal">/5</span>
+                          <div className="text-lg font-bold text-[#18191F] tabular-nums mt-1">
+                            Lvl {state.club.academyLevel || 1}<span className="text-xs text-[#6B7280] font-normal">/5</span>
                           </div>
                         </div>
-                        <div className="text-[10px] text-sky-300 font-normal mt-1">
+                        <div className="text-[10px] text-sky-700 font-medium mt-1">
                           {(state.club.academyLevel || 1) >= 5 ? 'World-Class Complex' : (state.club.academyLevel || 1) >= 3 ? 'National Academy (NLZ)' : 'Grassroots'}
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex flex-col justify-between">
+                      <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] flex flex-col justify-between">
                         <div>
-                          <div className="text-[9px] uppercase font-semibold text-zinc-400 flex items-center gap-1">
-                            <i className="fas fa-heart-pulse text-emerald-400"></i>
+                          <div className="text-[9px] uppercase font-semibold text-[#6B7280] flex items-center gap-1">
+                            <i className="fas fa-heart-pulse text-emerald-700"></i>
                             <span>Medical</span>
                           </div>
-                          <div className="text-lg font-bold text-white tabular-nums mt-1">
-                            Lvl {state.club.medicalLevel || 1}<span className="text-xs text-zinc-500 font-normal">/5</span>
+                          <div className="text-lg font-bold text-[#18191F] tabular-nums mt-1">
+                            Lvl {state.club.medicalLevel || 1}<span className="text-xs text-[#6B7280] font-normal">/5</span>
                           </div>
                         </div>
-                        <div className="text-[10px] text-emerald-300 font-normal mt-1">
+                        <div className="text-[10px] text-emerald-700 font-medium mt-1">
                           {(state.club.medicalLevel || 1) >= 5 ? 'Longevity Institute' : (state.club.medicalLevel || 1) >= 3 ? 'Biomechanics Lab' : 'Basic Rehab'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+                    <div className="pt-2.5 border-t border-[#E6E3DC] flex items-center justify-between text-xs text-[#6B7280]">
                       <span>Maintenance</span>
-                      <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                      <span className="font-semibold text-emerald-700 flex items-center gap-1">
                         <i className="fas fa-circle-check text-[10px]"></i> Operational
                       </span>
                     </div>
@@ -2155,31 +1955,31 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* Public Equity / IPO Performance */}
                 {state.isPublic && (
-                  <div className="bg-white/[0.03] border border-amber-500/20 rounded-2xl p-4 sm:p-5 mt-3 shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+                  <div className="bg-white border border-amber-200 rounded-2xl p-4 sm:p-5 mt-3 shadow-xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1.5 mb-0.5">
+                        <div className="text-[10px] uppercase font-bold text-amber-700 tracking-wider flex items-center gap-1.5 mb-0.5">
                           <i className="fa-solid fa-chart-line text-xs"></i>
                           <span>{t('Public Shareholder Equity', 'Börsenwert & Aktionäre')}</span>
                         </div>
-                        <h4 className="text-sm font-bold text-white">
+                        <h4 className="text-sm font-bold text-[#18191F]">
                           {t('Stock Exchange Performance', 'Aktienkurs-Entwicklung')}
                         </h4>
-                        <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                          {t('Your club is publicly traded. The stock price adjusted to', 'Der Verein ist börsennotiert. Der Aktienkurs reagierte auf die sportliche Saisonleistung und steht nun bei')} <strong className="text-white">€{state.stockPrice?.toFixed(2)}</strong>.
+                        <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                          {t('Your club is publicly traded. The stock price adjusted to', 'Der Verein ist börsennotiert. Der Aktienkurs reagierte auf die sportliche Saisonleistung und steht nun bei')} <strong className="text-[#18191F]">€{state.stockPrice?.toFixed(2)}</strong>.
                         </p>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <div className="bg-black/40 border border-white/10 p-2.5 rounded-xl text-center min-w-[90px]">
-                          <div className="text-[9px] text-zinc-400 uppercase font-semibold">{t('IPO Base', 'Ausgabepreis')}</div>
-                          <div className="text-sm font-bold text-white tabular-nums mt-0.5">€{state.ipoPrice?.toFixed(2)}</div>
+                        <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-2.5 rounded-xl text-center min-w-[90px]">
+                          <div className="text-[9px] text-[#6B7280] uppercase font-semibold">{t('IPO Base', 'Ausgabepreis')}</div>
+                          <div className="text-sm font-bold text-[#18191F] tabular-nums mt-0.5">€{state.ipoPrice?.toFixed(2)}</div>
                         </div>
-                        <div className="bg-black/40 border border-white/10 p-2.5 rounded-xl text-center min-w-[90px]">
-                          <div className="text-[9px] text-zinc-400 uppercase font-semibold">{t('Current Price', 'Aktueller Kurs')}</div>
-                          <div className={`text-sm font-bold tabular-nums mt-0.5 ${(state.stockPrice || 0) >= (state.ipoPrice || 0) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-2.5 rounded-xl text-center min-w-[90px]">
+                          <div className="text-[9px] text-[#6B7280] uppercase font-semibold">{t('Current Price', 'Aktueller Kurs')}</div>
+                          <div className={`text-sm font-bold tabular-nums mt-0.5 ${(state.stockPrice || 0) >= (state.ipoPrice || 0) ? 'text-emerald-700' : 'text-rose-700'}`}>
                             €{state.stockPrice?.toFixed(2)}
                           </div>
-                          <div className={`text-[9px] font-bold mt-0.5 ${(state.stockPrice || 0) >= (state.ipoPrice || 0) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <div className={`text-[9px] font-bold mt-0.5 ${(state.stockPrice || 0) >= (state.ipoPrice || 0) ? 'text-emerald-700' : 'text-rose-700'}`}>
                             {((((state.stockPrice || 0) - (state.ipoPrice || 1)) / (state.ipoPrice || 1)) * 100).toFixed(1)}%
                           </div>
                         </div>
@@ -2189,20 +1989,20 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                 )}
 
                 {/* Financial Restructuring & Austerity Advisory */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5 mt-3">
+                <div className="bg-white border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 mt-3 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-sky-400 tracking-wider flex items-center gap-1.5 mb-0.5">
+                      <div className="text-[10px] uppercase font-bold text-sky-700 tracking-wider flex items-center gap-1.5 mb-0.5">
                         <i className="fa-solid fa-scale-balanced text-xs"></i>
                         <span>Treasury & Wage Restructuring Advisory</span>
                       </div>
-                      <h4 className="text-sm font-bold text-white">
+                      <h4 className="text-sm font-bold text-[#18191F]">
                         Fiscal Blueprint & Debt Service
                       </h4>
-                      <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                      <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
                         {state.bankLoan && state.bankLoan.yearsLeft > 0 ? (
                           <span>
-                            Active bank debt requires <strong className="text-rose-300">{formatMoney(state.bankLoan.annualPayment)}/year</strong> in debt service ({state.bankLoan.yearsLeft} years left). Paying down debt early in the Ledger frees up cash flow for infrastructure development.
+                            Active bank debt requires <strong className="text-rose-700">{formatMoney(state.bankLoan.annualPayment)}/year</strong> in debt service ({state.bankLoan.yearsLeft} years left). Paying down debt early in the Ledger frees up cash flow for infrastructure development.
                           </span>
                         ) : seasonData.endBudget < 10000 ? (
                           <span>
@@ -2216,10 +2016,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       </p>
                     </div>
                     {state.bankLoan && state.bankLoan.yearsLeft > 0 && (
-                      <div className="shrink-0 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl sm:text-right">
-                        <div className="text-[10px] text-zinc-400 uppercase font-semibold">Active Bank Loan</div>
-                        <div className="text-sm font-bold text-rose-300 tabular-nums">-{formatMoney(state.bankLoan.annualPayment)}/yr</div>
-                        <div className="text-[10px] text-zinc-400">{state.bankLoan.yearsLeft} yrs remaining</div>
+                      <div className="shrink-0 bg-rose-50 border border-rose-200 p-3 rounded-xl sm:text-right">
+                        <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Active Bank Loan</div>
+                        <div className="text-sm font-bold text-rose-700 tabular-nums">-{formatMoney(state.bankLoan.annualPayment)}/yr</div>
+                        <div className="text-[10px] text-[#6B7280]">{state.bankLoan.yearsLeft} yrs remaining</div>
                       </div>
                     )}
                   </div>
@@ -2230,41 +2030,41 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             {/* ================= 4. PILLAR 3: SQUAD PROGRESSION ================= */}
             {activeTab === 'squad' && (
               <div id="section-squad" className="space-y-3 scroll-mt-6">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400/90 px-1 flex items-center gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 px-1 flex items-center gap-2">
                   <i className="fas fa-users text-[11px]"></i>
                   Squad Progression · Roster & Academy
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* First-Team Progression */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-1">
+                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-1">
                         Squad Report
                       </div>
-                      <h3 className="text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                         First-Team Progression
                       </h3>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5 my-3">
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                        <div className="text-[9px] uppercase font-semibold text-zinc-400">Squad OVR</div>
+                      <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Squad OVR</div>
                         <div className="flex items-center gap-1.5 mt-1 tabular-nums">
-                          <span className="text-sm font-semibold text-zinc-400">{seasonData.startOvr || state.club.baseOvr}</span>
-                          <i className="fas fa-arrow-right text-[10px] text-zinc-600"></i>
-                          <span className="text-xl font-bold text-white">{seasonData.newBaseOvr || state.club.baseOvr}</span>
+                          <span className="text-sm font-semibold text-[#6B7280]">{seasonData.startOvr || state.club.baseOvr}</span>
+                          <i className="fas fa-arrow-right text-[10px] text-[#9CA3AF]"></i>
+                          <span className="text-xl font-bold text-[#18191F]">{seasonData.newBaseOvr || state.club.baseOvr}</span>
                           {ovrDelta !== 0 && (
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${ovrDelta > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${ovrDelta > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                               {ovrDelta > 0 ? `+${ovrDelta}` : ovrDelta}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                        <div className="text-[9px] uppercase font-semibold text-zinc-400">Squad Morale</div>
-                        <div className="text-xl font-bold text-emerald-400 tabular-nums mt-1">
+                      <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Squad Morale</div>
+                        <div className="text-xl font-bold text-emerald-700 tabular-nums mt-1">
                           {seasonData.endMorale ?? state.club.morale ?? 100}%
                         </div>
                       </div>
@@ -2272,47 +2072,47 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   </div>
 
                   {/* Youth Pipeline & Graduates */}
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-1">
+                      <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-1">
                         Academy Pipeline
                       </div>
-                      <h3 className="text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-lg font-bold text-[#18191F] tracking-tight">
                         Youth Pipeline & Graduates
                       </h3>
                     </div>
 
                     <div className="space-y-2.5 my-3">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs">
-                        <span className="text-zinc-400">Academy Facility</span>
-                        <span className="font-semibold text-sky-300 tabular-nums">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] text-xs">
+                        <span className="text-[#4B5563]">Academy Facility</span>
+                        <span className="font-semibold text-sky-700 tabular-nums">
                           Level {state.club.academyLevel || 1}/5
                         </span>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                        <div className="text-[9px] uppercase font-semibold text-zinc-400 mb-1">
+                      <div className="p-2.5 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280] mb-1">
                           Promoted Graduates
                         </div>
-                        <div className="text-xs text-white">
+                        <div className="text-xs text-[#18191F]">
                           {seasonData.graduatedYouths && seasonData.graduatedYouths.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5 mt-1">
                               {seasonData.graduatedYouths.map((y, idx) => (
-                                <span key={idx} className="px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-300 text-[10px] font-semibold border border-sky-400/25">
+                                <span key={idx} className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 text-[10px] font-semibold border border-sky-200">
                                   {y.split(',')[0]}
                                 </span>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-zinc-400 italic text-[11px]">No graduates promoted to first team this season</span>
+                            <span className="text-[#6B7280] italic text-[11px]">No graduates promoted to first team this season</span>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+                    <div className="pt-2.5 border-t border-[#E6E3DC] flex items-center justify-between text-xs text-[#6B7280]">
                       <span>Youth Pipeline</span>
-                      <span className="tabular-nums font-semibold text-white">
+                      <span className="tabular-nums font-semibold text-[#18191F]">
                         {state.youthPipeline?.length || 0} Talents Enrolled
                       </span>
                     </div>
@@ -2321,20 +2121,20 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* Squad Attrition Audit Breakdown */}
                 {decayReasons.length > 0 && (
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 sm:p-5 mt-3">
+                  <div className="bg-white border border-[#E6E3DC] rounded-2xl p-4 sm:p-5 mt-3 shadow-xs">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-[10px] uppercase font-bold tracking-wider text-rose-400 flex items-center gap-1.5">
-                        <i className="fa-solid fa-arrow-trend-down text-rose-400 text-xs"></i>
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-rose-700 flex items-center gap-1.5">
+                        <i className="fa-solid fa-arrow-trend-down text-rose-600 text-xs"></i>
                         <span>Off-Season Squad Attrition Breakdown</span>
                       </div>
-                      <span className="text-xs text-zinc-400 font-mono tabular-nums">
+                      <span className="text-xs text-[#4B5563] font-mono tabular-nums">
                         Net: {(seasonData.newBaseOvr || state.club.baseOvr) - (seasonData.startOvr || state.club.baseOvr)} OVR
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                       {decayReasons.map((reason, idx) => (
-                        <div key={idx} className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-200 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0"></span>
+                        <div key={idx} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0"></span>
                           <span>{reason}</span>
                         </div>
                       ))}
@@ -2345,27 +2145,27 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                 {/* Tactical Status within Squad Tab */}
                 <div className={`p-4 rounded-2xl border mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                   isStaleActive 
-                    ? 'bg-rose-500/10 border-rose-500/30' 
+                    ? 'bg-rose-50/70 border-rose-200' 
                     : isStaleWarning 
-                    ? 'bg-amber-500/10 border-amber-500/30' 
-                    : 'bg-white/[0.03] border-white/[0.06]'
+                    ? 'bg-amber-50/70 border-amber-200' 
+                    : 'bg-white border-[#E6E3DC] shadow-xs'
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 ${
-                      isStaleActive ? 'bg-rose-500/20 text-rose-400' : isStaleWarning ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-400'
+                      isStaleActive ? 'bg-rose-100 text-rose-700' : isStaleWarning ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                     }`}>
                       <i className={`fa-solid ${isStaleActive ? 'fa-triangle-exclamation' : isStaleWarning ? 'fa-crosshairs' : 'fa-chess'}`}></i>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-zinc-400">Tactical System Status</div>
-                      <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                      <div className="text-[10px] uppercase font-bold text-[#6B7280]">Tactical System Status</div>
+                      <div className="text-xs sm:text-sm font-bold text-[#18191F] flex items-center gap-2">
                         <span>{state.tactic || 'Balanced'}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                           isStaleActive 
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                            ? 'bg-rose-100 text-rose-800 border border-rose-200' 
                             : isStaleWarning 
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}>
                           {isStaleActive 
                             ? 'Stale (-4 OVR Penalty)' 
@@ -2376,13 +2176,13 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-zinc-400 sm:text-right">
+                  <div className="text-xs text-[#6B7280] sm:text-right">
                     {isStaleActive ? (
-                      <span className="text-rose-300 font-semibold">Adapt philosophy in Headquarters for 5 MP to clear penalty.</span>
+                      <span className="text-rose-700 font-semibold">Adapt philosophy in Headquarters for 5 MP to clear penalty.</span>
                     ) : isStaleWarning ? (
-                      <span className="text-amber-300">Winning again with this tactic triggers staleness.</span>
+                      <span className="text-amber-800">Winning again with this tactic triggers staleness.</span>
                     ) : (
-                      <span className="text-zinc-400">Tactics are effective and unpredictable.</span>
+                      <span className="text-[#4B5563]">Tactics are effective and unpredictable.</span>
                     )}
                   </div>
                 </div>
@@ -2392,7 +2192,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             {/* ================= 5. PILLAR 4: HEAD COACH REVIEW ================= */}
             {activeTab === 'squad' && (
               <div id="section-coach" className="space-y-3 scroll-mt-6">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400/90 px-1 flex items-center gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 px-1 flex items-center gap-2">
                   <i className="fas fa-user-tie text-[11px]"></i>
                   Head Coach Review · Leadership & Contract
                 </div>
@@ -2401,32 +2201,32 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   const coach = state.currentCoach || seasonData.coachAtStartOfSim;
                   const isExpiring = (coach.contractYearsLeft ?? 0) <= 0;
                   return (
-                    <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-white/[0.06] shadow-sm flex flex-col justify-between">
+                    <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-[#E6E3DC] shadow-xs flex flex-col justify-between">
                       <div>
-                        <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-1 flex items-center justify-between">
+                        <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-1 flex items-center justify-between">
                           <span>Head Coach Tenure</span>
                           {isExpiring && (
-                            <span className="text-[9px] uppercase font-semibold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-400/30">
+                            <span className="text-[9px] uppercase font-semibold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
                               Expiring!
                             </span>
                           )}
                         </div>
-                        <h3 className="text-lg font-bold text-white tracking-tight flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-[#18191F] tracking-tight flex items-center justify-between">
                           <span>{coach.name}</span>
-                          <span className="text-xs font-semibold text-zinc-400">{coach.style}</span>
+                          <span className="text-xs font-semibold text-[#6B7280]">{coach.style}</span>
                         </h3>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 my-3">
-                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                          <div className="text-[9px] uppercase font-semibold text-zinc-400">Contract Remaining</div>
-                          <div className={`text-base font-bold tabular-nums mt-0.5 ${isExpiring ? 'text-rose-400' : 'text-white'}`}>
+                        <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                          <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Contract Remaining</div>
+                          <div className={`text-base font-bold tabular-nums mt-0.5 ${isExpiring ? 'text-rose-700' : 'text-[#18191F]'}`}>
                             {coach.contractYearsLeft ?? 0} Years
                           </div>
                         </div>
-                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                          <div className="text-[9px] uppercase font-semibold text-zinc-400">Tactical Boost</div>
-                          <div className={`text-base font-bold tabular-nums mt-0.5 ${coach.ovrBoost >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
+                          <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Tactical Boost</div>
+                          <div className={`text-base font-bold tabular-nums mt-0.5 ${coach.ovrBoost >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                             {coach.ovrBoost >= 0 ? `+${coach.ovrBoost}` : coach.ovrBoost} OVR
                           </div>
                         </div>
@@ -2439,9 +2239,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         const canPlus2 = currentYears + 2 <= 5;
 
                         return (
-                          <div className="pt-3 border-t border-white/[0.05] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="text-xs text-zinc-400">
-                              <span className="font-semibold text-white block">
+                          <div className="pt-3 border-t border-[#E6E3DC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="text-xs text-[#6B7280]">
+                              <span className="font-semibold text-[#18191F] block">
                                 {isMaxed ? 'Max Contract Length (5 Yrs)' : 'Extend Contract (Max 5 Yrs)'}
                               </span>
                               <span>{formatMoney(coach.cost)} / yr</span>
@@ -2452,8 +2252,8 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                                 onClick={() => canPlus1 && onRenewCoach(1)}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
                                   canPlus1
-                                    ? 'bg-sky-500 hover:bg-sky-400 text-white cursor-pointer shadow-sm'
-                                    : 'bg-white/[0.04] text-zinc-600 border border-white/[0.06] cursor-not-allowed opacity-50'
+                                    ? 'bg-[#18191F] hover:bg-[#2A2C35] text-white cursor-pointer shadow-xs'
+                                    : 'bg-[#F6F5F1] text-[#9CA3AF] border border-[#E6E3DC] cursor-not-allowed'
                                 }`}
                               >
                                 +1 Yr
@@ -2463,8 +2263,8 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                                 onClick={() => canPlus2 && onRenewCoach(2)}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
                                   canPlus2
-                                    ? 'bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/[0.1] cursor-pointer'
-                                    : 'bg-white/[0.04] text-zinc-600 border border-white/[0.06] cursor-not-allowed opacity-50'
+                                    ? 'bg-white hover:bg-[#EFECE4] text-[#18191F] border border-[#E6E3DC] cursor-pointer'
+                                    : 'bg-[#F6F5F1] text-[#9CA3AF] border border-[#E6E3DC] cursor-not-allowed'
                                 }`}
                               >
                                 +2 Yrs
@@ -2476,61 +2276,61 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     </div>
                   );
                 })() : seasonData.coachDepartureAlert ? (
-                  <div className="bg-rose-500/[0.06] rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-rose-500/30 shadow-sm">
+                  <div className="bg-rose-50/70 rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-rose-200 shadow-xs">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div>
-                        <div className="text-[10px] uppercase font-bold tracking-wider text-rose-300 mb-0.5">
+                        <div className="text-[10px] uppercase font-bold tracking-wider text-rose-700 mb-0.5">
                           {seasonData.coachDepartureAlert.isPoached
                             ? 'Head Coach Poached · Release Clause Triggered'
                             : 'Head Coach Departed · Resignation'}
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-white">
+                        <h3 className="text-base sm:text-lg font-bold text-[#18191F]">
                           {seasonData.coachDepartureAlert.coachName}{' '}
-                          <span className="text-xs font-semibold text-rose-300">
+                          <span className="text-xs font-semibold text-rose-700">
                             ({seasonData.coachDepartureAlert.ovrBoost >= 0 ? `+${seasonData.coachDepartureAlert.ovrBoost}` : seasonData.coachDepartureAlert.ovrBoost} OVR · {seasonData.coachDepartureAlert.style})
                           </span>
                         </h3>
                       </div>
                       {seasonData.coachDepartureAlert.isPoached && seasonData.coachDepartureAlert.buyoutFeeK > 0 && (
-                        <span className="px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold shrink-0">
+                        <span className="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shrink-0">
                           +{formatMoney(seasonData.coachDepartureAlert.buyoutFeeK)} Buyout Paid
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
+                    <p className="text-xs text-[#4B5563] leading-relaxed">
                       Departed at season end due to {seasonData.coachDepartureAlert.reason}. Visit the Staff Market in pre-season to appoint a new Head Coach.
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-white/[0.06] shadow-sm text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-400 text-lg mx-auto mb-3">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-[#E6E3DC] shadow-xs text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-[#FAF9F6] border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] text-lg mx-auto mb-3">
                       <i className="fas fa-user-tie"></i>
                     </div>
-                    <h3 className="text-base font-bold text-white mb-1">No Head Coach Appointed</h3>
-                    <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                    <h3 className="text-base font-bold text-[#18191F] mb-1">No Head Coach Appointed</h3>
+                    <p className="text-xs text-[#6B7280] max-w-md mx-auto">
                       Your squad navigated this campaign under interim management. Review and hire a specialist tactician in the pre-season staff market to elevate tactical strength.
                     </p>
                   </div>
                 )}
 
                 {/* Philosophical Pivot & Rebuild Advisory */}
-                <div className="bg-white/[0.03] rounded-2xl p-4 sm:p-5 border border-white/[0.06] mt-3">
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E6E3DC] mt-3 shadow-xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1.5 mb-0.5">
+                      <div className="text-[10px] uppercase font-bold text-amber-700 tracking-wider flex items-center gap-1.5 mb-0.5">
                         <i className="fa-solid fa-chess-knight text-xs"></i>
                         <span>Tactical Philosophy & Backroom Rebuild Direction</span>
                       </div>
-                      <h4 className="text-sm font-bold text-white">
+                      <h4 className="text-sm font-bold text-[#18191F]">
                         Current System: {state.tactic || 'Balanced'}
                       </h4>
-                      <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                      <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
                         {isStaleActive ? (
-                          <span className="text-rose-300">
+                          <span className="text-rose-700">
                             <strong>Obsolescence Active:</strong> League opposition has fully solved this philosophy (-4 OVR penalty in simulations). Head to the Coach room to adapt philosophy for 5 MP.
                           </span>
                         ) : isStaleWarning ? (
-                          <span className="text-amber-300">
+                          <span className="text-amber-800">
                             <strong>System Under Surveillance:</strong> Winning consecutive titles with this system. Adapting philosophy now protects your tactical unpredictability.
                           </span>
                         ) : (
@@ -2540,10 +2340,10 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         )}
                       </p>
                     </div>
-                    <div className="shrink-0 bg-white/[0.04] p-3 rounded-xl border border-white/[0.08] text-right">
-                      <div className="text-[10px] text-zinc-400 uppercase font-semibold">Management Points</div>
-                      <div className="text-base font-bold text-amber-300 tabular-nums">{state.skillPoints || 0} MP Available</div>
-                      <div className="text-[10px] text-zinc-400">5 MP to adapt system</div>
+                    <div className="shrink-0 bg-[#FAF9F6] p-3 rounded-xl border border-[#E6E3DC] text-right">
+                      <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Management Points</div>
+                      <div className="text-base font-bold text-amber-700 tabular-nums">{state.skillPoints || 0} MP Available</div>
+                      <div className="text-[10px] text-[#6B7280]">5 MP to adapt system</div>
                     </div>
                   </div>
                 </div>
@@ -2553,23 +2353,23 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             {/* ================= 6. PILLAR 5: BOARD EXPECTATIONS & ROADMAP ================= */}
             {activeTab === 'overview' && (
               <div id="section-board" className="space-y-3 scroll-mt-6">
-                <div className="text-xs font-semibold uppercase tracking-wider text-sky-400/90 px-1 flex items-center gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-sky-700 px-1 flex items-center gap-2">
                   <i className="fas fa-bullseye text-[11px]"></i>
                   Board Vision · Strategic Mandates & Trust
                 </div>
 
                 {(seasonData.isSackedRelegation || seasonData.isSacked) ? (
-                  <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl sm:rounded-3xl p-5 sm:p-6">
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl sm:rounded-3xl p-5 sm:p-6">
                     <div className="flex items-center gap-3.5 mb-2">
-                      <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg shrink-0">
+                      <div className="w-11 h-11 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 text-lg shrink-0">
                         <i className="fas fa-triangle-exclamation"></i>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-400">Board Resolution</div>
-                        <div className="text-base sm:text-lg font-bold text-white">Managerial Contract Terminated</div>
+                        <div className="text-[10px] uppercase font-semibold tracking-wider text-rose-700">Board Resolution</div>
+                        <div className="text-base sm:text-lg font-bold text-[#18191F]">Managerial Contract Terminated</div>
                       </div>
                     </div>
-                    <p className="text-xs text-zinc-300 leading-relaxed">
+                    <p className="text-xs text-[#4B5563] leading-relaxed">
                       {isTier1Only
                         ? `Following a bottom-3 finish in ${league.name}, the Board of Directors has immediately dismissed management for sporting failure. Since this country has no lower tier, the club remains in the league, but managerial immunity shields offer no protection against bottom-tier collapse.`
                         : isBottomTier
@@ -2578,41 +2378,41 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-white/[0.06] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-[#E6E3DC] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-sky-400 text-lg shrink-0 shadow-inner">
+                      <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-lg shrink-0">
                         <i className="fas fa-bullseye"></i>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-400 mb-0.5">
+                        <div className="text-[10px] uppercase font-semibold tracking-wider text-sky-700 mb-0.5">
                           Next Season Mandate
                         </div>
-                        <div className="text-base sm:text-lg font-bold text-white">
+                        <div className="text-base sm:text-lg font-bold text-[#18191F]">
                           Finish Top {state.boardTargetFinish || 15} or better mandated
                         </div>
-                        <div className="text-xs text-zinc-400 mt-0.5">
+                        <div className="text-xs text-[#6B7280] mt-0.5">
                           Target failure without immunity shields triggers termination review.
                         </div>
                       </div>
                     </div>
 
                     {/* Impact score progress bar */}
-                    <div className="bg-white/[0.02] p-3.5 rounded-2xl border border-white/[0.05] min-w-[260px]">
+                    <div className="bg-[#FAF9F6] p-3.5 rounded-2xl border border-[#E6E3DC] w-full md:w-auto md:min-w-[260px]">
                       <div className="flex justify-between items-center text-xs mb-1.5">
-                        <span className="font-semibold text-zinc-400">Club Impact & Trust</span>
-                        <span className="font-bold text-white tabular-nums">{state.clubImpactScore ?? 50}/100</span>
+                        <span className="font-semibold text-[#6B7280]">Club Impact & Trust</span>
+                        <span className="font-bold text-[#18191F] tabular-nums">{state.clubImpactScore ?? 50}/100</span>
                       </div>
-                      <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-[#EAE7E0] rounded-full overflow-hidden">
                         <div 
                           className={`h-full transition-all duration-700 ${
-                            (state.clubImpactScore ?? 50) >= 70 ? 'bg-emerald-400' : (state.clubImpactScore ?? 50) >= 40 ? 'bg-sky-400' : 'bg-rose-500'
+                            (state.clubImpactScore ?? 50) >= 70 ? 'bg-emerald-600' : (state.clubImpactScore ?? 50) >= 40 ? 'bg-sky-600' : 'bg-rose-600'
                           }`}
                           style={{ width: `${Math.min(100, Math.max(0, state.clubImpactScore ?? 50))}%` }}
                         />
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-zinc-400 mt-1 font-medium">
+                      <div className="flex justify-between items-center text-[10px] text-[#6B7280] mt-1 font-medium">
                         <span>Immunity Shields: {state.immunityShields ?? 0}</span>
-                        <span className={(state.clubImpactScore ?? 50) >= 70 ? 'text-emerald-400' : 'text-sky-300'}>
+                        <span className={(state.clubImpactScore ?? 50) >= 70 ? 'text-emerald-700' : 'text-sky-700'}>
                           {(state.clubImpactScore ?? 50) >= 70 ? 'Untouchable' : 'Stable'}
                         </span>
                       </div>
@@ -2625,37 +2425,37 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
             {/* ================= 7. PILLAR 6: LIVING UNIVERSE & WORLD FOOTBALL ================= */}
             {activeTab === 'world' && (
               <div id="section-universe" className="space-y-4 scroll-mt-6">
-                <div className="flex items-center justify-between text-xs px-1">
-                  <div className="font-semibold uppercase tracking-wider text-amber-400/90 flex items-center gap-2">
+                <div className="hidden sm:flex items-center justify-between text-xs px-1">
+                  <div className="font-semibold uppercase tracking-wider text-amber-700 flex items-center gap-2">
                     <i className="fa-solid fa-earth-americas text-[11px]"></i>
                     Global Football Universe & Seasonal Digest
                   </div>
-                  <span className="text-[10px] text-zinc-400 font-mono">
+                  <span className="text-[10px] text-[#6B7280] font-mono">
                     Season {seasonData.year} Ecosystem Digest
                   </span>
                 </div>
 
                 {/* Diverse Rival Challenger Headline in Global Universe */}
                 {superVillainClub && rivalChallengerEvent && (
-                  <div className="bg-gradient-to-r from-purple-950/40 via-fuchsia-950/30 to-indigo-950/30 border border-fuchsia-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/30 flex items-center justify-center p-2 shrink-0">
-                        <ClubLogo name={superVillainClub.name} club={superVillainClub} size={32} />
+                      <div className="w-11 h-11 rounded-xl bg-white border border-indigo-200 flex items-center justify-center p-2 shrink-0">
+                        <ClubLogo name={superVillainClub.name} club={superVillainClub} isModActive={effectiveModActive} size={32} />
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-fuchsia-400 tracking-wider">
+                        <div className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
                           BREAKING LEAGUE HEADLINE · {rivalChallengerEvent.badge?.toUpperCase() || 'NEW TITLE CHALLENGER'}
                         </div>
-                        <h4 className="text-sm sm:text-base font-bold text-white">
-                          {rivalChallengerEvent.headline || `${superVillainClub.name} Mounts Challenge Against ${state.club.name}`}
+                        <h4 className="text-sm sm:text-base font-bold text-[#18191F]">
+                          {(effectiveModActive ? rivalChallengerEvent.headline : undefined) || `${superVillainClub.name} Mounts Challenge Against ${displayClubName}`}
                         </h4>
-                        <p className="text-xs text-zinc-300 mt-0.5">
-                          {rivalChallengerEvent.desc || `A surging ${rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR domestic contender emerges in ${league.name}.`}
+                        <p className="text-xs text-[#4B5563] mt-0.5">
+                          {(effectiveModActive ? rivalChallengerEvent.desc : undefined) || `A surging ${rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR domestic contender emerges in ${league.name}.`}
                         </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-[11px] font-bold text-fuchsia-300 bg-fuchsia-500/20 px-3 py-1 rounded-full border border-fuchsia-400/30">
+                      <span className="text-[11px] font-bold text-indigo-700 bg-white px-3 py-1 rounded-full border border-indigo-200">
                         {rivalChallengerEvent.clubOvr || superVillainClub.baseOvr} OVR Threat
                       </span>
                     </div>
@@ -2663,13 +2463,13 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                 )}
 
                 {/* Continental & World Champions Marquee */}
-                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm">
-                  <div className="flex items-center justify-between mb-3 border-b border-white/[0.05] pb-2">
-                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <i className="fa-solid fa-trophy text-amber-400 text-xs"></i>
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[#E6E3DC] shadow-xs">
+                  <div className="flex items-center justify-between mb-3 border-b border-[#E6E3DC] pb-2">
+                    <span className="text-xs font-bold text-[#18191F] uppercase tracking-wider flex items-center gap-2">
+                      <i className="fa-solid fa-trophy text-amber-600 text-xs"></i>
                       World & Continental Silverware
                     </span>
-                    <span className="text-[10px] text-zinc-400">Major Continental Kings</span>
+                    <span className="text-[10px] text-[#6B7280]">Major Continental Kings</span>
                   </div>
 
                   {continentalChampions.length > 0 ? (
@@ -2677,9 +2477,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       {continentalChampions.map((c) => (
                         <div
                           key={c.id}
-                          className="bg-black/30 border border-white/[0.06] rounded-2xl p-3 flex items-center gap-3 relative overflow-hidden"
+                          className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3 flex items-center gap-3 relative overflow-hidden"
                         >
-                          <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 p-1">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-[#E6E3DC] flex items-center justify-center shrink-0 p-1">
                             <ClubLogo
                               name={c.clubName}
                               id={c.clubId}
@@ -2691,31 +2491,31 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider truncate">
+                            <div className="text-[10px] font-bold text-amber-700 uppercase tracking-wider truncate">
                               {c.fromLeagueName}
                             </div>
-                            <div className="text-xs font-bold text-white break-words">{c.clubName}</div>
-                            <div className="text-[10px] text-zinc-400 truncate mt-0.5">{c.reason}</div>
+                            <div className="text-xs font-bold text-[#18191F] break-words">{c.clubName}</div>
+                            <div className="text-[10px] text-[#6B7280] truncate mt-0.5">{c.reason}</div>
                           </div>
-                          <div className="text-amber-400 text-sm shrink-0 pr-1">🏆</div>
+                          <div className="text-amber-600 text-sm shrink-0 pr-1">🏆</div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-zinc-400 py-3 text-center">
+                    <div className="text-xs text-[#6B7280] py-3 text-center">
                       Continental tournaments in progress across the globe.
                     </div>
                   )}
                 </div>
 
                 {/* Domestic League Champions Grid */}
-                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm">
-                  <div className="flex items-center justify-between mb-3 border-b border-white/[0.05] pb-2">
-                    <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <i className="fa-solid fa-crown text-amber-400 text-xs"></i>
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[#E6E3DC] shadow-xs">
+                  <div className="flex items-center justify-between mb-3 border-b border-[#E6E3DC] pb-2">
+                    <span className="text-xs font-bold text-[#18191F] uppercase tracking-wider flex items-center gap-2">
+                      <i className="fa-solid fa-crown text-amber-600 text-xs"></i>
                       Domestic League Champions
                     </span>
-                    <span className="text-[10px] text-zinc-400">National League Winners</span>
+                    <span className="text-[10px] text-[#6B7280]">National League Winners</span>
                   </div>
 
                   {leagueChampions.length > 0 ? (
@@ -2723,9 +2523,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       {leagueChampions.map((c) => (
                         <div
                           key={c.id}
-                          className="bg-black/30 border border-white/[0.06] rounded-2xl p-2.5 flex items-center gap-2.5"
+                          className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-2.5 flex items-center gap-2.5"
                         >
-                          <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 p-1">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-[#E6E3DC] flex items-center justify-center shrink-0 p-1">
                             <ClubLogo
                               name={c.clubName}
                               id={c.clubId}
@@ -2737,17 +2537,17 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                             />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-[9px] font-bold text-sky-400 uppercase tracking-wider truncate">
+                            <div className="text-[9px] font-bold text-sky-700 uppercase tracking-wider truncate">
                               {c.fromLeagueName}
                             </div>
-                            <div className="text-xs font-bold text-white break-words">{c.clubName}</div>
+                            <div className="text-xs font-bold text-[#18191F] break-words">{c.clubName}</div>
                           </div>
-                          <i className="fa-solid fa-crown text-amber-400 text-xs shrink-0" />
+                          <i className="fa-solid fa-crown text-amber-600 text-xs shrink-0" />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-zinc-400 py-3 text-center">
+                    <div className="text-xs text-[#6B7280] py-3 text-center">
                       Domestic title battles concluded for this campaign.
                     </div>
                   )}
@@ -2755,19 +2555,19 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* Fallen Giants Crisis Alert */}
                 {fallenGiantsList.length > 0 && (
-                  <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-amber-500/10 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-300 uppercase tracking-wider mb-2">
-                      <i className="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                  <div className="bg-amber-50/70 border border-amber-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">
+                      <i className="fa-solid fa-triangle-exclamation text-amber-700"></i>
                       Fallen Giant Administration Alert
                     </div>
                     <div className="space-y-2">
                       {fallenGiantsList.map((g) => (
                         <div
                           key={g.id}
-                          className="bg-black/40 border border-amber-500/20 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          className="bg-white border border-amber-200 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 p-1">
+                            <div className="w-10 h-10 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC] flex items-center justify-center shrink-0 p-1">
                               <ClubLogo
                                 name={g.clubName}
                                 id={g.clubId}
@@ -2779,15 +2579,15 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                               />
                             </div>
                             <div className="min-w-0">
-                              <div className="text-sm font-bold text-white break-words">{g.clubName}</div>
-                              <div className="text-xs text-amber-300/90 font-medium">
+                              <div className="text-sm font-bold text-[#18191F] break-words">{g.clubName}</div>
+                              <div className="text-xs text-amber-800 font-medium">
                                 Demoted from {g.fromLeagueName} to {g.toLeagueName}
                               </div>
-                              <div className="text-[10px] text-zinc-400">{g.reason}</div>
+                              <div className="text-[10px] text-[#6B7280]">{g.reason}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                               Rebuild Challenge Target
                             </span>
                           </div>
@@ -2798,22 +2598,22 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                 )}
 
                 {/* Champions Almanac & Trophy Leaders */}
-                <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-[#E6E3DC] shadow-xs space-y-3 sm:space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6E3DC] pb-2.5 sm:pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <i className={`fa-solid ${worldAlmanacTab === 'almanac' ? 'fa-trophy text-amber-400' : 'fa-chart-simple text-emerald-400'} text-xs`}></i>
+                      <span className="text-xs font-bold text-[#18191F] uppercase tracking-wider flex items-center gap-2">
+                        <i className={`fa-solid ${worldAlmanacTab === 'almanac' ? 'fa-trophy text-amber-600' : 'fa-chart-simple text-emerald-700'} text-xs`}></i>
                         {worldAlmanacTab === 'almanac' ? 'Champions Almanac' : 'Top 5 Trophy Leaders'}
                       </span>
                     </div>
-                    <div className="bg-black/40 border border-white/[0.08] rounded-xl p-1 flex items-center gap-1">
+                    <div className="bg-[#EFECE4] border border-[#E6E3DC] rounded-xl p-1 flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setWorldAlmanacTab('almanac')}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                           worldAlmanacTab === 'almanac'
-                            ? 'bg-amber-500 text-slate-950'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-[#18191F] text-white shadow-xs'
+                            : 'text-[#6B7280] hover:text-[#18191F]'
                         }`}
                       >
                         Champions Almanac
@@ -2823,8 +2623,8 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                         onClick={() => setWorldAlmanacTab('leaders')}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                           worldAlmanacTab === 'leaders'
-                            ? 'bg-emerald-500 text-slate-950'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-[#18191F] text-white shadow-xs'
+                            : 'text-[#6B7280] hover:text-[#18191F]'
                         }`}
                       >
                         Top 5 Trophy Chart
@@ -2857,29 +2657,29 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                 {/* Blockbuster Heavyweight Transfers */}
                 {transferSagasList.length > 0 && (
-                  <div className="bg-white/[0.03] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-white/[0.06] shadow-sm">
-                    <div className="flex items-center justify-between mb-3 border-b border-white/[0.05] pb-2">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <i className="fa-solid fa-arrow-right-arrow-left text-sky-400 text-xs"></i>
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[#E6E3DC] shadow-xs">
+                    <div className="flex items-center justify-between mb-3 border-b border-[#E6E3DC] pb-2">
+                      <span className="text-xs font-bold text-[#18191F] uppercase tracking-wider flex items-center gap-2">
+                        <i className="fa-solid fa-arrow-right-arrow-left text-sky-700 text-xs"></i>
                         Blockbuster Heavyweight Transfer Sagas
                       </span>
-                      <span className="text-[10px] text-zinc-400">Continental Market</span>
+                      <span className="text-[10px] text-[#6B7280]">Continental Market</span>
                     </div>
                     <div className="space-y-2">
                       {transferSagasList.map((t) => (
                         <div
                           key={t.id}
-                          className="bg-black/30 border border-white/[0.05] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                          className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 font-bold shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 font-bold shrink-0">
                               <i className="fa-solid fa-user text-xs"></i>
                             </div>
                             <div className="min-w-0">
-                              <div className="text-xs font-semibold text-white truncate">{t.reason}</div>
+                              <div className="text-xs font-semibold text-[#18191F] truncate">{t.reason}</div>
                             </div>
                           </div>
-                          <span className="text-[10px] font-semibold text-sky-300 bg-sky-500/15 border border-sky-400/30 px-2.5 py-1 rounded-full self-start sm:self-auto shrink-0">
+                          <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full self-start sm:self-auto shrink-0">
                             Market Confirmed
                           </span>
                         </div>
@@ -2894,15 +2694,15 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
         </div>
 
         {/* ACTION FOOTER */}
-        <div className="p-4 sm:p-5 pb-safe border-t border-white/[0.06] bg-white/[0.02] backdrop-blur-md shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
+        <div className="p-2.5 sm:p-5 pb-safe border-t border-[#E6E3DC] bg-[#FAF9F6] shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 relative z-10">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={handleDownload}
               disabled={isDownloading}
-              className="px-4 py-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold transition border border-white/[0.08] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-initial"
+              className="px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white hover:bg-[#EFECE4] text-[#18191F] text-xs font-semibold transition border border-[#E6E3DC] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-initial"
               title="Export / Share Season Card"
             >
-              <i className={`fas ${isDownloading ? 'fa-spinner fa-spin' : 'fa-share-nodes'} text-sky-400`}></i>
+              <i className={`fas ${isDownloading ? 'fa-spinner fa-spin' : 'fa-share-nodes'} text-sky-700`}></i>
               <span>Share Card</span>
             </button>
 
@@ -2911,23 +2711,23 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
               onClick={() => {
                 switchTab('table');
               }}
-              className={`px-4 py-3 rounded-2xl text-xs font-semibold transition border flex items-center justify-center gap-2 cursor-pointer flex-1 sm:flex-initial ${
+              className={`px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl text-xs font-semibold transition border flex items-center justify-center gap-2 cursor-pointer flex-1 sm:flex-initial ${
                 activeTab === 'table'
-                  ? 'bg-sky-500/20 text-sky-300 border-sky-400/30 shadow-sm'
-                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border-white/[0.08]'
+                  ? 'bg-[#18191F] text-white border-[#18191F] shadow-xs'
+                  : 'bg-white hover:bg-[#EFECE4] text-[#18191F] border-[#E6E3DC]'
               }`}
             >
-              <i className={`fas ${activeTab === 'table' ? 'fa-table-cells-large text-sky-300' : 'fa-table text-sky-400'}`}></i>
+              <i className={`fas ${activeTab === 'table' ? 'fa-table-cells-large text-white' : 'fa-table text-sky-700'}`}></i>
               <span>League Table</span>
             </button>
           </div>
 
           <button
             onClick={onClose}
-            className="w-full sm:w-auto sm:min-w-[280px] py-3.5 px-6 rounded-2xl bg-sky-500 hover:bg-sky-400 active:scale-[0.98] text-white font-semibold text-sm tracking-wide transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer group"
+            className="w-full sm:w-auto sm:min-w-[280px] py-2.5 sm:py-3.5 px-6 rounded-xl sm:rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] active:scale-[0.98] text-white font-semibold text-sm tracking-wide transition-all shadow-xs flex items-center justify-center gap-3 cursor-pointer group"
           >
-            <span>Continue to Next Season <span className="hidden sm:inline font-normal text-xs text-sky-100/90">(Press Enter)</span></span>
-            <span className="text-xs text-sky-100 tabular-nums sm:hidden">({seasonData.year + 1})</span>
+            <span>Continue to Next Season <span className="hidden sm:inline font-normal text-xs text-white/75">(Press Enter)</span></span>
+            <span className="text-xs text-white/80 tabular-nums sm:hidden">({seasonData.year + 1})</span>
             <i className="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
           </button>
         </div>

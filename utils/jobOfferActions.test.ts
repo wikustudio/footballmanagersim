@@ -7,7 +7,7 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
 
     // Club card must be a div, not a clickable button
     expect(eventUiSrc).toContain('c.id || `${c.name}-${idx}`');
-    expect(eventUiSrc).toContain('className="w-full bg-white/[0.025] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col border border-white/[0.08] relative overflow-hidden text-left shadow-sm cursor-default"');
+    expect(eventUiSrc).toContain('className="w-full bg-[#F6F5F1] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col border border-[#E6E3DC] relative overflow-hidden text-left shadow-sm cursor-default"');
 
     // Ensure the card wrapper does not have onClick
     expect(eventUiSrc).not.toMatch(/<button\s+key=\{c\.id\s*\|\|\s*`\$\{c\.name\}-\$\{idx\}`\}\s+onClick=/);

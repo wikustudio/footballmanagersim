@@ -6,10 +6,12 @@ import {
   formatMoney,
   isTacticalSynergy,
   isReserveClub,
+  calculateExpectedAttendance,
   TACTICS,
   rand,
 } from '../data/gameConstants';
 import { ALL_CLUBS } from '../data/clubsData';
+import { resolveDivisionClubs, syncScheduleRunningPositions } from './standingsEngine';
 
 export interface VeteranRingerProfile {
   name: string;
@@ -548,6 +550,147 @@ export function pickTier1CupGiant(country: string = 'GER', clubsDb: Club[] = [],
 }
 
 /**
+ * Generates realistic matchday-by-matchday attendance fluctuations driven by
+ * opponent strength, derbies, season phase (opener / winter midweek / run-in),
+ * and running form, balanced so the arithmetic mean across the fixtures equals
+ * the target season average attendance (`targetAvgAtt`) whenever `targetAvgAtt <= stadiumCapacity`.
+ */
+export function buildFluctuatingMatchdayAttendances(params: {
+  fixtures: Array<{
+    matchday: number;
+    opponentId: number;
+    opponentOvr: number;
+    isHome?: boolean;
+    result?: 'W' | 'D' | 'L';
+    runningWins?: number;
+    runningLosses?: number;
+    isUpsetWin?: boolean;
+  }>;
+  targetAvgAtt: number;
+  stadiumCapacity: number;
+  leagueAvgOvr: number;
+  rivalClubId?: number;
+  seedYear?: number;
+}): number[] {
+  const {
+    fixtures,
+    targetAvgAtt,
+    stadiumCapacity,
+    leagueAvgOvr,
+    rivalClubId,
+    seedYear = 2026,
+  } = params;
+  const n = fixtures.length;
+  if (n === 0) return [];
+
+  const maxCap = Math.max(25, Math.round(stadiumCapacity || 10000));
+  const clampedTarget = Math.max(15, Math.min(maxCap, Math.round(targetAvgAtt || maxCap * 0.7)));
+
+  // If the target season average equals 100% stadium capacity, every matchday is a sellout
+  if (clampedTarget >= maxCap) {
+    return fixtures.map(() => maxCap);
+  }
+
+  const minFloor = Math.min(
+    clampedTarget - 1,
+    Math.max(15, Math.round(clampedTarget * 0.56))
+  );
+  const upHeadroomRatio = (maxCap - clampedTarget) / Math.max(1, clampedTarget);
+  const downHeadroomRatio = (clampedTarget - minFloor) / Math.max(1, clampedTarget);
+  // Scale natural swing so clubs at 55%-85% fill see lively ±14%-24% fixture swings,
+  // while clubs at 92%-98% fill swing realistically within their sellout ceiling
+  const swingScale = Math.min(
+    0.24,
+    Math.max(0.05, Math.min(upHeadroomRatio, downHeadroomRatio) * 0.92)
+  );
+
+  const rawSignals = fixtures.map((m, idx) => {
+    const md = m.matchday || idx + 1;
+    let signal = 0;
+
+    // 1. Derby / arch-rival surge
+    if (rivalClubId != null && m.opponentId === rivalClubId) {
+      signal += 0.95;
+    }
+
+    // 2. Visiting club stature & star power
+    const oppDelta = (m.opponentOvr || leagueAvgOvr) - leagueAvgOvr;
+    signal += Math.max(-0.65, Math.min(0.75, oppDelta * 0.08));
+
+    // 3. Calendar rhythm: Opening fortnight, title/survival run-in vs winter/midweek troughs
+    if (md === 1 || md === 2) {
+      signal += 0.42;
+    } else if (md >= 31) {
+      signal += 0.48;
+    } else if (md >= 11 && md <= 15) {
+      signal -= 0.44; // Cold late-autumn / winter trough
+    }
+    if (md % 5 === 3) {
+      signal -= 0.36; // Midweek floodlit fixture dip
+    } else if (md % 4 === 0) {
+      signal += 0.28; // Prime weekend slot
+    }
+
+    // 4. Running momentum & upset buzz
+    const netWins = (m.runningWins || 0) - (m.runningLosses || 0);
+    signal += Math.max(-0.35, Math.min(0.38, netWins * 0.03));
+    if (m.isUpsetWin) {
+      signal += 0.24;
+    }
+
+    // 5. Deterministic per-fixture micro-variation so no two matchdays look artificially identical
+    const hash = Math.sin((seedYear * 37 + md * 131 + (m.opponentId || 7) * 17) * 0.173);
+    signal += hash * 0.28;
+
+    return signal;
+  });
+
+  // Zero-center raw signals so baseline multiplier is centered around 1.0 before clamping
+  const meanSignal = rawSignals.reduce((acc, s) => acc + s, 0) / n;
+  const maxAbsSignal = Math.max(
+    0.5,
+    ...rawSignals.map((s) => Math.abs(s - meanSignal))
+  );
+
+  const attendances = rawSignals.map((s) => {
+    const normalized = (s - meanSignal) / maxAbsSignal; // [-1, 1]
+    const rawAtt = Math.round(clampedTarget * (1 + normalized * swingScale));
+    return Math.max(minFloor, Math.min(maxCap, rawAtt));
+  });
+
+  // Exact integer mean reconciliation: adjust unpinned matchdays so round(sum / n) === clampedTarget
+  const targetSum = clampedTarget * n;
+  let currentSum = attendances.reduce((acc, v) => acc + v, 0);
+  let guard = 0;
+
+  while (currentSum !== targetSum && guard < 400) {
+    guard++;
+    const diff = targetSum - currentSum;
+    const adjustableIndices: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (diff > 0 && attendances[i] < maxCap) adjustableIndices.push(i);
+      else if (diff < 0 && attendances[i] > minFloor) adjustableIndices.push(i);
+    }
+    if (adjustableIndices.length === 0) break;
+
+    const stepSign = diff > 0 ? 1 : -1;
+    const stepMag = Math.max(1, Math.floor(Math.abs(diff) / adjustableIndices.length));
+    for (const idx of adjustableIndices) {
+      if (currentSum === targetSum) break;
+      const remaining = Math.abs(targetSum - currentSum);
+      const room = stepSign > 0 ? maxCap - attendances[idx] : attendances[idx] - minFloor;
+      const delta = Math.min(room, stepMag, remaining);
+      if (delta > 0) {
+        attendances[idx] += stepSign * delta;
+        currentSum += stepSign * delta;
+      }
+    }
+  }
+
+  return attendances;
+}
+
+/**
  * Generates authentic football scorelines for a given sequence of 'W' | 'D' | 'L' outcomes
  * that sum up 100% to targetGf and targetGa.
  */
@@ -724,6 +867,7 @@ export function calculateProbabilisticSeason(
   options?: {
     lockFirstHalfFrom?: PendingSeasonState;
     dilemmaChoice?: 'A' | 'B';
+    predictedPointsDeducted?: number;
   }
 ): PendingSeasonState {
   const seasonLeague = state.club?.tier || 1;
@@ -738,6 +882,10 @@ export function calculateProbabilisticSeason(
   const currentSkillsKey = (state.managerSkills || []).slice().sort().join(',');
   const currentStadium = state.club?.stadium || 0;
   const currentStadiumPolicy = state.stadiumPolicy || 'balanced';
+  const currentPressureBoost = state.pressureBoostOvr || 0;
+  const currentMediaPressure = state.mediaPressure ?? 0;
+  const predictedDeduction = options?.predictedPointsDeducted ?? 0;
+  const isCursed = Boolean(state.glassCeilingCursed);
 
   // If we already have a valid pendingSeasonState for this exact year/tier and full state signature hasn't changed, return it
   const existing = options?.lockFirstHalfFrom || state.pendingSeasonState;
@@ -758,7 +906,10 @@ export function calculateProbabilisticSeason(
     (existing._meta?.hasBounceAtCalculation ?? currentHasBounce) === currentHasBounce &&
     (existing._meta?.skillsKeyAtCalculation ?? currentSkillsKey) === currentSkillsKey &&
     (existing._meta?.stadiumAtCalculation ?? currentStadium) === currentStadium &&
-    (existing._meta?.stadiumPolicyAtCalculation ?? currentStadiumPolicy) === currentStadiumPolicy
+    (existing._meta?.stadiumPolicyAtCalculation ?? currentStadiumPolicy) === currentStadiumPolicy &&
+    (existing._meta?.pressureBoostAtCalculation ?? currentPressureBoost) === currentPressureBoost &&
+    (existing._meta?.mediaPressureAtCalculation ?? currentMediaPressure) === currentMediaPressure &&
+    (existing._meta?.predictedPointsDeducted ?? predictedDeduction) === predictedDeduction
   ) {
     return existing;
   }
@@ -815,6 +966,14 @@ export function calculateProbabilisticSeason(
   // Morale modifier on on-pitch performance
   if (currentMorale >= 85) philosophyOvrBonus += 1.0;
   else if (currentMorale < 45) philosophyOvrBonus -= 1.5;
+
+  // Media pressure & siege mentality modifier
+  if (currentPressureBoost !== 0) {
+    philosophyOvrBonus += currentPressureBoost;
+  }
+  if (currentMediaPressure >= 80 && !state.pressureChoiceThisSeason) {
+    philosophyOvrBonus -= 1.0;
+  }
 
   const getLeagueAdvantage = (myTac: string, metaTac: string) => {
     const p = myTac === 'Catenaccio' || myTac === 'Defensive' ? 'Park the Bus' : myTac;
@@ -915,8 +1074,24 @@ export function calculateProbabilisticSeason(
     rawPos -= 1.5;
   }
 
+  if (predictedDeduction > 0) {
+    rawPos += Math.floor(predictedDeduction / 2.5);
+  }
   let approxPos = Math.max(1, Math.min(18, Math.round(rawPos)));
+  if (clubCountry === 'POR' && seasonLeague === 1) {
+    const isBigThree = ['Sporting', 'Benfica', 'Porto'].includes(state.club?.name || '');
+    if (!isBigThree && currentOvr < 95 && approxPos === 1 && Math.random() < 0.90) {
+      approxPos = 2;
+    }
+  }
   if (currentOvr >= 96 && Math.random() < 0.7) approxPos = 1;
+  if (isCursed && currentOvr < 96) {
+    if (seasonLeague === 1 && approxPos === 1 && Math.random() < 0.65) {
+      approxPos = rand(2, 3);
+    } else if (seasonLeague >= 2 && approxPos <= 2 && Math.random() < 0.65) {
+      approxPos = 3;
+    }
+  }
 
   const posPointsMap: Record<number, number> = {
     1: rand(76, 85),
@@ -1043,38 +1218,35 @@ export function calculateProbabilisticSeason(
     gf = Math.min(108, ga + minFeasibleGd);
   }
 
-  // Build division opponent list with safe fallbacks
+  // Build canonical 17 division opponents via single shared roster resolver
   const safeDb = Array.isArray(clubsDb) && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
-  let divisionOpponents = safeDb.filter(
-    (c) => (c.country || 'GER') === clubCountry && c.tier === seasonLeague && c.id !== state.club?.id
-  );
-  if (divisionOpponents.length === 0) {
-    divisionOpponents = safeDb.filter(
-      (c) => (c.country || 'GER') === clubCountry && c.id !== state.club?.id
-    );
-  }
-  if (divisionOpponents.length === 0) {
-    divisionOpponents = [
-      {
-        id: 99001,
-        name: 'Athletic Union FC',
-        tier: seasonLeague,
-        baseOvr: league.avgOvr,
-        color: '38bdf8',
-        stadium: 15000,
-        country: clubCountry,
-      },
-    ];
-  }
+  const divisionOpponents = resolveDivisionClubs({
+    clubsDb: safeDb,
+    country: clubCountry,
+    tier: seasonLeague,
+    year,
+    userClub: state.club,
+    excludeUserClub: true,
+    isModActive,
+    rivalClub: state.currentRival,
+  });
 
   // Check if 1st Half outcomes (MD 1-17) are locked in existing state
+  const candidateFirstHalf =
+    existing?._meta?.firstHalfOutcomes && existing._meta.firstHalfOutcomes.length === 17
+      ? existing._meta.firstHalfOutcomes
+      : existing?.matchdaySchedule && existing.matchdaySchedule.length >= 17
+      ? existing.matchdaySchedule.slice(0, 17)
+      : existing?.schedule && existing.schedule.length >= 17
+      ? existing.schedule.slice(0, 17)
+      : undefined;
   const lockedFirstHalf =
     existing &&
     existing.year === year &&
     existing.tier === seasonLeague &&
-    existing._meta?.firstHalfOutcomes &&
-    existing._meta.firstHalfOutcomes.length === 17
-      ? existing._meta.firstHalfOutcomes
+    candidateFirstHalf &&
+    candidateFirstHalf.length === 17
+      ? candidateFirstHalf
       : undefined;
 
   let schedule: MatchdayOutcome[] = [];
@@ -1277,36 +1449,108 @@ export function calculateProbabilisticSeason(
   }
 
   const finalPts = totalWins * 3 + totalDraws;
+  const netFinalPts = Math.max(0, finalPts - predictedDeduction);
   const finalGd = gf - ga;
-  // Re-harmonize approxPos with finalPts if 2nd half recalculated
+  // Re-harmonize approxPos with netFinalPts if 2nd half recalculated
   if (lockedFirstHalf) {
-    if (finalPts >= 76) approxPos = 1;
-    else if (finalPts >= 68) approxPos = 2;
-    else if (finalPts >= 61) approxPos = 3;
-    else if (finalPts >= 55) approxPos = 4;
-    else if (finalPts >= 51) approxPos = 5;
-    else if (finalPts >= 48) approxPos = 6;
-    else if (finalPts >= 45) approxPos = 7;
-    else if (finalPts >= 42) approxPos = 8;
-    else if (finalPts >= 40) approxPos = 9;
-    else if (finalPts >= 38) approxPos = 10;
-    else if (finalPts >= 35) approxPos = 11;
-    else if (finalPts >= 33) approxPos = 12;
-    else if (finalPts >= 31) approxPos = 13;
-    else if (finalPts >= 28) approxPos = 14;
-    else if (finalPts >= 26) approxPos = 15;
-    else if (finalPts >= 23) approxPos = 16;
-    else if (finalPts >= 19) approxPos = 17;
+    if (netFinalPts >= 76) approxPos = 1;
+    else if (netFinalPts >= 68) approxPos = 2;
+    else if (netFinalPts >= 61) approxPos = 3;
+    else if (netFinalPts >= 55) approxPos = 4;
+    else if (netFinalPts >= 51) approxPos = 5;
+    else if (netFinalPts >= 48) approxPos = 6;
+    else if (netFinalPts >= 45) approxPos = 7;
+    else if (netFinalPts >= 42) approxPos = 8;
+    else if (netFinalPts >= 40) approxPos = 9;
+    else if (netFinalPts >= 38) approxPos = 10;
+    else if (netFinalPts >= 35) approxPos = 11;
+    else if (netFinalPts >= 33) approxPos = 12;
+    else if (netFinalPts >= 31) approxPos = 13;
+    else if (netFinalPts >= 28) approxPos = 14;
+    else if (netFinalPts >= 26) approxPos = 15;
+    else if (netFinalPts >= 23) approxPos = 16;
+    else if (netFinalPts >= 19) approxPos = 17;
     else approxPos = 18;
+    if (isCursed && currentOvr < 96) {
+      if (seasonLeague === 1 && approxPos === 1 && Math.random() < 0.65) {
+        approxPos = rand(2, 3);
+      } else if (seasonLeague >= 2 && approxPos <= 2 && Math.random() < 0.65) {
+        approxPos = 3;
+      }
+    }
     if (schedule.length > 0) {
       schedule[schedule.length - 1].runningPos = approxPos;
       schedule[schedule.length - 1].runningPosition = approxPos;
     }
   }
 
-  const firstHalfSlice = schedule.slice(0, 17);
+  const expectedSeasonAtt = calculateExpectedAttendance({
+    club: state.club,
+    tier: seasonLeague,
+    year,
+    ownership: state.ownership,
+    stadiumPolicy: state.stadiumPolicy,
+  });
 
-  return {
+  if (lockedFirstHalf) {
+    // Preserve locked 1st-half matchday attendances (backfilling if absent on legacy saves)
+    const fhMissingAtt = lockedFirstHalf.some((m) => typeof m.attendance !== 'number' || m.attendance <= 0);
+    const fhAttendances = fhMissingAtt
+      ? buildFluctuatingMatchdayAttendances({
+          fixtures: lockedFirstHalf,
+          targetAvgAtt: existing?.expectedSeasonAtt || expectedSeasonAtt,
+          stadiumCapacity: currentStadium || 10000,
+          leagueAvgOvr: league.avgOvr,
+          rivalClubId: state.currentRival?.id,
+          seedYear: year,
+        })
+      : lockedFirstHalf.map((m) => m.attendance as number);
+
+    const shSlice = schedule.slice(17);
+    const shAttendances = buildFluctuatingMatchdayAttendances({
+      fixtures: shSlice,
+      targetAvgAtt: expectedSeasonAtt,
+      stadiumCapacity: currentStadium || 10000,
+      leagueAvgOvr: league.avgOvr,
+      rivalClubId: state.currentRival?.id,
+      seedYear: year + 100,
+    });
+
+    schedule = schedule.map((m, idx) => ({
+      ...m,
+      attendance: idx < 17 ? fhAttendances[idx] : shAttendances[idx - 17],
+    }));
+  } else {
+    const fullAttendances = buildFluctuatingMatchdayAttendances({
+      fixtures: schedule,
+      targetAvgAtt: expectedSeasonAtt,
+      stadiumCapacity: currentStadium || 10000,
+      leagueAvgOvr: league.avgOvr,
+      rivalClubId: state.currentRival?.id,
+      seedYear: year,
+    });
+    schedule = schedule.map((m, idx) => ({
+      ...m,
+      attendance: fullAttendances[idx],
+    }));
+  }
+
+  const lockedFirstHalfAnchorPos =
+    lockedFirstHalf && options?.lockFirstHalfFrom
+      ? options.lockFirstHalfFrom._meta?.lockedFirstHalfAnchorPos ??
+        options.lockFirstHalfFrom.pos ??
+        options.lockFirstHalfFrom.approxPos
+      : undefined;
+  const lockedFirstHalfAnchorPts =
+    lockedFirstHalf && options?.lockFirstHalfFrom
+      ? options.lockFirstHalfFrom._meta?.lockedFirstHalfAnchorPts ?? options.lockFirstHalfFrom.pts
+      : undefined;
+  const lockedFirstHalfAnchorGd =
+    lockedFirstHalf && options?.lockFirstHalfFrom
+      ? options.lockFirstHalfFrom._meta?.lockedFirstHalfAnchorGd ?? options.lockFirstHalfFrom.gd
+      : undefined;
+
+  const draftPending: PendingSeasonState = {
     year,
     tier: seasonLeague,
     country: clubCountry,
@@ -1324,6 +1568,38 @@ export function calculateProbabilisticSeason(
     gd: finalGd,
     effectiveOvr: Math.round(effectiveOvrForSim),
     leagueAvgOvr: league.avgOvr,
+    expectedSeasonAtt,
+    schedule,
+    matchdaySchedule: schedule,
+    _meta: {
+      ovrAtCalculation: currentOvr,
+      moraleAtCalculation: currentMorale,
+      tacticAtCalculation: currentTactic,
+      lockedFirstHalfAnchorPos,
+      lockedFirstHalfAnchorPts,
+      lockedFirstHalfAnchorGd,
+    },
+  };
+
+  // Single Source of Truth: stamp exact real-table runningPos/runningPosition for MD 1..34
+  const synced = syncScheduleRunningPositions({
+    year,
+    country: clubCountry,
+    tier: seasonLeague,
+    totalMatchdays: 34,
+    userClub: state.club,
+    peers: divisionOpponents,
+    pendingSeasonState: draftPending,
+    rivalClub: state.currentRival,
+    userPointsDeducted: predictedDeduction,
+    isModActive,
+  });
+
+  schedule = synced.schedule;
+  const firstHalfSlice = schedule.slice(0, 17);
+
+  return {
+    ...draftPending,
     schedule,
     matchdaySchedule: schedule,
     _meta: {
@@ -1343,8 +1619,15 @@ export function calculateProbabilisticSeason(
       skillsKeyAtCalculation: currentSkillsKey,
       stadiumAtCalculation: currentStadium,
       stadiumPolicyAtCalculation: currentStadiumPolicy,
-      midPos: existing?._meta?.midPos,
-      midPts: existing?._meta?.midPts,
+      pressureBoostAtCalculation: currentPressureBoost,
+      mediaPressureAtCalculation: currentMediaPressure,
+      predictedPointsDeducted: predictedDeduction,
+      cursedAtCalculation: isCursed,
+      midPos: synced.midPos,
+      midPts: synced.midPts,
+      lockedFirstHalfAnchorPos,
+      lockedFirstHalfAnchorPts,
+      lockedFirstHalfAnchorGd,
     },
   };
 }

@@ -11,6 +11,8 @@ import { PrestigeTrophy } from './PrestigeTrophy';
 import { getCompetitionTheme } from '../utils/prestigeTheme';
 import { BroadcastBadge } from './BroadcastBadge';
 import { isCanadianMLSClub, isReserveClub, rand } from '../data/gameConstants';
+import { getCompetitionLogo } from '../utils/competitionLogos';
+import { CompetitionLogo } from './CompetitionLogo';
 
 interface CupRunModalProps {
   clubsDb?: Club[];
@@ -914,11 +916,11 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   const netBus = ensureDistinctCupProb(rawBus, -3);
 
   const getRpsColor = (choice: string) => {
-    if (!opponent || !canSeeOdds) return 'text-zinc-500';
+    if (!opponent || !canSeeOdds) return 'text-[#6B7280]';
     const prob = getRpsWinProb(choice);
-    if (prob >= 60) return 'text-emerald-400';
-    if (prob <= 40) return 'text-rose-400';
-    return 'text-sky-400';
+    if (prob >= 60) return 'text-emerald-700';
+    if (prob <= 40) return 'text-rose-700';
+    return 'text-sky-700';
   };
 
   const computeRawRpsWinProb = (choice: string) => {
@@ -1407,18 +1409,18 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-4 pt-3.5 sm:pt-4 pb-6 backdrop-blur-2xl bg-black/75 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-4 pt-3.5 sm:pt-4 pb-6 bg-[#18191F]/50 backdrop-blur-sm overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-2xl bg-[#12141c]/90 backdrop-blur-2xl rounded-[20px] sm:rounded-[32px] border border-white/[0.08] p-3.5 sm:p-7 my-auto shadow-[0_24px_64px_rgba(0,0,0,0.6)] relative overflow-hidden text-left shrink-0"
+        className="w-full max-w-2xl bg-white rounded-[20px] sm:rounded-[32px] border border-[#E6E3DC] p-3.5 sm:p-7 my-auto shadow-[0_24px_64px_rgba(24,25,31,0.16)] relative overflow-hidden text-left shrink-0"
       >
-        {/* Subtle Ambient Prestige Accent Glow */}
-        <div 
-          className="absolute -top-28 -right-28 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
+        {/* Subtle Ambient Prestige Accent Tint */}
+        <div
+          className="absolute -top-28 -right-28 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-15"
           style={{ background: theme.accentHex }}
         />
 
@@ -1428,14 +1430,14 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
         {stage === 'tactics' && opponent && (
           <div className="flex flex-col gap-3.5 sm:gap-5 relative z-10 animate-in fade-in duration-300">
             {/* Header: Trophy Presentation & Tournament Title */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 border-b border-white/[0.06] pb-3 sm:pb-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 border-b border-[#E6E3DC] pb-3 sm:pb-4">
               <div className="flex items-center gap-3 sm:gap-4 text-center sm:text-left">
                 {/* Prestige Trophy Sized by Prestige Level */}
                 <div className="relative shrink-0 flex items-center justify-center">
                   <PrestigeTrophy
                     type={cupRun.id}
                     size={responsiveTrophyHeight}
-                    className="drop-shadow-lg max-h-16 sm:max-h-none w-auto"
+                    className="drop-shadow-sm max-h-16 sm:max-h-none w-auto"
                   />
                 </div>
                 <div>
@@ -1443,30 +1445,42 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     <span className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${theme.tagPillBg}`}>
                       {theme.badgeLabel.en}
                     </span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-300 bg-sky-500/10 border border-sky-400/20 px-2.5 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full">
                       {round === 'quarter' ? 'Quarter-Final' : round === 'semi' ? 'Semi-Final' : 'Grand Final'}
                     </span>
-                    <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                    <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                      <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                    </div>
                   </div>
-                  <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
-                    {displayNameEn}
+                  <h2 className="text-lg sm:text-2xl font-bold text-[#18191F] tracking-tight flex items-center justify-center sm:justify-start gap-2">
+                    <CompetitionLogo
+                      kind={['cl', 'el', 'ecl', 'cwc'].includes(cupRun.id) ? 'continental' : 'cup'}
+                      competitionId={cupRun.id}
+                      country={effectiveCountry}
+                      tier={gameState.club.tier}
+                      isModActive={isModActive}
+                      alt={displayNameEn}
+                      className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0"
+                      data-testid="cup-run-comp-logo"
+                    />
+                    <span>{displayNameEn}</span>
                   </h2>
-                  <p className="text-xs text-zinc-400 flex items-center justify-center sm:justify-start gap-1.5 mt-0.5 sm:mt-1 font-normal">
-                    <i className="fa-solid fa-location-dot text-zinc-500 text-[10px]" />
+                  <p className="text-xs text-[#6B7280] flex items-center justify-center sm:justify-start gap-1.5 mt-0.5 sm:mt-1 font-normal">
+                    <i className="fa-solid fa-location-dot text-[#6B7280] text-[10px]" />
                     <span>{stadium.name}</span>
-                    <span className="text-zinc-600">·</span>
-                    <span className="tabular-nums text-zinc-300">{(stadium?.capacity ?? 15000).toLocaleString()}</span> capacity
+                    <span className="text-[#D1CEC7]">·</span>
+                    <span className="tabular-nums text-[#4B5563] font-medium">{(stadium?.capacity ?? 15000).toLocaleString()}</span> capacity
                   </p>
                 </div>
               </div>
 
               {/* Head Coach Pill */}
-              <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl px-3.5 py-2 text-right shrink-0 hidden sm:block">
-                <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Head Coach</div>
-                <div className="text-xs font-bold text-white truncate max-w-[140px] mt-0.5">
+              <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl px-3.5 py-2 text-right shrink-0 hidden sm:block">
+                <div className="text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold">Head Coach</div>
+                <div className="text-xs font-bold text-[#18191F] truncate max-w-[140px] mt-0.5">
                   {gameState.currentCoach?.name || 'Head Coach'}
                 </div>
-                <div className="text-[10px] text-zinc-400 truncate max-w-[140px]">
+                <div className="text-[10px] text-[#6B7280] truncate max-w-[140px]">
                   {gameState.currentCoach?.role || 'Staff Lead'}
                 </div>
               </div>
@@ -1475,23 +1489,25 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
             {/* Arch Rival Derby Alert */}
             {opponent.isDerby && (
               <div className="w-full text-center">
-                <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-rose-300 font-semibold text-xs uppercase tracking-wider shadow-sm">
-                  <i className="fas fa-fire text-rose-400 text-xs" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 font-semibold text-xs uppercase tracking-wider shadow-sm">
+                  <i className="fas fa-fire text-rose-600 text-xs" />
                   <span>Arch Rival · Fierce Cup Derby</span>
-                  <i className="fas fa-fire text-rose-400 text-xs" />
+                  <i className="fas fa-fire text-rose-600 text-xs" />
                 </div>
               </div>
             )}
 
             {/* Matchup Card with Broadcast Presentation Header */}
-            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-2xl p-3 sm:p-5 shadow-sm space-y-2 sm:space-y-3">
+            <div className="bg-[#F6F5F1] border border-[#E6E3DC] rounded-2xl p-3 sm:p-5 shadow-sm space-y-2 sm:space-y-3">
               {isModActive && (
-                <div className="flex items-center justify-between border-b border-white/[0.05] pb-1.5 sm:pb-2 text-[10px]">
-                  <span className="text-zinc-400 font-semibold tracking-wider uppercase flex items-center gap-1.5">
-                    <i className="fa-solid fa-satellite-dish text-sky-400 text-xs" />
+                <div className="flex items-center justify-between border-b border-[#E6E3DC] pb-1.5 sm:pb-2 text-[10px]">
+                  <span className="text-[#4B5563] font-semibold tracking-wider uppercase flex items-center gap-1.5">
+                    <i className="fa-solid fa-satellite-dish text-sky-600 text-xs" />
                     <span>Official Matchday Broadcast</span>
                   </span>
-                  <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                  <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                    <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-7 items-center">
@@ -1507,20 +1523,20 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                   className="w-11 h-11 sm:w-16 sm:h-16 object-contain mb-1 drop-shadow-sm"
                   fallbackClassName="w-11 h-11 sm:w-16 sm:h-16 text-xs sm:text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1"
                 />
-                <div className="text-lg sm:text-2xl font-bold text-emerald-400 tabular-nums">{playerOvr}</div>
+                <div className="text-lg sm:text-2xl font-bold text-emerald-700 tabular-nums">{playerOvr}</div>
                 {hasTacticalGeniusPerk && (
-                  <span className="text-[9px] font-semibold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/25 tracking-wider mt-0.5">
+                  <span className="text-[9px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 tracking-wider mt-0.5">
                     +2 GENIUS
                   </span>
                 )}
-                <div className="text-xs sm:text-sm font-bold text-white truncate max-w-[110px] sm:max-w-[130px] mt-0.5 py-0.5 leading-normal">{club.name}</div>
-                <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold mt-0.5">{gameState.tactic}</div>
+                <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[110px] sm:max-w-[130px] mt-0.5 py-0.5 leading-normal">{club.name}</div>
+                <div className="text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold mt-0.5">{gameState.tactic}</div>
               </div>
 
               {/* VS Centerpiece */}
               <div className="col-span-1 flex flex-col items-center justify-center">
-                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">VS</span>
-                <span className="text-[9px] tabular-nums text-zinc-600 mt-1">90' K.O.</span>
+                <span className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">VS</span>
+                <span className="text-[9px] tabular-nums text-[#6B7280] mt-1">90' K.O.</span>
               </div>
 
               {/* Opponent Team */}
@@ -1535,9 +1551,9 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                   className="w-11 h-11 sm:w-16 sm:h-16 object-contain mb-1 drop-shadow-sm"
                   fallbackClassName="w-11 h-11 sm:w-16 sm:h-16 text-xs sm:text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1"
                 />
-                <div className="text-lg sm:text-2xl font-bold text-rose-400 tabular-nums">{opponent.ovr}</div>
-                <div className="text-xs sm:text-sm font-bold text-white truncate max-w-[110px] sm:max-w-[130px] mt-0.5 py-0.5 leading-normal">{opponent.name}</div>
-                <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold mt-0.5">
+                <div className="text-lg sm:text-2xl font-bold text-rose-700 tabular-nums">{opponent.ovr}</div>
+                <div className="text-xs sm:text-sm font-bold text-[#18191F] truncate max-w-[110px] sm:max-w-[130px] mt-0.5 py-0.5 leading-normal">{opponent.name}</div>
+                <div className="text-[10px] text-[#6B7280] uppercase tracking-wider font-semibold mt-0.5">
                   {canSeeOdds ? opponent.tactic : '???'}
                 </div>
               </div>
@@ -1547,41 +1563,41 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
             {/* Tactical Directives / Recommendations Panel */}
             <div className="flex flex-col gap-2 sm:gap-2.5">
               <div className="flex items-center justify-between text-xs px-1">
-                <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
-                  <i className="fa-solid fa-clipboard-list text-sky-400 text-xs" />
+                <span className="font-semibold text-[#18191F] flex items-center gap-1.5">
+                  <i className="fa-solid fa-clipboard-list text-sky-600 text-xs" />
                   <span>Director Recommendation to Head Coach</span>
                 </span>
-                <span className="text-zinc-500 text-[11px] font-medium">
+                <span className="text-[#6B7280] text-[11px] font-medium">
                   {isTacticalDuel ? 'Counter System' : 'Gameplan Approach'}
                 </span>
               </div>
 
               {/* Scout Insight & Identity Alignment Bar */}
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2 text-xs flex flex-col gap-1.5">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-xl px-3 py-2 text-xs flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-zinc-400 flex items-center gap-1.5 text-[11px] sm:text-xs">
-                    <i className="fa-solid fa-compass text-sky-400 text-[11px]" />
-                    <span>Club Philosophy: <strong className="text-white font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
-                    <span className="text-zinc-600">·</span>
-                    <span>Coach: <strong className="text-sky-300 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
+                  <span className="text-[#4B5563] flex items-center gap-1.5 text-[11px] sm:text-xs">
+                    <i className="fa-solid fa-compass text-sky-600 text-[11px]" />
+                    <span>Club Philosophy: <strong className="text-[#18191F] font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
+                    <span className="text-[#D1CEC7]">·</span>
+                    <span>Coach: <strong className="text-sky-700 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
                   </span>
                   {hasTacticalGeniusPerk ? (
-                    <span className="font-semibold text-white text-[11px] sm:text-xs">
-                      <i className="fa-solid fa-chess-knight text-amber-400 text-[10px] mr-1" />
-                      Tactical Genius: Opponent plays <strong className="text-amber-300 font-semibold">{opponent.tactic}</strong>
+                    <span className="font-semibold text-[#18191F] text-[11px] sm:text-xs">
+                      <i className="fa-solid fa-chess-knight text-amber-600 text-[10px] mr-1" />
+                      Tactical Genius: Opponent plays <strong className="text-amber-700 font-semibold">{opponent.tactic}</strong>
                     </span>
                   ) : coachUnderstandsOpponent ? (
-                    <span className="font-semibold text-sky-200 text-[11px] sm:text-xs">
-                      <i className="fa-solid fa-chess text-sky-400 text-[10px] mr-1" />
-                      Tactical Master Coach decoded <strong className="text-amber-300 font-semibold">{opponent.tactic}</strong>
+                    <span className="font-semibold text-sky-800 text-[11px] sm:text-xs">
+                      <i className="fa-solid fa-chess text-sky-600 text-[10px] mr-1" />
+                      Tactical Master Coach decoded <strong className="text-amber-700 font-semibold">{opponent.tactic}</strong>
                     </span>
                   ) : isTacticalMasterCoach ? (
-                    <span className="text-zinc-500 italic text-[10px] sm:text-[11px]">
+                    <span className="text-[#6B7280] italic text-[10px] sm:text-[11px]">
                       <i className="fa-solid fa-lock text-[10px] mr-1" />
                       Coach couldn't decode {opponent.name} · Activate 'Tactical Genius' perk for all odds
                     </span>
                   ) : (
-                    <span className="text-zinc-500 italic text-[10px] sm:text-[11px]">
+                    <span className="text-[#6B7280] italic text-[10px] sm:text-[11px]">
                       <i className="fa-solid fa-lock text-[10px] mr-1" />
                       Activate 'Tactical Genius' manager perk to reveal opponent system &amp; odds
                     </span>
@@ -1595,75 +1611,75 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                   <>
                     <button
                       onClick={() => handleTacticalDuelChoice('Gegenpressing')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                        <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                           ⚡ Gegenpressing
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Beats Tiki-Taka · Vulnerable to Direct Counter</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Tiki-Taka · Vulnerable to Direct Counter</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Gegenpressing')}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Gegenpressing')}`}>
                         {canSeeOdds ? `${getRpsWinProb('Gegenpressing')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticalDuelChoice('Direct Counter')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                        <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                           🎯 Direct Counter
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Direct Counter')}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Direct Counter')}`}>
                         {canSeeOdds ? `${getRpsWinProb('Direct Counter')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticalDuelChoice('Catenaccio')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                        <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                           🛡️ Catenaccio (Park the Bus)
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Catenaccio')}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Catenaccio')}`}>
                         {canSeeOdds ? `${getRpsWinProb('Catenaccio')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticalDuelChoice('Tiki-Taka')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs group-hover:text-emerald-300 transition-colors">
+                        <div className="font-semibold text-[#18191F] text-xs group-hover:text-emerald-700 transition-colors">
                           🧠 Tiki-Taka
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
                         {canSeeOdds ? `${getRpsWinProb('Tiki-Taka')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticalDuelChoice('Total Football')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between group cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs group-hover:text-sky-300 transition-colors">
+                        <div className="font-semibold text-[#18191F] text-xs group-hover:text-sky-700 transition-colors">
                           ⚖️ Total Football
                         </div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${getRpsColor('Total Football')}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Total Football')}`}>
                         {canSeeOdds ? `${getRpsWinProb('Total Football')}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
@@ -1672,65 +1688,65 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                   <>
                     <button
                       onClick={() => handleTacticChoice('strengths')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">Play to Squad Strengths ({gameState.tactic || 'Club Identity'})</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Execute your established club philosophy &amp; coach alignment</div>
+                        <div className="font-semibold text-[#18191F] text-xs">Play to Squad Strengths ({gameState.tactic || 'Club Identity'})</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Execute your established club philosophy &amp; coach alignment</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-emerald-700' : 'text-[#6B7280]'}`}>
                         {canSeeOdds ? `${netSafe}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticChoice('high_press')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">High Press Gamble (Gegenpressing Direction)</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Relentless high line · Thrives on Pressing identity, clashes with Low Block</div>
+                        <div className="font-semibold text-[#18191F] text-xs">High Press Gamble (Gegenpressing Direction)</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Relentless high line · Thrives on Pressing identity, clashes with Low Block</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-amber-400' : 'text-zinc-500'}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-amber-700' : 'text-[#6B7280]'}`}>
                         {canSeeOdds ? `${netPress}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticChoice('attack')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">All Out Attack (Possession / Total Football)</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Maximum offensive overload · Favors attacking &amp; possession setups</div>
+                        <div className="font-semibold text-[#18191F] text-xs">All Out Attack (Possession / Total Football)</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Maximum offensive overload · Favors attacking &amp; possession setups</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-emerald-700' : 'text-[#6B7280]'}`}>
                         {canSeeOdds ? `${netAttack}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticChoice('bus')}
-                      className="w-full bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] hover:border-[#18191F]/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-white text-xs">Park the Bus (Catenaccio Low Block)</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">Ultra-defensive posture · Severe penalty if club/coach play High Press</div>
+                        <div className="font-semibold text-[#18191F] text-xs">Park the Bus (Catenaccio Low Block)</div>
+                        <div className="text-[11px] text-[#6B7280] mt-0.5">Ultra-defensive posture · Severe penalty if club/coach play High Press</div>
                       </div>
-                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.06] shrink-0 ${canSeeOdds ? 'text-sky-400' : 'text-zinc-500'}`}>
+                      <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-sky-700' : 'text-[#6B7280]'}`}>
                         {canSeeOdds ? `${netBus}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
 
                     <button
                       onClick={() => handleTacticChoice('set_pieces')}
-                      className="w-full bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                      className="w-full bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
                     >
                       <div>
-                        <div className="font-semibold text-emerald-300 text-xs">Set-Piece Focus (Underdog Strategy)</div>
-                        <div className="text-[11px] text-emerald-200/70 mt-0.5">Pin all hope on corners and free-kicks</div>
+                        <div className="font-semibold text-emerald-900 text-xs">Set-Piece Focus (Underdog Strategy)</div>
+                        <div className="text-[11px] text-emerald-700 mt-0.5">Pin all hope on corners and free-kicks</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-emerald-300 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 shrink-0">
+                      <div className="text-xs tabular-nums font-semibold text-emerald-800 px-2.5 py-1 rounded-xl bg-white border border-emerald-200 shrink-0">
                         {canSeeOdds ? '33% Fixed Prob' : '???% Odds'}
                       </div>
                     </button>
@@ -1738,16 +1754,16 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     <button
                       onClick={() => handleTacticChoice('mp_boost')}
                       disabled={availableMp < 5}
-                      className={`w-full ${availableMp >= 5 ? 'bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 cursor-pointer' : 'bg-white/[0.02] border border-white/[0.05] opacity-40 cursor-not-allowed'} p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between gap-3 active:scale-[0.99]`}
+                      className={`w-full ${availableMp >= 5 ? 'bg-amber-50 hover:bg-amber-100/70 border border-amber-200 cursor-pointer' : 'bg-[#FAF9F6] border border-[#E6E3DC] opacity-50 cursor-not-allowed'} p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between gap-3 active:scale-[0.99]`}
                     >
                       <div className="min-w-0">
-                        <div className="font-semibold text-amber-300 text-xs flex items-center gap-1.5">
+                        <div className="font-semibold text-amber-900 text-xs flex items-center gap-1.5">
                           <span className="truncate">Masterclass Directive</span>
-                          <span className="text-[11px] font-bold bg-amber-500/25 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-500/40 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
+                          <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
                         </div>
-                        <div className="text-[11px] text-amber-200/70 mt-0.5">+12 OVR tactical blueprint boost</div>
+                        <div className="text-[11px] text-amber-800 mt-0.5">+12 OVR tactical blueprint boost</div>
                       </div>
-                      <div className="text-xs tabular-nums font-semibold text-amber-300 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 whitespace-nowrap shrink-0">
+                      <div className="text-xs tabular-nums font-semibold text-amber-900 px-2.5 py-1 rounded-xl bg-white border border-amber-200 whitespace-nowrap shrink-0">
                         {canSeeOdds ? `${calcProb(12)}% Win Prob` : '???% Odds'}
                       </div>
                     </button>
@@ -1764,50 +1780,60 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
         {stage === 'match' && opponent && (
           <div className="flex flex-col items-center justify-center min-h-[360px] animate-in fade-in duration-300 py-2 relative z-10">
             {/* Broadcast Scoreboard Header */}
-            <div className="w-full max-w-md rounded-[24px] border border-white/[0.08] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-[#12141c]/95 backdrop-blur-2xl">
+            <div className="w-full max-w-md rounded-[24px] border border-[#E6E3DC] overflow-hidden shadow-[0_12px_32px_rgba(24,25,31,0.08)] bg-[#F6F5F1]">
               {/* Competition Banner */}
-              <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02] gap-2">
+              <div className="px-4 py-2.5 border-b border-[#E6E3DC] flex items-center justify-between bg-white gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <i className={`fas ${theme.iconClass} text-xs ${theme.bannerAccentText} shrink-0`} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-white truncate">
+                  <CompetitionLogo
+                    kind={['cl', 'el', 'ecl', 'cwc'].includes(cupRun.id) ? 'continental' : 'cup'}
+                    competitionId={cupRun.id}
+                    country={effectiveCountry}
+                    tier={gameState.club.tier}
+                    isModActive={isModActive}
+                    alt={cupRun.nameEn}
+                    className="w-5 h-5 object-contain shrink-0"
+                  />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#18191F] truncate">
                     {cupRun.nameEn}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 tabular-nums">
-                    <span className="text-sky-300 font-semibold">{round === 'quarter' ? 'QF' : round === 'semi' ? 'SF' : 'FINAL'}</span>
-                    <span className="text-zinc-600 hidden sm:inline">·</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-[#6B7280] tabular-nums">
+                    <span className="text-sky-700 font-semibold">{round === 'quarter' ? 'QF' : round === 'semi' ? 'SF' : 'FINAL'}</span>
+                    <span className="text-[#D1CEC7] hidden sm:inline">·</span>
                     <span className="truncate max-w-[120px] hidden sm:inline">{stadium.name}</span>
                   </div>
-                  <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                  <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                    <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                  </div>
                 </div>
               </div>
 
               {/* Ticking Clock & Directive Bar */}
-              <div className="px-6 pt-4 pb-2 flex items-center justify-between border-b border-white/[0.05]">
+              <div className="px-6 pt-4 pb-2 flex items-center justify-between border-b border-[#E6E3DC] bg-white">
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
                   </span>
-                  <span className="text-2xl font-bold tabular-nums tracking-wider text-white">
+                  <span className="text-2xl font-bold tabular-nums tracking-wider text-[#18191F]">
                     {matchMinute}'
                   </span>
                   {isShootout && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200">
                       PENS
                     </span>
                   )}
                 </div>
                 {appliedDirective && (
-                  <div className="text-[10px] font-medium text-zinc-300 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 rounded-full truncate max-w-[190px]">
+                  <div className="text-[10px] font-medium text-[#4B5563] bg-[#F6F5F1] border border-[#E6E3DC] px-2.5 py-1 rounded-full truncate max-w-[190px]">
                     {appliedDirective}
                   </div>
                 )}
               </div>
 
               {/* Scoreboard Teams & Live Score */}
-              <div className="flex items-center justify-between p-3.5 sm:p-6 gap-2 sm:gap-4">
+              <div className="flex items-center justify-between p-3.5 sm:p-6 gap-2 sm:gap-4 bg-white">
                 {/* Home (Player) */}
                 <div className="flex-1 min-w-0 flex flex-col items-center text-center">
                   <ClubLogo
@@ -1820,13 +1846,13 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-1.5 sm:mb-2 drop-shadow-sm"
                     fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm sm:text-base rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5 sm:mb-2"
                   />
-                  <div className="text-xs font-bold text-white truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{club.name}</div>
-                  <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">OVR {playerOvr}</div>
+                  <div className="text-xs font-bold text-[#18191F] truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{club.name}</div>
+                  <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">OVR {playerOvr}</div>
                 </div>
 
                 {/* Score */}
                 <div className="shrink-0 px-1 sm:px-3 flex flex-col items-center justify-center min-w-[80px] sm:min-w-[110px]">
-                  <div className="bg-black/50 border border-white/10 rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-center gap-1 sm:gap-2 shadow-inner">
+                  <div className="bg-[#10131C] border border-[#232736] rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-center gap-1 sm:gap-2 shadow-sm">
                     <span className={`text-2xl sm:text-3xl font-black tabular-nums tracking-tight min-w-[16px] sm:min-w-[22px] text-center ${theme.scoreboardScoreColor}`}>
                       {isShootout && regularScore ? regularScore.me : liveScore.me}
                     </span>
@@ -1836,7 +1862,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     </span>
                   </div>
                   {isShootout && (
-                    <div className="text-[10px] font-semibold tabular-nums text-zinc-400 mt-1 whitespace-nowrap bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                    <div className="text-[10px] font-semibold tabular-nums text-[#4B5563] mt-1 whitespace-nowrap bg-[#F6F5F1] px-2 py-0.5 rounded-full border border-[#E6E3DC]">
                       Shootout ({liveScore.me}-{liveScore.opp})
                     </div>
                   )}
@@ -1854,15 +1880,15 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                     className="w-12 h-12 sm:w-16 sm:h-16 object-contain mb-1.5 sm:mb-2 drop-shadow-sm"
                     fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 text-sm sm:text-base rounded-full flex items-center justify-center font-bold text-white shrink-0 mb-1.5 sm:mb-2"
                   />
-                  <div className="text-xs font-bold text-white truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{opponent.name}</div>
-                  <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">OVR {opponent.ovr}</div>
+                  <div className="text-xs font-bold text-[#18191F] truncate max-w-[95px] sm:max-w-[130px] py-0.5 leading-normal">{opponent.name}</div>
+                  <div className="text-[10px] text-[#6B7280] tabular-nums mt-0.5">OVR {opponent.ovr}</div>
                 </div>
               </div>
 
               {/* Live Match Ticker / Event */}
               {recentEvent && (
-                <div className="bg-white/[0.02] border-t border-white/[0.06] px-4 py-2.5 text-center text-xs font-medium text-zinc-300">
-                  <i className="fa-regular fa-futbol text-sky-400 mr-1.5" />
+                <div className="bg-[#FAF9F6] border-t border-[#E6E3DC] px-4 py-2.5 text-center text-xs font-medium text-[#18191F]">
+                  <i className="fa-regular fa-futbol text-sky-600 mr-1.5" />
                   {recentEvent}
                 </div>
               )}
@@ -1876,15 +1902,17 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
         {stage === 'result' && matchResult && opponent && (
           <div className="flex flex-col items-center justify-center min-h-[360px] text-center animate-in zoom-in duration-300 py-4 relative z-10">
             <div className="mb-3">
-              <span className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl text-xl shadow-inner ${matchResult.won ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-rose-500/20 text-rose-300 border border-rose-400/30'}`}>
+              <span className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl text-xl font-bold shadow-sm ${matchResult.won ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                 {matchResult.won ? '✓' : '✕'}
               </span>
             </div>
 
             {isModActive && (
               <div className="flex items-center justify-center gap-2 mb-3">
-                <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
-                <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 rounded-md">
+                <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                  <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                </div>
+                <span className="text-[10px] font-bold tracking-widest text-[#4B5563] uppercase bg-[#F6F5F1] border border-[#E6E3DC] px-2 py-0.5 rounded-md">
                   Full-Time
                 </span>
               </div>
@@ -1898,15 +1926,15 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                 logo={club.logo}
                 fallbackLogo={club.fallbackLogo}
                 isModActive={isModActive}
-                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow"
+                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm"
                 fallbackClassName="w-12 h-12 sm:w-14 sm:h-14 text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0"
               />
               <div className="flex flex-col items-center justify-center shrink-0 px-1">
-                <div className="bg-black/50 border border-white/10 rounded-2xl px-4 sm:px-5 py-1.5 sm:py-2 text-2xl sm:text-3xl font-black tabular-nums text-white tracking-wider whitespace-nowrap shadow-inner">
+                <div className="bg-[#10131C] border border-[#232736] rounded-2xl px-4 sm:px-5 py-1.5 sm:py-2 text-2xl sm:text-3xl font-black tabular-nums text-white tracking-wider whitespace-nowrap shadow-sm">
                   {matchResult.score.includes(' ') ? matchResult.score.split(' ')[0].replace('-', ' – ') : matchResult.score.replace('-', ' – ')}
                 </div>
                 {matchResult.score.includes(' ') && (
-                  <span className="text-[11px] font-semibold text-zinc-400 mt-1 whitespace-nowrap bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-white/[0.06]">
+                  <span className="text-[11px] font-semibold text-[#4B5563] mt-1 whitespace-nowrap bg-[#F6F5F1] px-2.5 py-0.5 rounded-full border border-[#E6E3DC]">
                     {matchResult.score.substring(matchResult.score.indexOf(' ') + 1)}
                   </span>
                 )}
@@ -1918,12 +1946,12 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                 logo={opponent.logo}
                 fallbackLogo={opponent.fallbackLogo}
                 isModActive={isModActive}
-                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow"
+                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm"
                 fallbackClassName="w-12 h-12 sm:w-14 sm:h-14 text-sm rounded-full flex items-center justify-center font-bold text-white shrink-0"
               />
             </div>
 
-            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">
+            <h3 className="text-xl font-bold text-[#18191F] mb-2 tracking-tight">
               {matchResult.won 
                 ? (round === 'quarter' && cupRun.endRound === 'quarter'
                     ? (isDe ? `${club.name} bucht das Halbfinal-Ticket!` : `${club.name} Books Semi-Final Ticket!`)
@@ -1932,13 +1960,13 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
             </h3>
 
             {matchResult.won && round === 'quarter' && cupRun.endRound === 'quarter' && (
-              <div className="bg-sky-500/15 border border-sky-400/30 rounded-xl px-4 py-2 text-xs text-sky-200 mb-4 flex items-center justify-center gap-2">
-                <i className="fa-solid fa-snowflake text-sky-300"></i>
+              <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-2 text-xs text-sky-800 mb-4 flex items-center justify-center gap-2">
+                <i className="fa-solid fa-snowflake text-sky-600"></i>
                 <span>{isDe ? 'Viertelfinale gewonnen! Das Halbfinale wird nach der zweiten Saisonhälfte ausgetragen.' : 'Quarter-Final won! The Semi-Final will be played after the second part of the season.'}</span>
               </div>
             )}
 
-            <p className={`text-xs sm:text-sm max-w-md whitespace-pre-line mb-3 sm:mb-5 font-normal leading-relaxed ${matchResult.won ? 'text-zinc-300' : 'text-zinc-400'}`}>
+            <p className="text-xs sm:text-sm max-w-md whitespace-pre-line mb-3 sm:mb-5 font-normal leading-relaxed text-[#4B5563]">
               {matchResult.description}
             </p>
 
@@ -1969,36 +1997,38 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
               <PrestigeTrophy
                 type={cupRun.id}
                 size={responsiveCelebrationTrophyHeight}
-                className="animate-pulse drop-shadow-2xl max-h-24 sm:max-h-none w-auto"
+                className="animate-pulse drop-shadow-md max-h-24 sm:max-h-none w-auto"
               />
             </div>
 
             {isModActive && (
               <div className="flex items-center justify-center gap-2 mb-2">
-                <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
-                <span className="text-[10px] font-bold tracking-widest text-amber-300 uppercase bg-amber-500/10 border border-amber-400/20 px-2.5 py-0.5 rounded-md">
+                <div className="bg-[#10131C] rounded-lg px-2 py-0.5 inline-flex items-center shrink-0">
+                  <BroadcastBadge country={effectiveCountry} competitionId={broadcastComp} isModActive={isModActive} tier={gameState.club.tier} />
+                </div>
+                <span className="text-[10px] font-bold tracking-widest text-amber-800 uppercase bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
                   Live Trophy Presentation
                 </span>
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-300 mb-1">
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-700 mb-1">
               <span>★</span>
               <span>{displayNameEn} Champions</span>
               <span>★</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-bold text-white uppercase tracking-tight mb-2">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#18191F] uppercase tracking-tight mb-2">
               CUP GLORY!
             </h2>
 
-            <p className="text-sm text-zinc-300 max-w-sm mb-5 font-normal leading-relaxed">
+            <p className="text-sm text-[#4B5563] max-w-sm mb-5 font-normal leading-relaxed">
               A historic achievement! {club.name} hoists the prestigious {cupRun.nameEn} trophy into the sky!
             </p>
 
             {cupRun.id === 'reg' && round === 'final' && (
-              <div className="bg-emerald-500/15 text-emerald-300 font-semibold text-xs px-4 py-2 rounded-2xl mb-6 inline-flex items-center gap-2 border border-emerald-500/25">
-                <i className="fas fa-ticket-alt text-emerald-400 text-xs" />
+              <div className="bg-emerald-50 text-emerald-800 font-semibold text-xs px-4 py-2 rounded-2xl mb-6 inline-flex items-center gap-2 border border-emerald-200">
+                <i className="fas fa-ticket-alt text-emerald-600 text-xs" />
                 <span>Qualified for Domestic National Cup next season!</span>
               </div>
             )}
@@ -2017,21 +2047,21 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
         {/* ========================================================================= */}
         {stage === 'eliminated' && (
           <div className="flex flex-col items-center justify-center min-h-[340px] text-center animate-in zoom-in duration-300 py-4 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-400 text-xl mb-4">
-              <i className="fas fa-flag-checkered text-zinc-500" />
+            <div className="w-14 h-14 rounded-2xl bg-[#F6F5F1] border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] text-xl mb-4">
+              <i className="fas fa-flag-checkered text-[#6B7280]" />
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-200 uppercase tracking-tight mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#18191F] uppercase tracking-tight mb-2">
               Valiant Cup Run Concluded
             </h2>
 
-            <p className="text-sm text-zinc-400 max-w-sm mb-6 font-normal leading-relaxed">
+            <p className="text-sm text-[#4B5563] max-w-sm mb-6 font-normal leading-relaxed">
               Your journey in the {cupRun.nameEn} ends at the {round === 'quarter' ? 'Quarter-Final' : round === 'semi' ? 'Semi-Final' : 'Final'} stage. Your supporters will remember the fight.
             </p>
 
             <button
               onClick={handleNext}
-              className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white px-8 py-3 rounded-2xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer"
+              className="bg-[#18191F] hover:bg-[#2A2C35] text-white px-8 py-3 rounded-2xl font-semibold text-xs uppercase tracking-wider transition cursor-pointer shadow-sm"
             >
               Complete Season
             </button>

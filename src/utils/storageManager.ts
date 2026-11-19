@@ -515,20 +515,55 @@ export const initDB = (): Promise<IDBDatabase> => {
     if (typeof indexedDB === 'undefined') {
       return reject(new Error('IndexedDB is not available'));
     }
-    const request = indexedDB.open('fms_database', 1);
-    request.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains('mods')) {
-        db.createObjectStore('mods');
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        cachedDbPromise = null;
+        reject(new Error('IndexedDB open timed out'));
       }
-    };
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onclose = () => { cachedDbPromise = null; };
-      db.onversionchange = () => { db.close(); cachedDbPromise = null; };
-      resolve(db);
-    };
-    request.onerror = () => reject(request.error);
+    }, 1500);
+
+    try {
+      const request = indexedDB.open('fms_database', 1);
+      request.onupgradeneeded = (e) => {
+        const db = (e.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains('mods')) {
+          db.createObjectStore('mods');
+        }
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        if (settled) {
+          try { db.close(); } catch { /* ignore late-open close errors */ }
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        db.onclose = () => { cachedDbPromise = null; };
+        db.onversionchange = () => { db.close(); cachedDbPromise = null; };
+        resolve(db);
+      };
+      request.onerror = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(request.error);
+      };
+      request.onblocked = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        cachedDbPromise = null;
+        reject(new Error('IndexedDB blocked'));
+      };
+    } catch (err) {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        reject(err);
+      }
+    }
   });
   cachedDbPromise.catch(() => { cachedDbPromise = null; });
   return cachedDbPromise;
@@ -538,7 +573,7 @@ export const saveToIndexedDB = async (key: string, data: any): Promise<void> => 
   if (typeof indexedDB === 'undefined') return;
   try {
     const db = await initDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction('mods', 'readwrite');
       const store = tx.objectStore('mods');
       store.put(data, key);
@@ -546,6 +581,7 @@ export const saveToIndexedDB = async (key: string, data: any): Promise<void> => 
       tx.onerror = () => reject(tx.error);
     });
   } catch (e) {
+    cachedDbPromise = null;
     console.warn('[StorageManager] saveToIndexedDB failed:', e);
   }
 };
@@ -554,14 +590,18 @@ export const loadFromIndexedDB = async (key: string): Promise<any> => {
   if (typeof indexedDB === 'undefined') return null;
   try {
     const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('mods', 'readonly');
-      const store = tx.objectStore('mods');
-      const request = store.get(key);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    return await Promise.race([
+      new Promise((resolve, reject) => {
+        const tx = db.transaction('mods', 'readonly');
+        const store = tx.objectStore('mods');
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      }),
+      new Promise((resolve) => setTimeout(() => resolve(null), 800)),
+    ]);
   } catch (e) {
+    cachedDbPromise = null;
     console.warn('[StorageManager] loadFromIndexedDB failed:', e);
     return null;
   }
@@ -571,7 +611,7 @@ export const removeFromIndexedDB = async (key: string): Promise<void> => {
   if (typeof indexedDB === 'undefined') return;
   try {
     const db = await initDB();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction('mods', 'readwrite');
       const store = tx.objectStore('mods');
       store.delete(key);
@@ -579,6 +619,7 @@ export const removeFromIndexedDB = async (key: string): Promise<void> => {
       tx.onerror = () => reject(tx.error);
     });
   } catch (e) {
+    cachedDbPromise = null;
     console.warn('[StorageManager] removeFromIndexedDB failed:', e);
   }
 };

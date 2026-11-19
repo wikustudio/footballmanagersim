@@ -9,6 +9,16 @@ import { t as tr } from '../data/translations';
 import { getAllUniverseMovements, isMajorUniverseHeadline, getHeadlineCategory } from '../utils/universeMovements';
 import { getParentClub } from '../engine/simulateAiLeagues';
 import { ChampionsAlmanacView, TrophyLeadersChartView } from './HistoryAndAlmanacViews';
+import { CompetitionLogo } from './CompetitionLogo';
+import {
+  buildDeterministicDivisionTable,
+  estimateDebtPointDeduction,
+  resolveDivisionClubs,
+} from '../engine/standingsEngine';
+import {
+  formatSeasonYearSpan,
+  resolveTierForSeasonSelection,
+} from '../utils/seasonSnapshotHelper';
 
 interface TableRow {
   pos: number;
@@ -37,6 +47,7 @@ interface LeagueTableModalProps {
   clubsDb: Club[];
   lang: Language;
   isModActive?: boolean;
+  initialSelectedSeason?: 'current' | number;
   onClose: () => void;
 }
 
@@ -83,6 +94,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   clubsDb,
   lang,
   isModActive,
+  initialSelectedSeason = 'current',
   onClose,
 }) => {
   const t = (en: string, _de?: string) => en;
@@ -111,9 +123,16 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   const [universeSeasonFilter, setUniverseSeasonFilter] = useState<'latest' | 'all' | number>('latest');
 
   const history = state.history || [];
-  
+
+  const safeInitialSeason: 'current' | number =
+    typeof initialSelectedSeason === 'number' &&
+    initialSelectedSeason >= 0 &&
+    initialSelectedSeason < history.length
+      ? initialSelectedSeason
+      : 'current';
+
   // View selector: 'current' (active ongoing campaign) or index in history (0..history.length-1)
-  const [selectedSeason, setSelectedSeason] = useState<'current' | number>('current');
+  const [selectedSeason, setSelectedSeason] = useState<'current' | number>(safeInitialSeason);
 
   // Determine active inspect context
   const isCurrentView = selectedSeason === 'current';
@@ -125,8 +144,15 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   const currentCountry = inspectedHist ? (inspectedHist.country || effectiveUserClub.country || 'GER') : (effectiveUserClub.country || 'GER');
   const maxTierForCountry = getMaxTier(currentCountry, sanitizedClubsDb);
 
-  // Selected Tier Pill (managers can scout Tier 1, Tier 2, Tier 3, etc.)
-  const [selectedTier, setSelectedTier] = useState<number>(Math.min(userActiveTier, maxTierForCountry));
+  // Selected Tier Pill (auto-syncs to chosen season's tier when changing Season Archive, while still allowing manual division browsing)
+  const [selectedTier, setSelectedTier] = useState<number>(() =>
+    resolveTierForSeasonSelection({
+      nextSeason: safeInitialSeason,
+      history,
+      currentClub: effectiveUserClub,
+      clubsDb: sanitizedClubsDb,
+    }).tier
+  );
   const [almanacCountry, setAlmanacCountry] = useState<string>(currentCountry);
   const [almanacTier, setAlmanacTier] = useState<number>(Math.min(userActiveTier, maxTierForCountry));
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
@@ -426,240 +452,54 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
   if (isCurrentView) {
     const isMidSeason = state.seasonPhase === 'mid';
+    const totalMds = state.pendingSeasonState?.totalMatchdays || 34;
+    const playedMatchdays = isMidSeason ? Math.floor(totalMds / 2) : 0;
+    const schedule = state.pendingSeasonState?.matchdaySchedule || state.pendingSeasonState?.schedule || [];
+    const latestOutcome = playedMatchdays > 0 ? schedule[playedMatchdays - 1] : undefined;
 
-    if (!isMidSeason) {
-      // PRE-SEASON TABLE (0 MATCHES PLAYED)
-      const userDebtDeduction = (state.seasonsInDebt || 0) > 0
-        ? ((state.seasonsInDebt || 0) === 1 ? Math.min(5, Math.max(2, Math.floor(Math.abs(state.budget) / 2000))) : Math.min(15, Math.max(3, Math.floor(Math.abs(state.budget) / 2000) * (state.seasonsInDebt || 1))))
-        : (state.budget < -500 ? Math.min(2, Math.max(1, Math.floor(Math.abs(state.budget) < 500000 ? 1 : 2))) : undefined);
+    const peers = resolveDivisionClubs({
+      clubsDb: sanitizedClubsDb,
+      country: currentCountry,
+      tier: effectiveSelectedTier,
+      year: state.year || 2026,
+      userClub: isUserInCurrentTier ? effectiveUserClub : undefined,
+      excludeUserClub: isUserInCurrentTier,
+      isModActive: Boolean(isModActive),
+      rivalClub: state.currentRival,
+    });
 
-      const allClubs = [
-        ...(isUserInCurrentTier ? [{
-          id: effectiveUserClub.id,
-          name: effectiveUserClub.name,
-          color: effectiveUserClub.color,
-          logo: effectiveUserClub.logo,
-          baseOvr: effectiveUserClub.baseOvr,
-          isUser: true,
-          isReserve: isReserveTeam(effectiveUserClub.name),
-          pointsDeducted: userDebtDeduction
-        }] : []),
-        ...leagueClubs.map((c) => {
-          const isDebtPenalized = insolventClubInTable && c.name === insolventClubInTable.name;
-          return {
-            id: c.id,
-            name: c.name,
-            color: c.color,
-            logo: c.logo,
-            baseOvr: c.baseOvr,
-            isUser: false,
-            isReserve: isReserveTeam(c.name),
-            pointsDeducted: isDebtPenalized ? 2 : undefined
-          };
-        }),
-      ];
+    const userDebtDeduction = isMidSeason
+      ? (state.pendingSeasonState?._meta?.predictedPointsDeducted ?? 0)
+      : estimateDebtPointDeduction(
+          state.budget,
+          state.seasonsInDebt || 0,
+          state.budget < -500 ? -1 : 0
+        );
 
-      allClubs.sort((a, b) => {
-        const bEff = b.baseOvr + seededRand(state.year * 10 + (typeof b.id === 'number' ? b.id : 0), -4, 4);
-        const aEff = a.baseOvr + seededRand(state.year * 10 + (typeof a.id === 'number' ? a.id : 0), -4, 4);
-        return bEff - aEff;
+    const rows = buildDeterministicDivisionTable({
+      year: state.year || 2026,
+      country: currentCountry,
+      tier: effectiveSelectedTier,
+      playedMatchdays,
+      totalMatchdays: totalMds,
+      userClub: isUserInCurrentTier ? effectiveUserClub : undefined,
+      userInTier: isUserInCurrentTier,
+      peers,
+      pendingSeasonState: isUserInCurrentTier ? state.pendingSeasonState : undefined,
+      latestOutcome: isUserInCurrentTier ? latestOutcome : undefined,
+      rivalClub: state.currentRival,
+      insolventClubName: insolventClubInTable?.name || null,
+      userPointsDeducted: isUserInCurrentTier ? userDebtDeduction : 0,
+      isModActive: Boolean(isModActive),
+    });
+
+    rows.forEach((r) => {
+      tableData.push({
+        ...r,
+        form: r.form || [],
+        isRival: !r.isUser && isRivalMatch(r.name, r.id),
       });
-
-      allClubs.slice(0, targetTotalClubs).forEach((c, idx) => {
-        tableData.push({
-          pos: idx + 1,
-          id: c.id,
-          name: c.name,
-          color: c.color,
-          logo: isModActive ? c.logo : undefined,
-          mp: 0,
-          w: 0,
-          d: 0,
-          l: 0,
-          gf: 0,
-          ga: 0,
-          pts: 0,
-          gd: '0',
-          isUser: c.isUser,
-          isReserve: c.isReserve,
-          isRival: isRivalMatch(c.name, c.id),
-          pointsDeducted: c.pointsDeducted,
-          form: []
-        });
-      });
-    } else {
-      // MID-SEASON PROGRESSION (MATCHDAY 17)
-      const midRows: TableRow[] = [];
-
-      const userDebtDeduction = (state.seasonsInDebt || 0) > 0
-        ? ((state.seasonsInDebt || 0) === 1 ? Math.min(5, Math.max(2, Math.floor(Math.abs(state.budget) / 2000))) : Math.min(15, Math.max(3, Math.floor(Math.abs(state.budget) / 2000) * (state.seasonsInDebt || 1))))
-        : (state.budget < -500 ? Math.min(2, Math.max(1, Math.floor(Math.abs(state.budget) < 500000 ? 1 : 2))) : undefined);
-
-      // 1. Sort AI clubs by strength
-      const sortedAi = [...leagueClubs].sort((a, b) => {
-        const aScore = a.baseOvr + seededRand(state.year * 10 + (typeof a.id === 'number' ? a.id : 1), -4, 4);
-        const bScore = b.baseOvr + seededRand(state.year * 10 + (typeof b.id === 'number' ? b.id : 1), -4, 4);
-        return bScore - aScore;
-      });
-
-      // Realistic 17-game points distribution curve
-      const baseCurve = [40, 37, 34, 31, 29, 27, 25, 24, 23, 22, 20, 19, 18, 16, 15, 13, 11, 8];
-      const aiLimit = targetAiCount;
-      const aiSlice = sortedAi.slice(0, aiLimit);
-
-      if (isUserInCurrentTier) {
-        const meta = state.pendingSeasonState?._meta;
-        const hasLockedFirstHalf = meta?.firstHalfOutcomes?.length === 17;
-        const rawUserMidPts = hasLockedFirstHalf && typeof meta.firstHalfPts === 'number'
-          ? meta.firstHalfPts
-          : (meta?.midPts ?? state.midSeasonPts ?? 22);
-        const netUserMidPts = userDebtDeduction ? Math.max(0, rawUserMidPts - userDebtDeduction) : rawUserMidPts;
-        const rawMidPos = typeof meta?.midPos === 'number'
-          ? meta.midPos
-          : Math.max(1, Math.min(18, Math.round(18 - ((rawUserMidPts - 8) / 36) * 17)));
-        const targetMidPos = Math.max(1, Math.min(18, rawMidPos + (userDebtDeduction ? Math.floor(userDebtDeduction / 2.5) : 0)));
-
-        let userWins = hasLockedFirstHalf && typeof meta.firstHalfWins === 'number'
-          ? meta.firstHalfWins
-          : Math.min(17, Math.max(0, Math.floor(rawUserMidPts / 3)));
-        let userDraws = hasLockedFirstHalf && typeof meta.firstHalfDraws === 'number'
-          ? meta.firstHalfDraws
-          : Math.min(17 - userWins, Math.max(0, rawUserMidPts - userWins * 3));
-        let userLosses = hasLockedFirstHalf && typeof meta.firstHalfLosses === 'number'
-          ? meta.firstHalfLosses
-          : Math.max(0, 17 - userWins - userDraws);
-        let userGf = hasLockedFirstHalf && typeof meta.firstHalfGf === 'number'
-          ? meta.firstHalfGf
-          : Math.max(10, Math.round(userWins * 1.8 + userDraws * 1.0 + seededRand(state.year, 3, 8)));
-        let userGa = hasLockedFirstHalf && typeof meta.firstHalfGa === 'number'
-          ? meta.firstHalfGa
-          : Math.max(8, Math.round(userLosses * 1.7 + userDraws * 0.9 + seededRand(state.year, 2, 6)));
-        let userGd = userGf - userGa;
-        const userForm = hasLockedFirstHalf && meta.firstHalfOutcomes
-          ? meta.firstHalfOutcomes.slice(-5).map((m) => m.result)
-          : generateForm(state.year * 100, userWins, userDraws, userLosses);
-
-        const posMidPts: number[] = new Array(19).fill(0);
-        posMidPts[targetMidPos] = netUserMidPts;
-        for (let p = targetMidPos - 1; p >= 1; p--) {
-          const curveVal = (baseCurve[p - 1] || 22) + seededRand(state.year * 7 + p, -1, 1);
-          posMidPts[p] = Math.min(49, Math.max(posMidPts[p + 1] + 1, curveVal));
-        }
-        for (let p = targetMidPos + 1; p <= 18; p++) {
-          const curveVal = (baseCurve[p - 1] || 12) + seededRand(state.year * 7 + p, -1, 1);
-          posMidPts[p] = Math.max(2, Math.min(posMidPts[p - 1] - 1, curveVal));
-        }
-
-        let aiIdx = 0;
-        for (let p = 1; p <= 18; p++) {
-          if (p === targetMidPos) {
-            tableData.push({
-              pos: p,
-              id: effectiveUserClub.id,
-              name: effectiveUserClub.name,
-              color: effectiveUserClub.color,
-              logo: isModActive ? effectiveUserClub.logo : undefined,
-              mp: 17,
-              w: userWins,
-              d: userDraws,
-              l: userLosses,
-              gf: userGf,
-              ga: userGa,
-              pts: netUserMidPts,
-              gd: userGd > 0 ? `+${userGd}` : `${userGd}`,
-              isUser: true,
-              isReserve: isReserveTeam(effectiveUserClub.name),
-              isRival: false,
-              pointsDeducted: userDebtDeduction,
-              form: userForm
-            });
-          } else {
-            const c = aiSlice[aiIdx++] || { id: 9900 + p, name: `Club ${p}`, color: '#64748b', baseOvr: 65 };
-            const isDebtPenalized = insolventClubInTable && c.name === insolventClubInTable.name;
-            const aiDeduction = isDebtPenalized ? 2 : undefined;
-            const pts = posMidPts[p] || 18;
-            const rawPts = aiDeduction ? pts + aiDeduction : pts;
-            let w = Math.min(17, Math.max(0, Math.floor(rawPts / 3)));
-            let d = Math.min(17 - w, Math.max(0, rawPts - w * 3));
-            let l = Math.max(0, 17 - w - d);
-            let gf = Math.max(10, Math.round(w * 1.7 + d * 1.0 + seededRand(state.year * 3 + (typeof c.id === 'number' ? c.id : p), 3, 8)));
-            let ga = Math.max(8, Math.round(l * 1.6 + d * 0.9 + seededRand(state.year * 3 + (typeof c.id === 'number' ? c.id : p), 2, 7)));
-            let gd = gf - ga;
-
-            tableData.push({
-              pos: p,
-              id: c.id,
-              name: c.name,
-              color: c.color,
-              logo: isModActive ? (c as any).logo : undefined,
-              mp: 17,
-              w,
-              d,
-              l,
-              gf,
-              ga,
-              pts,
-              gd: gd > 0 ? `+${gd}` : `${gd}`,
-              isUser: false,
-              isReserve: isReserveTeam(c.name),
-              isRival: isRivalMatch(c.name, c.id),
-              pointsDeducted: aiDeduction,
-              form: generateForm((typeof c.id === 'number' ? c.id : 1) + state.year * 7, w, d, l)
-            });
-          }
-        }
-      } else {
-        aiSlice.forEach((c, idx) => {
-          const isDebtPenalized = insolventClubInTable && c.name === insolventClubInTable.name;
-          const aiDeduction = isDebtPenalized ? 2 : undefined;
-          const rawTarget = (baseCurve[idx] || 15) + seededRand(state.year * 7 + (typeof c.id === 'number' ? c.id : idx), -2, 2);
-          const rawPts = Math.max(4, Math.min(48, rawTarget));
-          const pts = aiDeduction ? Math.max(0, rawPts - aiDeduction) : rawPts;
-          let w = Math.min(17, Math.max(0, Math.floor(rawPts / 3)));
-          let d = Math.min(17 - w, Math.max(0, rawPts - w * 3));
-          let l = Math.max(0, 17 - w - d);
-          let gf = Math.max(10, Math.round(w * 1.7 + d * 1.0 + seededRand(state.year * 3 + (typeof c.id === 'number' ? c.id : idx), 3, 8)));
-          let ga = Math.max(8, Math.round(l * 1.6 + d * 0.9 + seededRand(state.year * 3 + (typeof c.id === 'number' ? c.id : idx), 2, 7)));
-          let gd = gf - ga;
-
-          midRows.push({
-            pos: idx + 1,
-            id: c.id,
-            name: c.name,
-            color: c.color,
-            logo: isModActive ? c.logo : undefined,
-            mp: 17,
-            w,
-            d,
-            l,
-            gf,
-            ga,
-            pts,
-            gd: gd > 0 ? `+${gd}` : `${gd}`,
-            isUser: false,
-            isReserve: isReserveTeam(c.name),
-            isRival: isRivalMatch(c.name, c.id),
-            pointsDeducted: aiDeduction,
-            form: generateForm((typeof c.id === 'number' ? c.id : 1) + state.year * 7, w, d, l)
-          });
-        });
-
-        midRows.sort((a, b) => {
-          if (b.pts !== a.pts) return b.pts - a.pts;
-          const bGd = parseInt(b.gd, 10);
-          const aGd = parseInt(a.gd, 10);
-          if (bGd !== aGd) return bGd - aGd;
-          if (b.gf !== a.gf) return b.gf - a.gf;
-          if (b.w !== a.w) return b.w - a.w;
-          return a.name.localeCompare(b.name);
-        });
-
-        midRows.forEach((r, idx) => {
-          r.pos = idx + 1;
-          tableData.push(r);
-        });
-      }
-    }
+    });
   } else if (inspectedHist) {
     // 1. Direct retrieval from permanent season standings archive if available
     const archivedTierRows = state.seasonStandingsArchive?.[inspectedHist.year]?.[effectiveSelectedTier];
@@ -1130,39 +970,37 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
   return (
     <div 
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-1 sm:p-5 backdrop-blur-2xl text-left cursor-pointer animate-in fade-in duration-100 overflow-hidden"
+      className="fixed inset-0 z-50 bg-[#18191F]/50 flex flex-col items-center justify-center p-1 sm:p-5 backdrop-blur-sm text-left cursor-pointer animate-in fade-in duration-100 overflow-hidden"
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-5xl bg-[#121520]/95 rounded-2xl sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] backdrop-blur-3xl flex flex-col overflow-hidden h-[96dvh] sm:h-auto max-h-[96dvh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 relative text-white animate-in zoom-in-98 duration-100 ease-out cursor-default"
+        className="w-full max-w-5xl bg-white rounded-2xl sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_60px_rgba(24,25,31,0.16)] flex flex-col overflow-hidden h-[96dvh] sm:h-auto max-h-[96dvh] sm:max-h-[88vh] min-h-0 my-auto shrink-0 relative text-[#18191F] animate-in zoom-in-98 duration-100 ease-out cursor-default"
       >
-        {/* Subtle Ambient Lighting */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/10 rounded-full blur-[100px] pointer-events-none -z-10" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none -z-10" />
-
         {/* ──────────────────────────────────────────────────────────
             1. Clean Header with Dual Window Tab Switcher
             ────────────────────────────────────────────────────────── */}
-        <div className="p-3 sm:p-5 border-b border-white/[0.06] bg-white/[0.02] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4 shrink-0 relative z-10">
+        <div className="px-3 py-2 sm:p-5 border-b border-[#E6E3DC] bg-[#FAF9F6] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 shrink-0 relative z-10">
           <div className="flex items-center justify-between gap-2 min-w-0">
-            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-              <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center p-1 sm:p-2 shadow-inner shrink-0">
-                {activeTab === 'standings' && currentLeagueInfo?.logo ? (
-                  <img
-                    src={currentLeagueInfo.logo}
+            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+              <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white border border-[#E6E3DC] flex items-center justify-center p-1 sm:p-2 shadow-sm shrink-0">
+                {activeTab === 'standings' && effectiveSelectedTier === 1 ? (
+                  <CompetitionLogo
+                    kind="league"
+                    country={currentCountry}
+                    tier={effectiveSelectedTier}
+                    isModActive={isModActive}
                     alt={`${currentLeagueInfo.name} logo`}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
-                    className="w-5 h-5 sm:w-7 sm:h-7 object-contain drop-shadow"
+                    className="w-5 h-5 sm:w-7 sm:h-7 object-contain"
+                    data-testid="league-table-comp-logo"
                   />
                 ) : (
                   <i
                     className={`fas ${
                       activeTab === 'standings'
-                        ? 'fa-list-ol text-sky-400'
+                        ? 'fa-list-ol text-sky-700'
                         : activeTab === 'universe'
-                        ? 'fa-trophy text-amber-400'
-                        : 'fa-chart-simple text-emerald-400'
+                        ? 'fa-trophy text-amber-600'
+                        : 'fa-chart-simple text-emerald-700'
                     } text-sm sm:text-base`}
                   ></i>
                 )}
@@ -1170,12 +1008,12 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-md tracking-wider shrink-0 border ${
+                    className={`text-[9px] sm:text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-md tracking-wider shrink-0 border ${
                       activeTab === 'standings'
-                        ? 'text-sky-400 bg-sky-500/10 border-sky-400/20'
+                        ? 'text-sky-800 bg-sky-50 border-sky-200'
                         : activeTab === 'universe'
-                        ? 'text-amber-400 bg-amber-500/10 border-amber-400/20'
-                        : 'text-emerald-400 bg-emerald-500/10 border-emerald-400/20'
+                        ? 'text-amber-800 bg-amber-50 border-amber-200'
+                        : 'text-emerald-800 bg-emerald-50 border-emerald-200'
                     }`}
                   >
                     {activeTab === 'standings'
@@ -1184,7 +1022,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                       ? 'HALL OF CHAMPIONS'
                       : 'TROPHY LEADERBOARD'}
                   </span>
-                  <span className="text-[11px] sm:text-xs text-zinc-400 font-medium truncate hidden sm:inline">
+                  <span className="text-[11px] sm:text-xs text-[#6B7280] font-medium truncate hidden sm:inline">
                     {activeTab === 'standings'
                       ? currentLeagueInfo.name
                       : `${COUNTRIES[almanacCountry as keyof typeof COUNTRIES]?.flag || ''} ${
@@ -1192,7 +1030,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                         } & Global Archive`}
                   </span>
                 </div>
-                <h2 className="text-sm sm:text-xl font-black text-white tracking-tight mt-0.5 truncate py-0.5 leading-normal">
+                <h2 className="text-sm sm:text-xl font-black text-[#18191F] tracking-tight mt-0.5 truncate py-0.5 leading-normal">
                   {activeTab === 'standings'
                     ? (isCurrentView 
                         ? (state.seasonPhase === 'mid' 
@@ -1209,7 +1047,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
             {/* Mobile Close button */}
             <button
               onClick={onClose}
-              className="sm:hidden w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-zinc-300 hover:text-white flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              className="sm:hidden w-8 h-8 rounded-full bg-white hover:bg-[#F6F5F1] border border-[#E6E3DC] text-[#4B5563] hover:text-[#18191F] flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
               aria-label="Close"
             >
               <i className="fas fa-times text-xs"></i>
@@ -1218,14 +1056,14 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 w-full sm:w-auto">
             {/* Primary Tab Switcher: Standings vs Champions Almanac vs Trophy Leaders */}
-            <div className="bg-black/40 border border-white/[0.08] rounded-xl p-0.5 sm:p-1 grid grid-cols-3 sm:flex items-center gap-0.5 sm:gap-1 shadow-inner w-full sm:w-auto">
+            <div className="bg-[#EFECE4] border border-[#E6E3DC] rounded-xl p-0.5 sm:p-1 grid grid-cols-3 sm:flex items-center gap-0.5 sm:gap-1 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('standings')}
                 className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                   activeTab === 'standings'
-                    ? 'bg-sky-500 text-white shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                    ? 'bg-[#18191F] text-white shadow-sm'
+                    : 'text-[#4B5563] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
                 <i className="fa-solid fa-table-list text-[11px]"></i>
@@ -1237,8 +1075,8 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                 onClick={() => setActiveTab('universe')}
                 className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                   activeTab === 'universe'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                    ? 'bg-[#18191F] text-white shadow-sm'
+                    : 'text-[#4B5563] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
                 <i className="fa-solid fa-trophy text-[11px]"></i>
@@ -1250,8 +1088,8 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                 onClick={() => setActiveTab('leaders')}
                 className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                   activeTab === 'leaders'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                    ? 'bg-[#18191F] text-white shadow-sm'
+                    : 'text-[#4B5563] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
                 <i className="fa-solid fa-chart-simple text-[11px]"></i>
@@ -1263,7 +1101,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
             {/* Desktop Close button */}
             <button
               onClick={onClose}
-              className="hidden sm:flex w-9 h-9 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-zinc-300 hover:text-white items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+              className="hidden sm:flex w-9 h-9 rounded-full bg-white hover:bg-[#F6F5F1] border border-[#E6E3DC] text-[#4B5563] hover:text-[#18191F] items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
               aria-label="Close"
             >
               <i className="fas fa-times text-xs"></i>
@@ -1277,14 +1115,14 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
         {activeTab === 'standings' ? (
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* Unified Divisions & Season Archive Bar (Dropdowns for Mobile/Immersive) */}
-            <div className="px-2 sm:px-6 py-1.5 sm:py-2 bg-white/[0.02] border-b border-white/[0.06] flex flex-row flex-wrap items-center gap-x-4 gap-y-2 shrink-0">
+            <div className="px-2.5 sm:px-6 py-1.5 sm:py-2 bg-[#F6F5F1] border-b border-[#E6E3DC] flex flex-row flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 shrink-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <label className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-500 whitespace-nowrap shrink-0">
-                  <i className="fa-solid fa-layer-group text-sky-400 mr-1"></i> Div
+                <label className="text-[9px] sm:text-[10px] uppercase font-bold text-[#6B7280] whitespace-nowrap shrink-0">
+                  <i className="fa-solid fa-layer-group text-sky-700 mr-1"></i> Div
                 </label>
                 <div className="relative inline-flex items-center">
                   {/* Visually rendered, font-accurate Jakarta pill */}
-                  <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 text-white font-sans text-[11px] font-bold rounded-md pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap">
+                  <div className="flex items-center gap-1.5 bg-white border border-[#E6E3DC] text-[#18191F] font-sans text-[11px] font-bold rounded-md pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap shadow-xs">
                     <span>
                       {(() => {
                         const info = getLeagueInfo(effectiveSelectedTier, currentCountry);
@@ -1292,7 +1130,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                         return `T${effectiveSelectedTier}: ${info.tag || info.name}${isUserTier ? ' (You)' : ''}`;
                       })()}
                     </span>
-                    <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-400 pointer-events-none"></i>
+                    <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-[#6B7280] pointer-events-none"></i>
                   </div>
                   {/* Invisible Select catching taps and opening native wheel */}
                   <select
@@ -1316,13 +1154,13 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
               {history.length > 0 && (
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="hidden sm:block h-3 w-px bg-white/10 shrink-0 mx-0.5" />
-                  <label className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-500 whitespace-nowrap shrink-0">
-                    <i className="fa-solid fa-clock-rotate-left text-zinc-400 mr-1"></i> Season
+                  <div className="hidden sm:block h-3 w-px bg-[#E6E3DC] shrink-0 mx-0.5" />
+                  <label className="text-[9px] sm:text-[10px] uppercase font-bold text-[#6B7280] whitespace-nowrap shrink-0">
+                    <i className="fa-solid fa-clock-rotate-left text-[#6B7280] mr-1"></i> Season
                   </label>
                   <div className="relative inline-flex items-center">
                     {/* Visually rendered, font-accurate Jakarta pill */}
-                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 text-white font-sans text-[11px] font-bold rounded-md pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap">
+                    <div className="flex items-center gap-1.5 bg-white border border-[#E6E3DC] text-[#18191F] font-sans text-[11px] font-bold rounded-md pl-2.5 pr-6 py-1 pointer-events-none whitespace-nowrap shadow-xs">
                       <span>
                         {selectedSeason === 'current'
                           ? `Current (${state.year})`
@@ -1335,32 +1173,46 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                         const outcome = getHistoryOutcome(h, history[selectedSeason + 1], state.seasonStandingsArchive);
                         if (!outcome) return null;
                         return (
-                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase shrink-0 shadow-sm ${
+                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase shrink-0 ${
                             outcome === 'C'
-                              ? 'bg-amber-400 text-black'
+                              ? 'bg-amber-400 text-[#18191F]'
                               : outcome === 'P'
-                              ? 'bg-emerald-500 text-white'
+                              ? 'bg-emerald-600 text-white'
                               : 'bg-rose-600 text-white'
                           }`}>
                             {outcome}
                           </span>
                         );
                       })()}
-                      <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-400 pointer-events-none"></i>
+                      <i className="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-[#6B7280] pointer-events-none"></i>
                     </div>
                     {/* Invisible Select catching taps */}
                     <select
                       value={selectedSeason === 'current' ? 'current' : selectedSeason}
-                      onChange={(e) => setSelectedSeason(e.target.value === 'current' ? 'current' : Number(e.target.value))}
+                      onChange={(e) => {
+                        const nextVal: 'current' | number =
+                          e.target.value === 'current' ? 'current' : Number(e.target.value);
+                        setSelectedSeason(nextVal);
+                        const resolved = resolveTierForSeasonSelection({
+                          nextSeason: nextVal,
+                          history,
+                          currentClub: effectiveUserClub,
+                          clubsDb: sanitizedClubsDb,
+                        });
+                        setSelectedTier(resolved.tier);
+                      }}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-base"
                       aria-label="Select Season Archive"
                     >
-                      <option value="current">Current ({state.year})</option>
+                      <option value="current">
+                        Current ({formatSeasonYearSpan(state.year)})
+                      </option>
                       {[...history].map((h, idx) => ({ h, originalIndex: idx })).reverse().map(({ h, originalIndex }) => {
                         const outcome = getHistoryOutcome(h, history[originalIndex + 1], state.seasonStandingsArchive);
+                        const histLeague = getLeagueInfo(h.tier || 1, h.country || currentCountry).name || h.leagueTag;
                         return (
                           <option key={originalIndex} value={originalIndex}>
-                            {h.year} (P{h.pos}{outcome ? ` · ${outcome}` : ''})
+                            {formatSeasonYearSpan(h.year)} · {histLeague} (P{h.pos}{outcome ? ` · ${outcome}` : ''})
                           </option>
                         );
                       })}
@@ -1373,12 +1225,12 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
             {/* Insolvent Club Notice Banner */}
             {insolventClubInTable && (
               <div className="px-3 sm:px-6 pt-2 shrink-0">
-                <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-2.5 text-left flex items-start gap-2 shadow-sm">
-                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-xs">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 sm:p-2.5 text-left flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-xs">
                     <i className="fas fa-triangle-exclamation"></i>
                   </div>
-                  <div className="flex-1 text-[11px] text-amber-200/90 leading-relaxed">
-                    <span className="font-bold text-amber-300">{insolventClubInTable.name}</span>{' '}
+                  <div className="flex-1 text-[11px] text-amber-900 leading-relaxed">
+                    <span className="font-bold text-amber-950">{insolventClubInTable.name}</span>{' '}
                     faced financial administration and was relegated by decree.
                   </div>
                 </div>
@@ -1386,23 +1238,23 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
             )}
 
             {/* Standings Table Container - Centered and Max Width for Compactness */}
-            <div className="p-0 sm:p-4 overflow-hidden flex flex-col flex-1 min-h-0">
-              <div className="w-full max-w-[760px] mx-auto flex flex-col h-fit max-h-full mb-auto bg-white/[0.02] sm:border border-white/[0.08] sm:rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-0 sm:p-4 overflow-hidden flex flex-col flex-1 min-h-0 bg-white sm:bg-[#FAF9F6]">
+              <div className="w-full max-w-[780px] mx-auto flex flex-col h-full sm:h-fit max-h-full mb-auto bg-white sm:border border-[#E6E3DC] sm:rounded-2xl overflow-hidden shadow-xs">
                 
                 {/* Table Header */}
-                <div className="flex items-center py-2 px-2 sm:px-3.5 bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-semibold text-zinc-400 uppercase tracking-wider shrink-0">
+                <div className="flex items-center py-1.5 sm:py-2 px-2 sm:px-3.5 bg-[#F6F5F1] border-b border-[#E6E3DC] text-[10px] font-bold text-[#6B7280] uppercase tracking-wider shrink-0">
                   <div className="w-6 sm:w-8 text-center shrink-0">#</div>
                   <div className="flex-1 px-1.5 sm:px-2 text-left min-w-0">Club</div>
                   <div className="w-7 sm:w-8 text-center shrink-0">MP</div>
                   <div className="w-12 sm:w-14 text-center shrink-0 hidden sm:block">W-D-L</div>
                   <div className="w-10 sm:w-12 text-center shrink-0 hidden sm:block">GF:GA</div>
                   <div className="w-8 sm:w-10 text-center shrink-0">GD</div>
-                  <div className="w-8 sm:w-10 text-center shrink-0 font-bold text-white">Pts</div>
+                  <div className="w-8 sm:w-10 text-center shrink-0 font-bold text-[#18191F]">Pts</div>
                   <div className="w-16 text-center shrink-0 hidden lg:block">Form</div>
                 </div>
 
                 {/* Scrollable Rows with Consequence Lines */}
-                <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-white/[0.02]">
+                <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-[#EFECE4]">
                   {tableData.map((r, i) => {
                     const status = promoStatusMap.get(i);
                     let consequenceBorder = 'border-l-4 border-transparent';
@@ -1410,43 +1262,43 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                     const cannotPromote = r.isReserve && !canPromoteReserve(r.name);
                     if (!cannotPromote) {
                       if (status === 'champion') {
-                        consequenceBorder = 'border-l-4 border-amber-400 bg-amber-400/[0.06] shadow-[inset_4px_0_12px_rgba(251,191,36,0.18)]';
+                        consequenceBorder = 'border-l-4 border-amber-500 bg-amber-50/75';
                         consequenceTitle = regionalLegend.champTooltip;
                       } else if (status === 'champions_league') {
-                        consequenceBorder = 'border-l-4 border-amber-400/90 bg-amber-400/[0.03]';
+                        consequenceBorder = 'border-l-4 border-amber-400 bg-amber-50/45';
                         consequenceTitle = regionalLegend.primaryTooltip;
                       } else if (status === 'auto_promo') {
-                        consequenceBorder = 'border-l-4 border-emerald-400 bg-emerald-500/[0.04] shadow-[inset_4px_0_12px_rgba(52,211,153,0.18)]';
+                        consequenceBorder = 'border-l-4 border-emerald-500 bg-emerald-50/70';
                         consequenceTitle = 'Automatic Promotion';
                       } else if (status === 'euro_quali') {
-                        consequenceBorder = 'border-l-4 border-sky-400 bg-sky-500/[0.04]';
+                        consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
                         consequenceTitle = regionalLegend.secondaryTooltip;
                       } else if (status === 'playoff') {
-                        consequenceBorder = 'border-l-4 border-sky-400 bg-sky-500/[0.04]';
+                        consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
                         consequenceTitle = 'Promotion Playoff';
                       }
                     }
                     if (status === 'relegation') {
-                      consequenceBorder = 'border-l-4 border-rose-500 bg-rose-500/[0.05]';
+                      consequenceBorder = 'border-l-4 border-rose-500 bg-rose-50/65';
                       consequenceTitle = regionalLegend.relegation;
                     }
 
                     const rowBg = r.isUser
-                      ? 'bg-sky-500/15 border-sky-400/40 shadow-[0_0_20px_rgba(56,189,248,0.22)] ring-1 ring-sky-400/40 relative z-10'
+                      ? 'bg-sky-50 ring-1 ring-inset ring-sky-300 relative z-10'
                       : r.isRival
-                      ? 'bg-rose-500/10'
+                      ? 'bg-rose-50/80'
                       : i % 2 === 0
-                      ? 'bg-transparent'
-                      : 'bg-white/[0.015]';
+                      ? ''
+                      : 'bg-[#FAF9F6]';
 
                     return (
                       <div
                         key={r.id || r.name}
                         title={consequenceTitle || undefined}
-                        className={`flex items-center py-2 px-2 sm:px-3 text-xs transition-colors ${consequenceBorder} ${rowBg}`}
+                        className={`flex items-center py-1 sm:py-2 px-2 sm:px-3 text-xs transition-colors hover:bg-[#F6F5F1] ${consequenceBorder} ${rowBg}`}
                       >
                         {/* Position */}
-                        <div className="w-6 sm:w-8 text-center shrink-0 font-mono font-bold text-zinc-400">
+                        <div className="w-6 sm:w-8 text-center shrink-0 font-mono font-bold text-[#6B7280] tabular-nums">
                           {r.pos}
                         </div>
 
@@ -1460,7 +1312,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                             isModActive={isModActive}
                             className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 object-contain"
                           />
-                          <span className={`truncate font-semibold py-0.5 leading-normal ${r.isUser ? 'text-sky-300 font-bold' : 'text-zinc-200'}`}>
+                          <span className={`truncate font-semibold py-0.5 leading-normal ${r.isUser ? 'text-sky-900 font-extrabold' : 'text-[#18191F]'}`}>
                             {sanitizePlayerName(r.name) || r.name}
                           </span>
 
@@ -1476,7 +1328,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
 
                           {/* "YOU" Badge */}
                           {r.isUser && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase bg-sky-400 text-black tracking-wider shrink-0 shadow-sm">
+                            <span className="px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase bg-[#18191F] text-white tracking-wider shrink-0">
                               YOU
                             </span>
                           )}
@@ -1494,11 +1346,11 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                             if (!outcome) return null;
                             return (
                               <span 
-                                className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider shrink-0 shadow-sm ${
+                                className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider shrink-0 ${
                                   outcome === 'C'
-                                    ? 'bg-amber-400 text-black'
+                                    ? 'bg-amber-400 text-[#18191F]'
                                     : outcome === 'P'
-                                    ? 'bg-emerald-500 text-white'
+                                    ? 'bg-emerald-600 text-white'
                                     : 'bg-rose-600 text-white'
                                 }`}
                                 title={
@@ -1519,8 +1371,8 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                             <span 
                               className={`px-1.5 py-0.5 rounded text-[7px] sm:text-[8px] font-black uppercase border shrink-0 tracking-wider ${
                                 canPromoteReserve(r.name) && effectiveSelectedTier > 1
-                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
                               }`}
                               title={
                                 canPromoteReserve(r.name) && effectiveSelectedTier > 1
@@ -1535,7 +1387,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                           {/* Financial Penalty */}
                           {r.pointsDeducted && r.pointsDeducted > 0 && (
                             <span 
-                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold text-rose-400 bg-rose-500/15 border border-rose-500/25 font-mono shrink-0"
+                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 font-mono shrink-0"
                               title={`Financial penalty: -${r.pointsDeducted} points deducted by league association due to licensing or financial deficit`}
                             >
                               (-{r.pointsDeducted} Pts)
@@ -1545,7 +1397,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                           {/* Pyramid Floor: Relegation Zone Retained Badge */}
                           {isBottomTier && status === 'relegation' && (
                             <span 
-                              className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold text-rose-300 bg-rose-500/15 border border-rose-500/25 shrink-0"
+                              className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[8px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 shrink-0"
                               title="Pyramid floor: Finished in sporting relegation zone, but retained in this division next season as no lower national tier exists. Manager is immediately relieved of duties for sporting failure."
                             >
                               Sporting Relegation (Pyramid Floor)
@@ -1554,29 +1406,29 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                         </div>
 
                         {/* Matches Played */}
-                        <div className="w-7 sm:w-8 text-center shrink-0 font-mono text-zinc-400">
+                        <div className="w-7 sm:w-8 text-center shrink-0 font-mono text-[#6B7280] tabular-nums">
                           {r.mp}
                         </div>
 
                         {/* W-D-L */}
-                        <div className="w-12 sm:w-14 text-center shrink-0 font-mono text-zinc-400 hidden sm:block text-[10px] sm:text-[11px]">
-                          <span className="text-emerald-400">{r.w}</span>-
+                        <div className="w-12 sm:w-14 text-center shrink-0 font-mono text-[#6B7280] hidden sm:block text-[10px] sm:text-[11px] tabular-nums">
+                          <span className="text-emerald-700 font-semibold">{r.w}</span>-
                           <span>{r.d}</span>-
-                          <span className="text-rose-400">{r.l}</span>
+                          <span className="text-rose-700 font-semibold">{r.l}</span>
                         </div>
 
                         {/* GF:GA */}
-                        <div className="w-10 sm:w-12 text-center shrink-0 font-mono text-zinc-400 hidden sm:block text-[10px] sm:text-[11px]">
+                        <div className="w-10 sm:w-12 text-center shrink-0 font-mono text-[#6B7280] hidden sm:block text-[10px] sm:text-[11px] tabular-nums">
                           {r.gf}:{r.ga}
                         </div>
 
                         {/* GD */}
-                        <div className="w-8 sm:w-10 text-center shrink-0 font-mono font-medium text-zinc-300 text-[10px] sm:text-[11px]">
+                        <div className="w-8 sm:w-10 text-center shrink-0 font-mono font-medium text-[#4B5563] text-[10px] sm:text-[11px] tabular-nums">
                           {r.gd}
                         </div>
 
                         {/* Pts */}
-                        <div className="w-8 sm:w-10 text-center shrink-0 font-mono font-bold text-white text-[11px] sm:text-xs">
+                        <div className="w-8 sm:w-10 text-center shrink-0 font-mono font-bold text-[#18191F] text-[11px] sm:text-xs tabular-nums">
                           {r.pts}
                         </div>
 
@@ -1586,19 +1438,19 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                             r.form.map((res, fIdx) => (
                               <span
                                 key={fIdx}
-                                className={`w-3 h-3 rounded-[3px] flex items-center justify-center text-[7px] font-black text-black ${
+                                className={`w-3.5 h-3.5 rounded-[3px] flex items-center justify-center text-[7px] font-black ${
                                   res === 'W'
-                                    ? 'bg-emerald-400'
+                                    ? 'bg-emerald-600 text-white'
                                     : res === 'D'
-                                    ? 'bg-zinc-400'
-                                    : 'bg-rose-500 text-white'
+                                    ? 'bg-[#D6D2C9] text-[#18191F]'
+                                    : 'bg-rose-600 text-white'
                                 }`}
                               >
                                 {res}
                               </span>
                             ))
                           ) : (
-                            <span className="text-zinc-600 font-mono text-[10px]">-</span>
+                            <span className="text-[#9CA3AF] font-mono text-[10px]">-</span>
                           )}
                         </div>
                       </div>
@@ -1607,16 +1459,16 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                 </div>
 
                 {/* Table Footer Consequence Legend */}
-                <div className="px-3.5 py-2.5 bg-white/[0.02] border-t border-white/[0.06] text-[10px] text-zinc-400 flex items-center gap-4 flex-wrap justify-between shrink-0">
+                <div className="hidden sm:flex px-3.5 py-2.5 bg-[#FAF9F6] border-t border-[#E6E3DC] text-[10px] text-[#6B7280] items-center gap-4 flex-wrap justify-between shrink-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     {effectiveSelectedTier === 1 ? (
                       <>
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 shrink-0 shadow-[0_0_6px_rgba(251,191,36,0.6)]"></span>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 shrink-0"></span>
                           <span>{regionalLegend.primary}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-sm bg-sky-400 shrink-0"></span>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-sky-500 shrink-0"></span>
                           <span>{regionalLegend.secondary}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1631,11 +1483,11 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                     ) : (
                       <>
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 shrink-0 shadow-[0_0_6px_rgba(52,211,153,0.6)]"></span>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 shrink-0"></span>
                           <span>Automatic Promotion</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-sm bg-sky-400 shrink-0"></span>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-sky-500 shrink-0"></span>
                           <span>Playoff</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1649,20 +1501,20 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-1 sm:mt-0 flex-wrap">
+                  <div className="flex items-center gap-2 text-[10px] text-[#6B7280] mt-1 sm:mt-0 flex-wrap">
                     {inspectedHist && (
                       <span className="flex items-center gap-1.5 mr-2">
-                        <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-400 text-black">C</span>
+                        <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-400 text-[#18191F]">C</span>
                         <span>Champion</span>
                         {effectiveSelectedTier > 1 && (
                           <>
-                            <span className="px-1 py-0.2 rounded text-[7px] font-black bg-emerald-500 text-white">P</span>
+                            <span className="px-1 py-0.2 rounded text-[7px] font-black bg-emerald-600 text-white">P</span>
                             <span>Promoted</span>
                           </>
                         )}
                         {!isTier1Only && !isBottomTier && (
                           <>
-                            <span className="px-1 py-0.2 rounded text-[7px] font-black bg-rose-500 text-white">R</span>
+                            <span className="px-1 py-0.2 rounded text-[7px] font-black bg-rose-600 text-white">R</span>
                             <span>Relegated</span>
                           </>
                         )}
@@ -1678,7 +1530,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
           /* ──────────────────────────────────────────────────────────
               PART 2: CHAMPIONS ALMANAC (GLOBAL & REGIONAL WINNERS)
               ────────────────────────────────────────────────────────── */
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
             <div
               ref={universeScrollRef}
               className="flex-1 min-h-0 p-2.5 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar space-y-2 touch-pan-y"
@@ -1699,7 +1551,7 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
           /* ──────────────────────────────────────────────────────────
               PART 3: TOP 5 TROPHY LEADERS BAR CHART VIEW
               ────────────────────────────────────────────────────────── */
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white">
             <div
               className="flex-1 min-h-0 p-2.5 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar space-y-2 touch-pan-y"
               style={{ WebkitOverflowScrolling: 'touch' }}

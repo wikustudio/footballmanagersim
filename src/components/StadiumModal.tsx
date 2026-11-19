@@ -510,7 +510,7 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
   const fin = calculateClubFinancials(state);
   const lastHistory = state.history && state.history.length > 0 ? state.history[state.history.length - 1] : null;
   const isCurrentClubHistory = lastHistory && (!lastHistory.clubId || lastHistory.clubId === state.club.id);
-  const rawAtt = (isCurrentClubHistory ? lastHistory?.att : undefined) ?? fin.expectedAtt ?? Math.round(currentCap * 0.85);
+  const rawAtt = fin.expectedAtt ?? (isCurrentClubHistory ? lastHistory?.att : undefined) ?? 500;
   const currentAtt = Math.max(1, Math.min(currentCap, rawAtt));
   const currentUtil = Math.min(100, Math.round((currentAtt / currentCap) * 100));
 
@@ -535,109 +535,105 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
     .slice(-5);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      exit={{ opacity: 0 }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
       onClick={onClose}
-      className="fixed inset-0 bg-black/80 backdrop-blur-2xl flex flex-col items-center justify-center p-2.5 sm:p-4 z-50 cursor-pointer text-left overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/45 backdrop-blur-sm flex flex-col items-center justify-center p-2.5 sm:p-4 z-50 cursor-pointer text-left overflow-y-auto overscroll-contain"
     >
-      <motion.div 
-        initial={{ scale: 0.98, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.98, opacity: 0 }} 
+      <motion.div
+        initial={{ scale: 0.98, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#12141c]/95 text-white w-full sm:max-w-4xl xl:max-w-5xl rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] border border-white/[0.08] backdrop-blur-xl relative cursor-default max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto flex flex-col overflow-hidden shrink-0"
+        className="bg-white text-[#18191F] w-full sm:max-w-4xl xl:max-w-5xl rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.18)] border border-[#E6E3DC] relative cursor-default max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto flex flex-col overflow-hidden shrink-0"
       >
-        {/* Subtle Ambient Sky-Blue Accent */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
         {/* Header */}
-        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] shrink-0 relative z-10">
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] shrink-0 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 bg-white/[0.04] border border-white/[0.08] rounded-2xl flex items-center justify-center text-sky-400 text-base shadow-inner shrink-0">
+            <div className="w-11 h-11 bg-white border border-[#E6E3DC] rounded-2xl flex items-center justify-center text-[#18191F] text-base shadow-xs shrink-0">
               <i className="fa-solid fa-landmark"></i>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90 mb-0.5 flex items-center gap-1.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5 flex items-center gap-1.5">
                 <span>{t('Infrastructure & Matchday Ground', 'Infrastruktur & Ausbau')}</span>
-                <span className="w-1 h-1 rounded-full bg-sky-400/60" />
-                <span className="text-zinc-400 font-medium">{state.club.name}</span>
+                <span className="w-1 h-1 rounded-full bg-sky-700/60" />
+                <span className="text-[#6B7280] font-medium">{state.club.name}</span>
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-tight flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-[#18191F] tracking-tight leading-tight flex items-center gap-2">
                 <span>{t('Stadium & Grandstand Center', 'Stadion- & Tribünenzentrum')}</span>
               </h2>
             </div>
           </div>
-          
-          <button 
+
+          <button
             aria-label="Close modal"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center transition cursor-pointer border border-white/[0.08] shrink-0"
+            className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition cursor-pointer border border-[#E6E3DC] shrink-0"
           >
             <i className="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 custom-scrollbar text-left relative z-10 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 custom-scrollbar text-left relative z-10 space-y-6 bg-white">
           {/* TOP ATTENDANCE & STADIUM STATS CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* CURRENT ATTENDANCE */}
-            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400 uppercase font-semibold tracking-wider">
+                <span className="text-[10px] text-[#6B7280] uppercase font-semibold tracking-wider">
                   {t('Avg. Attendance', 'Ø Zuschauer')}
                 </span>
-                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md tabular-nums">
                   {currentUtil}% {t('Fill', 'Voll')}
                 </span>
               </div>
-              <span className="text-base sm:text-xl font-bold text-white tabular-nums mt-1">
+              <span className="text-base sm:text-xl font-bold text-[#18191F] tabular-nums mt-1">
                 {formatNum(currentAtt)}
               </span>
-              <span className="text-[10px] text-zinc-500 mt-0.5">
+              <span className="text-[10px] text-[#6B7280] mt-0.5">
                 {t('per home matchday', 'pro Heimspiel')}
               </span>
             </div>
 
             {/* TOTAL CAPACITY */}
-            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 uppercase font-semibold tracking-wider">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
+              <span className="text-[10px] text-[#6B7280] uppercase font-semibold tracking-wider">
                 {t('Total Capacity', 'Gesamtkapazität')}
               </span>
-              <span className="text-base sm:text-xl font-bold text-sky-400 tabular-nums mt-1">
+              <span className="text-base sm:text-xl font-bold text-sky-700 tabular-nums mt-1">
                 {formatNum(currentCap)}
               </span>
-              <span className="text-[10px] text-zinc-500 mt-0.5">
+              <span className="text-[10px] text-[#6B7280] mt-0.5 tabular-nums">
                 {formatNum(Math.max(0, currentCap - currentAtt))} {t('unfilled seats', 'Freie Plätze')}
               </span>
             </div>
 
             {/* LEAGUE STANDARD */}
-            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 uppercase font-semibold tracking-wider">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
+              <span className="text-[10px] text-[#6B7280] uppercase font-semibold tracking-wider">
                 {t('League Standard', 'Ligen-Soll')}
               </span>
-              <span className={`text-base sm:text-xl font-bold tabular-nums mt-1 ${isUndersized ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <span className={`text-base sm:text-xl font-bold tabular-nums mt-1 ${isUndersized ? 'text-amber-700' : 'text-emerald-700'}`}>
                 {formatNum(requiredCap)}
               </span>
-              <span className="text-[10px] text-zinc-500 mt-0.5">
+              <span className="text-[10px] text-[#6B7280] mt-0.5">
                 {isUndersized ? t('Needs expansion', 'Ausbau empfohlen') : t('Standard compliant', 'Ligen-konform')}
               </span>
             </div>
 
             {/* TREASURY / CREDIT */}
-            <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 uppercase font-semibold tracking-wider">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between">
+              <span className="text-[10px] text-[#6B7280] uppercase font-semibold tracking-wider">
                 {t('Treasury / Credit', 'Kasse / Kredit')}
               </span>
-              <span className={`text-base sm:text-xl font-bold tabular-nums mt-1 ${state.budget < 0 ? 'text-rose-400' : 'text-sky-300'}`}>
+              <span className={`text-base sm:text-xl font-bold tabular-nums mt-1 ${state.budget < 0 ? 'text-rose-700' : 'text-[#18191F]'}`}>
                 {formatMoney(state.budget)}
               </span>
-              <span className="text-[10px] text-zinc-500 mt-0.5">
+              <span className="text-[10px] text-[#6B7280] mt-0.5 tabular-nums">
                 {formatMoney(availableLiquidity)} {t('liquidity', 'Verfügbar')}
               </span>
             </div>
@@ -647,37 +643,37 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
           {(() => {
             const catchment = analyzeCatchment(state.club, currentCap);
             return (
-              <div className="bg-white/[0.025] border border-white/[0.06] rounded-2xl p-3.5 sm:p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 text-sm shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-sm shrink-0">
                     <i className="fa-solid fa-map-location-dot"></i>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
                         {t('Metro Demographic Catchment', 'Regionales Einzugsgebiet')}
                       </span>
-                      <span className="text-zinc-600">·</span>
-                      <span className="text-xs text-zinc-300 font-semibold">{catchment.metroCity}</span>
-                      <span className="text-[10px] text-zinc-400 font-mono">({formatNum(catchment.population)} {t('inhabitants', 'Einw.')})</span>
+                      <span className="text-[#D6D3CB]">·</span>
+                      <span className="text-xs text-[#18191F] font-semibold">{catchment.metroCity}</span>
+                      <span className="text-[10px] text-[#6B7280] font-mono tabular-nums">({formatNum(catchment.population)} {t('inhabitants', 'Einw.')})</span>
                     </div>
-                    <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
+                    <div className="text-[11px] text-[#4B5563] mt-0.5 leading-snug">
                       {lang === 'de' ? catchment.adviceDe : catchment.adviceEn}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E6E3DC]">
                   <div className="text-right">
-                    <div className="text-[9px] text-zinc-500 uppercase tracking-wider">{t('Soft Ceiling', 'Demograf. Soll')}</div>
-                    <div className="text-xs font-bold font-mono text-zinc-200">{formatNum(catchment.softCapacityCeiling)}</div>
+                    <div className="text-[9px] text-[#6B7280] uppercase tracking-wider">{t('Soft Ceiling', 'Demograf. Soll')}</div>
+                    <div className="text-xs font-bold font-mono text-[#18191F] tabular-nums">{formatNum(catchment.softCapacityCeiling)}</div>
                   </div>
-                  <div className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 ${
+                  <div className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1 tabular-nums ${
                     catchment.utilizationRiskLevel === 'high_drag'
-                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
                       : catchment.utilizationRiskLevel === 'moderate'
-                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                      : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     <i className={`fa-solid ${catchment.utilizationRiskLevel === 'high_drag' ? 'fa-triangle-exclamation' : catchment.utilizationRiskLevel === 'moderate' ? 'fa-circle-exclamation' : 'fa-check'}`}></i>
                     <span>{catchment.penetrationPct}% {t('Capacity Index', 'Index')}</span>
@@ -689,34 +685,34 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
 
           {/* 5-SEASON ATTENDANCE TREND (Collapsible Sparkline) */}
           {historyList.length > 0 && (
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3.5 backdrop-blur-md">
+            <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3.5">
               <button
                 type="button"
                 onClick={() => setShowHistoryChart(!showHistoryChart)}
                 className="w-full flex items-center justify-between text-left transition cursor-pointer group"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-sky-500/10 border border-sky-400/20 flex items-center justify-center text-sky-400 text-xs">
+                  <div className="w-6 h-6 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xs">
                     <i className="fa-solid fa-chart-line"></i>
                   </div>
-                  <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition">
+                  <span className="text-xs font-semibold text-[#18191F] transition">
                     {t('5-Season Attendance Trend & Turnstiles', 'Zuschauer-Historie (Letzte 5 Saisons)')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-sky-400 tabular-nums">
+                  <span className="text-[11px] font-semibold text-sky-700 tabular-nums">
                     {currentUtil}% {t('current utilization', 'aktuelle Auslastung')}
                   </span>
-                  <i className={`fa-solid fa-chevron-${showHistoryChart ? 'up' : 'down'} text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-transform`}></i>
+                  <i className={`fa-solid fa-chevron-${showHistoryChart ? 'up' : 'down'} text-[10px] text-[#6B7280] group-hover:text-[#18191F] transition-transform`}></i>
                 </div>
               </button>
 
               {showHistoryChart && (
-                <div className="mt-3 pt-3 border-t border-white/[0.04]">
-                  <div className="relative w-full h-24 mt-2 mb-4">
-                    <div className="absolute top-0 left-0 w-full border-t border-dashed border-white/10 z-0" />
-                    <div className="absolute bottom-0 left-0 w-full border-b border-white/10 z-0" />
-                    <div className="absolute -top-3.5 right-0 text-[8px] text-zinc-500 font-medium uppercase tracking-wider">
+                <div className="mt-3 pt-3 border-t border-[#E6E3DC]">
+                  <div className="relative w-full h-24 mt-4 mb-5">
+                    <div className="absolute top-0 left-0 w-full border-t border-dashed border-[#D6D3CB] z-0" />
+                    <div className="absolute bottom-0 left-0 w-full border-b border-[#D6D3CB] z-0" />
+                    <div className="absolute -top-4 right-0 text-[8px] text-[#6B7280] font-semibold uppercase tracking-wider tabular-nums">
                       {t('MAX', 'MAX')} · {formatNum(currentCap)}
                     </div>
 
@@ -738,13 +734,13 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                           <svg className="absolute inset-0 w-full h-full overflow-visible z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
                             <defs>
                               <linearGradient id="stadiumTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.3" />
-                                <stop offset="60%" stopColor="#0ea5e9" stopOpacity="0.08" />
-                                <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.0" />
+                                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.22" />
+                                <stop offset="60%" stopColor="#0284c7" stopOpacity="0.06" />
+                                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
                               </linearGradient>
                             </defs>
                             <path d={areaPath} fill="url(#stadiumTrendGrad)" />
-                            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                            <path d={linePath} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
                           </svg>
 
                           <div className="absolute inset-0 z-20 w-full h-full pointer-events-none">
@@ -752,8 +748,8 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                               const isLast = i === points.length - 1;
                               return (
                                 <div key={i} className="absolute flex flex-col items-center justify-center" style={{ left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)' }}>
-                                  <div className={`rounded-full bg-sky-400 border-2 border-[#12141c] shadow-[0_0_8px_rgba(56,189,248,0.5)] ${isLast ? 'w-3 h-3 ring-4 ring-sky-400/25' : 'w-2.5 h-2.5'}`} />
-                                  <div className="absolute -top-5 text-[9px] font-bold text-white px-1.5 py-0.5 whitespace-nowrap bg-[#12141c]/95 backdrop-blur-md rounded-md border border-white/10 tabular-nums shadow-sm">
+                                  <div className={`rounded-full bg-sky-600 border-2 border-white shadow-xs ${isLast ? 'w-3 h-3 ring-4 ring-sky-500/20' : 'w-2.5 h-2.5'}`} />
+                                  <div className="absolute -top-5 text-[9px] font-bold text-[#18191F] px-1.5 py-0.5 whitespace-nowrap bg-white rounded-md border border-[#E6E3DC] tabular-nums shadow-xs">
                                     {formatNum(p.att)}
                                   </div>
                                 </div>
@@ -761,9 +757,9 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                             })}
                           </div>
 
-                          <div className="absolute -bottom-4.5 left-0 w-full z-20 pointer-events-none">
+                          <div className="absolute -bottom-5 left-0 w-full z-20 pointer-events-none">
                             {points.map((p, i) => (
-                              <div key={i} className={`absolute text-[9px] font-semibold tabular-nums ${i === points.length - 1 ? 'text-sky-300 font-bold' : 'text-zinc-500'}`} style={{ left: `${p.x}%`, transform: 'translateX(-50%)' }}>
+                              <div key={i} className={`absolute text-[9px] font-semibold tabular-nums ${i === points.length - 1 ? 'text-sky-700 font-bold' : 'text-[#6B7280]'}`} style={{ left: `${p.x}%`, transform: 'translateX(-50%)' }}>
                                 '{p.year.toString().slice(-2)}
                               </div>
                             ))}
@@ -778,26 +774,26 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
           )}
 
           {alreadyExpanded && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5 flex items-center gap-3 text-amber-300 text-xs font-medium">
-              <i className="fa-solid fa-triangle-exclamation text-amber-400 shrink-0"></i>
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-center gap-3 text-amber-800 text-xs font-medium">
+              <i className="fa-solid fa-triangle-exclamation text-amber-700 shrink-0"></i>
               <span>{t('Stadium expansion completed for this season (1/1).', 'Ausbau für diese Saison beendet (1/1).')}</span>
             </div>
           )}
 
           {/* STRATEGY & SUPPORTER DEMOGRAPHICS SECTION */}
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-5 sm:p-6 backdrop-blur-xl space-y-6">
+          <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 sm:p-6 space-y-6">
             {/* Top: Grandstand Strategy Cards (Primary Focus) */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-400/90 mb-0.5 flex items-center gap-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5 flex items-center gap-1.5">
                     <i className="fa-solid fa-sliders text-[10px]"></i>
                     <span>{t('Matchday Ground Operations', 'Stadion-Betrieb')}</span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-[#18191F] tracking-tight">
                     {t('Grandstand & Matchday Strategy', 'Tribünen- & Spieltagsstrategie')}
                   </h3>
-                  <p className="text-xs text-zinc-400 font-normal">
+                  <p className="text-xs text-[#6B7280] font-normal">
                     {t(
                       'Choose your ground policy to influence pitch atmosphere, matchday cash flow, and supporter recruitment.',
                       'Wähle deine Ausrichtung für Heimstärke, Spieltagseinnahmen und Fan-Zuwachs.'
@@ -805,10 +801,10 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                   </p>
                 </div>
 
-                <div className="bg-white/[0.03] border border-white/[0.08] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs self-start sm:self-auto shrink-0">
-                  <i className="fa-solid fa-volume-high text-sky-400 text-[11px]"></i>
-                  <span className="text-zinc-400 text-[11px] font-medium">{t('Atmosphere:', 'Stimmung:')}</span>
-                  <span className="font-bold text-white tabular-nums">{weightedAtmosphere}/100</span>
+                <div className="bg-white border border-[#E6E3DC] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs self-start sm:self-auto shrink-0">
+                  <i className="fa-solid fa-volume-high text-sky-700 text-[11px]"></i>
+                  <span className="text-[#6B7280] text-[11px] font-medium">{t('Atmosphere:', 'Stimmung:')}</span>
+                  <span className="font-bold text-[#18191F] tabular-nums">{weightedAtmosphere}/100</span>
                 </div>
               </div>
 
@@ -823,24 +819,24 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                       onClick={() => onSelectPolicy && onSelectPolicy(policy.key)}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between text-left relative overflow-hidden group ${
                         isPolicyActive
-                          ? 'bg-sky-500/[0.09] border-sky-400/40 ring-1 ring-sky-400/30 shadow-md'
-                          : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]'
+                          ? 'bg-[#18191F] border-[#18191F] text-white shadow-sm'
+                          : 'bg-white hover:bg-[#F2EFE7] border-[#E6E3DC] text-[#18191F]'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs transition ${
-                              isPolicyActive ? 'bg-sky-400 text-zinc-950 font-bold' : 'bg-white/[0.04] text-zinc-300 group-hover:text-white'
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs transition shrink-0 ${
+                              isPolicyActive ? 'bg-white text-[#18191F] font-bold' : 'bg-[#FAF9F6] border border-[#E6E3DC] text-[#18191F]'
                             }`}>
                               <i className={policy.icon}></i>
                             </div>
-                            <span className="text-xs font-bold text-white truncate">
+                            <span className={`text-xs font-bold truncate ${isPolicyActive ? 'text-white' : 'text-[#18191F]'}`}>
                               {lang === 'de' ? policy.labelDe : policy.labelEn}
                             </span>
                           </div>
                           <div className={`w-4 h-4 rounded-full border flex items-center justify-center text-[8px] shrink-0 ${
-                            isPolicyActive ? 'bg-sky-400 border-sky-400 text-zinc-950 font-bold' : 'border-white/20 text-transparent'
+                            isPolicyActive ? 'bg-white border-white text-[#18191F] font-bold' : 'border-[#D6D3CB] text-transparent'
                           }`}>
                             <i className="fa-solid fa-check"></i>
                           </div>
@@ -848,16 +844,18 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
 
                         <div className="mb-2">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                            isPolicyActive 
-                              ? 'bg-sky-400/20 text-sky-300 border-sky-400/30 font-bold' 
-                              : 'bg-white/[0.04] text-zinc-400 border-white/[0.06]'
+                            isPolicyActive
+                              ? 'bg-white/15 text-white border-white/25 font-bold'
+                              : 'bg-[#FAF9F6] text-[#4B5563] border-[#E6E3DC]'
                           }`}>
                             {lang === 'de' ? policy.badgeDe : policy.badgeEn}
                           </span>
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-white/[0.06] text-[10px] font-medium text-emerald-400 leading-snug">
+                      <div className={`pt-2 border-t text-[10px] font-medium leading-snug ${
+                        isPolicyActive ? 'border-white/15 text-emerald-300' : 'border-[#E6E3DC] text-emerald-700'
+                      }`}>
                         {lang === 'de' ? policy.effectDe : policy.effectEn}
                       </div>
                     </button>
@@ -867,19 +865,19 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
             </div>
 
             {/* Bottom: Compact Continuous Supporter Demographics Bar */}
-            <div className="pt-4 border-t border-white/[0.06]">
-              <div className="flex items-center justify-between mb-2.5 px-0.5">
-                <div className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
-                  <i className="fa-solid fa-chart-pie text-sky-400 text-[10px]"></i>
+            <div className="pt-4 border-t border-[#E6E3DC]">
+              <div className="flex items-center justify-between mb-2.5 px-0.5 flex-wrap gap-2">
+                <div className="text-[11px] font-semibold text-[#18191F] flex items-center gap-1.5">
+                  <i className="fa-solid fa-chart-pie text-sky-700 text-[10px]"></i>
                   <span>{t('Matchday Turnstiles by Supporter Group', 'Zuschauer-Aufteilung nach Fanszene')}</span>
                 </div>
-                <div className="text-[10px] text-zinc-400 font-mono">
+                <div className="text-[10px] text-[#6B7280] font-mono tabular-nums">
                   {formatNum(currentAtt)} / {formatNum(currentCap)} {t('turnstiles active', 'Plätze belegt')} ({currentUtil}%)
                 </div>
               </div>
 
               {/* Continuous Segmented Distribution Bar */}
-              <div className="h-3.5 w-full bg-black/40 rounded-full p-0.5 border border-white/[0.06] flex gap-1 overflow-hidden shadow-inner mb-3">
+              <div className="h-3.5 w-full bg-[#EFECE4] rounded-full p-0.5 border border-[#E6E3DC] flex gap-1 overflow-hidden mb-3">
                 {segments.map((segment) => (
                   <div
                     key={segment.key}
@@ -902,44 +900,44 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                       key={segment.key}
                       className={`p-2.5 rounded-2xl border text-left flex flex-col justify-between transition ${
                         isUltrasSynergy || isVipSynergy || isFamilySynergy
-                          ? 'bg-sky-500/[0.07] border-sky-400/30'
-                          : 'bg-white/[0.02] border-white/[0.05]'
+                          ? 'bg-sky-50 border-sky-200'
+                          : 'bg-white border-[#E6E3DC]'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span 
-                            className="w-2 h-2 rounded-full shrink-0" 
-                            style={{ backgroundColor: segment.color }} 
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: segment.color }}
                           />
-                          <span className="text-[11px] font-bold text-white truncate">
+                          <span className="text-[11px] font-bold text-[#18191F] truncate">
                             {lang === 'de' ? segment.nameDe : segment.nameEn}
                           </span>
                         </div>
-                        <span className="text-[10px] font-bold text-zinc-400 tabular-nums ml-1 shrink-0">
+                        <span className="text-[10px] font-bold text-[#6B7280] tabular-nums ml-1 shrink-0">
                           {segment.attendeeSharePct}%
                         </span>
                       </div>
 
                       <div className="flex items-baseline justify-between mt-0.5">
-                        <div className="text-[13px] font-bold text-white font-mono tabular-nums">
+                        <div className="text-[13px] font-bold text-[#18191F] font-mono tabular-nums">
                           {formatNum(segment.attendees)}
                         </div>
-                        <span className="text-[9px] text-zinc-400 tabular-nums">
+                        <span className="text-[9px] text-[#6B7280] tabular-nums">
                           {segment.fillPct}% {t('full', 'voll')}
                         </span>
                       </div>
 
-                      <div className="mt-1 pt-1 border-t border-white/[0.04] flex items-center justify-between text-[9px]">
-                        <span className="text-zinc-500 truncate">{segment.loyaltyLabel}</span>
+                      <div className="mt-1 pt-1 border-t border-[#E6E3DC] flex items-center justify-between text-[9px]">
+                        <span className="text-[#6B7280] truncate">{segment.loyaltyLabel}</span>
                         {isUltrasSynergy ? (
-                          <span className="text-rose-400 font-semibold">{t('+Curva', '+Kurve')}</span>
+                          <span className="text-rose-700 font-semibold">{t('+Curva', '+Kurve')}</span>
                         ) : isVipSynergy ? (
-                          <span className="text-violet-400 font-semibold">{t('+Yield', '+Ertrag')}</span>
+                          <span className="text-purple-700 font-semibold">{t('+Yield', '+Ertrag')}</span>
                         ) : isFamilySynergy ? (
-                          <span className="text-emerald-400 font-semibold">{t('+Family', '+Familie')}</span>
+                          <span className="text-emerald-700 font-semibold">{t('+Family', '+Familie')}</span>
                         ) : (
-                          <span className="text-zinc-500">{segment.yieldLabel.split(' ')[0]}</span>
+                          <span className="text-[#6B7280]">{segment.yieldLabel.split(' ')[0]}</span>
                         )}
                       </div>
                     </div>
@@ -951,50 +949,48 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
 
           {/* FULL WIDTH MEGA PROJECT BANNER */}
           {megaProject && (
-            <div className="bg-amber-500/[0.04] border border-amber-400/25 rounded-3xl p-5 sm:p-6 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-              
+            <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden group">
               <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center relative z-10">
                 <div className="flex-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1 flex items-center gap-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-1 flex items-center gap-1.5">
                     <i className="fa-solid fa-crown text-[9px]"></i>
                     <span>{t('Ultimate Project', 'Ultimatives Projekt')}</span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-[#18191F] tracking-tight mb-1">
                     {lang === 'de' ? megaProject.labelDe : megaProject.labelEn}
-                    <span className="text-amber-400 tabular-nums ml-2">+{formatNum(megaProject.seats)}</span>
+                    <span className="text-amber-700 tabular-nums ml-2">+{formatNum(megaProject.seats)}</span>
                   </h3>
-                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-2.5 max-w-xl font-normal">
+                  <p className="text-xs sm:text-sm text-[#4B5563] leading-relaxed mb-2.5 max-w-xl font-normal">
                     {lang === 'de' ? megaProject.descDe : megaProject.descEn}
                   </p>
-                  
+
                   {/* Demographic breakdown pill for new seats */}
-                  <div className="mb-3.5 flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-400">
-                    <span className="font-semibold text-zinc-300">{t('New Stand Allocation:', 'Tribünenaufteilung:')}</span>
-                    <span className="text-rose-400 font-medium">+{formatNum(Math.round(megaProject.seats * 0.14))} {t('Ultras', 'Ultras')}</span>
+                  <div className="mb-3.5 flex flex-wrap items-center gap-1.5 text-[10px] text-[#6B7280]">
+                    <span className="font-semibold text-[#18191F]">{t('New Stand Allocation:', 'Tribünenaufteilung:')}</span>
+                    <span className="text-rose-700 font-medium tabular-nums">+{formatNum(Math.round(megaProject.seats * 0.14))} {t('Ultras', 'Ultras')}</span>
                     <span>·</span>
-                    <span className="text-sky-400 font-medium">+{formatNum(Math.round(megaProject.seats * 0.30))} {t('Fan Clubs', 'Fanclubs')}</span>
+                    <span className="text-sky-700 font-medium tabular-nums">+{formatNum(Math.round(megaProject.seats * 0.30))} {t('Fan Clubs', 'Fanclubs')}</span>
                     <span>·</span>
-                    <span className="text-emerald-400 font-medium">+{formatNum(Math.round(megaProject.seats * 0.42))} {t('General', 'Tageskarten')}</span>
+                    <span className="text-emerald-700 font-medium tabular-nums">+{formatNum(Math.round(megaProject.seats * 0.42))} {t('General', 'Tageskarten')}</span>
                     <span>·</span>
-                    <span className="text-purple-400 font-medium">+{formatNum(Math.round(megaProject.seats * 0.09))} {t('Casuals', 'Gäste')}</span>
+                    <span className="text-purple-700 font-medium tabular-nums">+{formatNum(Math.round(megaProject.seats * 0.09))} {t('Casuals', 'Gäste')}</span>
                     <span>·</span>
-                    <span className="text-amber-400 font-medium">+{formatNum(Math.round(megaProject.seats * 0.05))} {t('VIP Suites', 'VIP-Logen')}</span>
+                    <span className="text-amber-700 font-medium tabular-nums">+{formatNum(Math.round(megaProject.seats * 0.05))} {t('VIP Suites', 'VIP-Logen')}</span>
                   </div>
 
-                  <div className="text-[11px] font-medium text-emerald-400 mb-4 flex items-center gap-1.5">
+                  <div className="text-[11px] font-medium text-emerald-700 mb-4 flex items-center gap-1.5">
                     <i className="fa-solid fa-building-columns"></i>
                     <span>{lang === 'de' ? 'Strukturierte Schulden möglich (Insolvenz-Pause bei operativem Gewinn)' : 'Structured Debt Eligible (Insolvency paused if operating at a profit)'}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 text-sm">
                     <div className="flex flex-col">
-                      <span className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">{t('Fanbase Growth', 'Fan-Wachstum')}</span>
-                      <span className="font-bold text-emerald-400 tabular-nums">+{formatNum(megaProject.fanBoost)}</span>
+                      <span className="text-[#6B7280] text-[10px] font-semibold uppercase tracking-wider">{t('Fanbase Growth', 'Fan-Wachstum')}</span>
+                      <span className="font-bold text-emerald-700 tabular-nums">+{formatNum(megaProject.fanBoost)}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-zinc-400 text-[10px] font-semibold uppercase tracking-wider">{t('Total Investment', 'Kosten')}</span>
-                      <span className="font-bold text-rose-400 tabular-nums">-{formatMoney(megaProject.cost)}</span>
+                      <span className="text-[#6B7280] text-[10px] font-semibold uppercase tracking-wider">{t('Total Investment', 'Kosten')}</span>
+                      <span className="font-bold text-rose-700 tabular-nums">-{formatMoney(megaProject.cost)}</span>
                     </div>
                   </div>
                 </div>
@@ -1005,10 +1001,10 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                     onClick={() => onExpand(megaProject.seats, megaProject.cost, megaProject.fanBoost)}
                     className={`w-full sm:w-52 py-3.5 px-4 rounded-2xl font-semibold text-xs tracking-wide transition cursor-pointer flex flex-col items-center justify-center gap-1 active:scale-[0.98] ${
                       alreadyExpanded || isProjectCapped
-                        ? 'bg-white/[0.04] text-zinc-500 border border-white/[0.06] cursor-not-allowed'
+                        ? 'bg-[#EFECE4] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed'
                         : availableLiquidity < megaProject.cost
-                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 cursor-not-allowed'
-                        : 'bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold shadow-sm'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200 cursor-not-allowed'
+                        : 'bg-[#18191F] hover:bg-[#2A2C35] text-white font-bold shadow-xs'
                     }`}
                   >
                     {alreadyExpanded ? (
@@ -1030,10 +1026,10 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
           {standardOptions.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3 px-0.5">
-                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                   {t('Grandstand Expansion Options', 'Tribünen-Ausbauoptionen')}
                 </h4>
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-[#6B7280]">
                   {t('Max 1 expansion project per season', 'Max. 1 Projekt pro Saison')}
                 </span>
               </div>
@@ -1042,34 +1038,33 @@ export const StadiumModal: React.FC<StadiumModalProps> = ({
                 {standardOptions.map((opt) => {
                   const canAfford = availableLiquidity >= opt.cost;
                   const newCap = currentCap + opt.seats;
-                  const newBreakdown = getSupporterBreakdown(opt.seats, opt.seats, tier, activePolicy);
 
                   return (
-                    <div key={opt.seats} className="bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] rounded-2xl p-4 flex flex-col justify-between transition-all shadow-sm">
+                    <div key={opt.seats} className="bg-[#FAF9F6] hover:bg-[#F2EFE7] border border-[#E6E3DC] rounded-2xl p-4 flex flex-col justify-between transition-all shadow-xs">
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-semibold text-zinc-300">{lang === 'de' ? opt.labelDe : opt.labelEn}</span>
-                          <span className="text-xs font-semibold text-sky-400 tabular-nums">
+                          <span className="text-xs font-semibold text-[#4B5563]">{lang === 'de' ? opt.labelDe : opt.labelEn}</span>
+                          <span className="text-xs font-semibold text-sky-700 tabular-nums">
                             +{formatNum(opt.seats)}
                           </span>
                         </div>
-                        <div className="text-base font-bold text-white tracking-tight mb-1 tabular-nums">{formatNum(opt.seats)} {t('Seats', 'Sitzplätze')}</div>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed mb-3 font-normal truncate">{lang === 'de' ? opt.descDe : opt.descEn}</p>
+                        <div className="text-base font-bold text-[#18191F] tracking-tight mb-1 tabular-nums">{formatNum(opt.seats)} {t('Seats', 'Sitzplätze')}</div>
+                        <p className="text-[11px] text-[#6B7280] leading-relaxed mb-3 font-normal truncate">{lang === 'de' ? opt.descDe : opt.descEn}</p>
 
-                        <div className="space-y-1.5 pt-2 border-t border-white/[0.05] text-xs mb-3.5">
-                          <div className="flex justify-between text-zinc-400"><span>{t('New Cap:', 'Neue Kap:')}</span><span className="font-semibold text-white tabular-nums">{formatNum(newCap)}</span></div>
-                          <div className="flex justify-between text-zinc-400"><span>{t('Fan Boost:', 'Fans:')}</span><span className="font-semibold text-emerald-400 tabular-nums">+{formatNum(opt.fanBoost)}</span></div>
-                          <div className="flex justify-between text-zinc-400"><span>{t('Cost:', 'Kosten:')}</span><span className="font-semibold text-rose-400 tabular-nums">-{formatMoney(opt.cost)}</span></div>
+                        <div className="space-y-1.5 pt-2 border-t border-[#E6E3DC] text-xs mb-3.5">
+                          <div className="flex justify-between text-[#6B7280]"><span>{t('New Cap:', 'Neue Kap:')}</span><span className="font-semibold text-[#18191F] tabular-nums">{formatNum(newCap)}</span></div>
+                          <div className="flex justify-between text-[#6B7280]"><span>{t('Fan Boost:', 'Fans:')}</span><span className="font-semibold text-emerald-700 tabular-nums">+{formatNum(opt.fanBoost)}</span></div>
+                          <div className="flex justify-between text-[#6B7280]"><span>{t('Cost:', 'Kosten:')}</span><span className="font-semibold text-rose-700 tabular-nums">-{formatMoney(opt.cost)}</span></div>
                         </div>
                       </div>
-                      
+
                       <button
                         disabled={alreadyExpanded || isProjectCapped || !canAfford}
                         onClick={() => onExpand(opt.seats, opt.cost, opt.fanBoost)}
                         className={`w-full py-2.5 px-3 rounded-xl font-semibold text-xs tracking-wide transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
-                          alreadyExpanded || isProjectCapped ? 'bg-white/[0.04] text-zinc-500 border border-white/[0.06] cursor-not-allowed'
-                          : !canAfford ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 cursor-not-allowed'
-                          : 'bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/[0.08]'
+                          alreadyExpanded || isProjectCapped ? 'bg-[#EFECE4] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed'
+                          : !canAfford ? 'bg-rose-50 text-rose-700 border border-rose-200 cursor-not-allowed'
+                          : 'bg-[#18191F] hover:bg-[#2A2C35] text-white'
                         }`}
                       >
                         {alreadyExpanded ? <span>{t('Expanded (1/1)', 'Ausgebaut (1/1)')}</span> : isProjectCapped ? <span>{t('Max 2 Projects (2/2)', 'Max. 2 Projekte (2/2)')}</span> : !canAfford ? <span>{t('Insufficient Liquidity', 'Zu wenig Guthaben')}</span> : <><i className="fa-solid fa-hammer"></i><span>{t(`Build`, `Bauen`)}</span></>}

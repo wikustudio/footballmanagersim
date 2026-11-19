@@ -187,13 +187,31 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
     return `${linePath} L ${last.x} ${bottomY} L ${first.x} ${bottomY} Z`;
   }, [linePath, timelineData]);
 
+  const standingBadgeStyle =
+    state.club.tier === 1 && rep >= 85
+      ? 'bg-amber-50 text-amber-800 border-amber-200'
+      : state.club.tier === 1 && rep >= 70
+      ? 'bg-sky-50 text-sky-800 border-sky-200'
+      : rep >= 50
+      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+      : 'bg-[#F5F4F0] text-[#4B5563] border-[#E6E3DC]';
+
+  const standingIconColor =
+    state.club.tier === 1 && rep >= 85
+      ? 'text-amber-600'
+      : state.club.tier === 1 && rep >= 70
+      ? 'text-sky-600'
+      : rep >= 50
+      ? 'text-emerald-600'
+      : 'text-[#6B7280]';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-5 backdrop-blur-2xl bg-black/80 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-2.5 sm:p-5 backdrop-blur-sm bg-[#18191F]/45 overflow-y-auto overscroll-contain"
     >
       {/* Backdrop */}
       <div className="absolute inset-0" onClick={onClose}></div>
@@ -204,21 +222,21 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.98, opacity: 0 }}
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-[#12141c]/95 backdrop-blur-3xl w-full max-w-2xl rounded-[28px] sm:rounded-[32px] border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.85)] overflow-hidden relative z-10 flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0"
+        className="bg-white text-[#18191F] w-full max-w-2xl rounded-[28px] sm:rounded-[32px] border border-[#E6E3DC] shadow-[0_24px_64px_rgba(24,25,31,0.18)] overflow-hidden relative z-10 flex flex-col max-h-[92vh] sm:max-h-[88vh] min-h-0 my-auto shrink-0"
       >
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-white/[0.06] bg-white/[0.02] flex justify-between items-center shrink-0">
+        <div className="p-5 sm:p-6 border-b border-[#E6E3DC] bg-[#FAF9F6] flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 text-lg shadow-inner">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 text-lg shrink-0">
               <i className="fas fa-medal"></i>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-[#18191F] tracking-tight">
                   Manager Reputation & Standing
                 </h2>
               </div>
-              <p className="text-xs text-zinc-400 font-medium">
+              <p className="text-xs text-[#6B7280] font-medium">
                 Global Director Prestige, Career Trajectory & Commercial Clout
               </p>
             </div>
@@ -226,68 +244,68 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
           <button
             aria-label="Close modal"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center text-[#6B7280] hover:text-[#18191F] transition cursor-pointer shrink-0"
           >
             <i className="fas fa-times text-sm"></i>
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 custom-scrollbar flex-1 min-h-0">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-4 custom-scrollbar flex-1 min-h-0 bg-white">
           {/* Hero Reputation Score Card */}
-          <div className="bg-white/[0.03] rounded-2xl p-5 sm:p-6 border border-white/[0.06] relative overflow-hidden shadow-sm">
+          <div className="bg-[#FAF9F6] rounded-2xl p-5 sm:p-6 border border-[#E6E3DC] relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-yellow-400/20 to-amber-500/10 border border-amber-400/30 flex flex-col items-center justify-center shrink-0 shadow-inner">
-                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter leading-none">{rep}</span>
-                  <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest mt-0.5">/ 100</span>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center shrink-0">
+                  <span className="text-2xl sm:text-3xl font-black text-[#18191F] tracking-tighter leading-none tabular-nums">{rep}</span>
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest mt-0.5 tabular-nums">/ 100</span>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-black uppercase px-2.5 py-0.5 rounded-full border ${repTier.badge}`}>
+                    <span className={`text-xs font-bold uppercase px-2.5 py-0.5 rounded-full border ${standingBadgeStyle}`}>
                       {repTier.title}
                     </span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-black text-white">
+                  <h3 className="text-base sm:text-lg font-black text-[#18191F]">
                     {state.managerName || 'Sporting Director'}
                   </h3>
-                  <div className="text-xs text-zinc-400 font-medium">
-                    Current Club: <span className="text-white font-bold">{state.club.name}</span> · Tier {state.club.tier}
+                  <div className="text-xs text-[#6B7280] font-medium">
+                    Current Club: <span className="text-[#18191F] font-bold">{state.club.name}</span> · Tier {state.club.tier}
                   </div>
                 </div>
               </div>
 
               <div className="text-left sm:text-right shrink-0">
-                <div className="text-[10px] uppercase font-black text-zinc-500 tracking-wider">
+                <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider">
                   Career Experience
                 </div>
-                <div className="text-sm font-bold text-white mt-0.5 tabular-nums">
+                <div className="text-sm font-bold text-[#18191F] mt-0.5 tabular-nums">
                   {seasonsManaged} Seasons Completed
                 </div>
-                <div className="text-[11px] text-amber-400 font-bold mt-0.5">
+                <div className="text-[11px] text-amber-800 font-bold mt-0.5 tabular-nums">
                   🏆 {totalTrophies} Honours Won
                 </div>
               </div>
             </div>
 
             {/* Qualitative Verdict */}
-            <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-start gap-2.5">
-              <i className={`fas ${repTier.icon} ${repTier.color} text-sm mt-0.5 shrink-0`}></i>
-              <p className="text-xs text-zinc-300 leading-relaxed font-medium">
+            <div className="mt-4 pt-3 border-t border-[#E6E3DC] flex items-start gap-2.5">
+              <i className={`fas ${repTier.icon} ${standingIconColor} text-sm mt-0.5 shrink-0`}></i>
+              <p className="text-xs text-[#4B5563] leading-relaxed font-medium">
                 {repTier.desc}
               </p>
             </div>
           </div>
 
           {/* SECTION 2: Career Reputation Progression Chart */}
-          <div className="bg-white/[0.03] rounded-2xl p-5 border border-white/[0.06] shadow-sm">
+          <div className="bg-[#FAF9F6] rounded-2xl p-5 border border-[#E6E3DC]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mb-3.5">
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-0.5 flex items-center gap-1.5">
-                  <i className="fas fa-chart-line text-amber-400"></i>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-0.5 flex items-center gap-1.5">
+                  <i className="fas fa-chart-line text-amber-600"></i>
                   <span>Career Trajectory</span>
                 </div>
-                <h3 className="text-sm sm:text-base font-black text-white">
+                <h3 className="text-sm sm:text-base font-black text-[#18191F]">
                   Reputation & Standing Progression
                 </h3>
               </div>
@@ -295,21 +313,21 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
 
             {/* Active Node Detail Callout */}
             {activePoint && (
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5 mb-3 flex items-center justify-between gap-3 text-xs">
+              <div className="bg-white rounded-xl p-3 border border-[#E6E3DC] mb-3 flex items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center tabular-nums font-black text-xs shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-center tabular-nums font-black text-xs shrink-0">
                     '{String(activePoint.year).slice(-2)}
                   </div>
                   <div>
-                    <div className="font-black text-white flex items-center gap-1.5">
+                    <div className="font-black text-[#18191F] flex items-center gap-1.5">
                       <span>{activePoint.clubName}</span>
                       {activePoint.isCurrent && (
-                        <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                        <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                           Current
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-medium">
+                    <div className="text-[11px] text-[#6B7280] font-medium tabular-nums">
                       Season {activePoint.year} {activePoint.leagueTag ? `(${activePoint.leagueTag})` : ''} • {activePoint.pos ? `Finish: #${activePoint.pos}` : 'In Progress'}
                       {activePoint.trophiesCount ? ` • 🏆 ${activePoint.trophiesCount} ${activePoint.trophiesCount === 1 ? 'Trophy' : 'Trophies'}` : ''}
                     </div>
@@ -317,10 +335,10 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-base font-black text-amber-400 tabular-nums">
-                    {activePoint.rep} <span className="text-xs text-zinc-500 font-normal">/100</span>
+                  <div className="text-base font-black text-amber-700 tabular-nums">
+                    {activePoint.rep} <span className="text-xs text-[#6B7280] font-normal">/100</span>
                   </div>
-                  <div className="text-[10px] text-zinc-400 font-bold uppercase">
+                  <div className="text-[10px] text-[#6B7280] font-bold uppercase">
                     {getManagerStandingShortTitle(activePoint.rep, activePoint.tier || state.club.tier, isDe)}
                   </div>
                 </div>
@@ -328,42 +346,42 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
             )}
 
             {/* Chart Area - Interactive Line Chart */}
-            <div className="w-full overflow-x-auto custom-scrollbar">
-              <div className="min-w-[440px] relative">
+            <div className="w-full overflow-x-auto custom-scrollbar bg-white rounded-xl border border-[#E6E3DC] p-2">
+              <div className={timelineData.length > 6 ? 'min-w-[440px] relative' : 'w-full sm:min-w-[440px] relative'}>
                 <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-44 overflow-visible">
                   <defs>
                     <linearGradient id="repAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35" />
-                      <stop offset="60%" stopColor="#f59e0b" stopOpacity="0.08" />
-                      <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
+                      <stop offset="0%" stopColor="#d97706" stopOpacity="0.22" />
+                      <stop offset="60%" stopColor="#d97706" stopOpacity="0.06" />
+                      <stop offset="100%" stopColor="#d97706" stopOpacity="0.0" />
                     </linearGradient>
                     <linearGradient id="repLineGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#f59e0b" />
-                      <stop offset="50%" stopColor="#fbbf24" />
-                      <stop offset="100%" stopColor="#f59e0b" />
+                      <stop offset="0%" stopColor="#b45309" />
+                      <stop offset="50%" stopColor="#d97706" />
+                      <stop offset="100%" stopColor="#b45309" />
                     </linearGradient>
                   </defs>
 
                   {/* Benchmark Grid Lines */}
                   {/* 100% */}
-                  <line x1={padLeft} y1={padTop} x2={svgWidth - padRight} y2={padTop} stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-                  <text x={padLeft - 8} y={padTop + 4} fill="#71717a" fontSize="9" textAnchor="end" className="tabular-nums font-medium">100</text>
+                  <line x1={padLeft} y1={padTop} x2={svgWidth - padRight} y2={padTop} stroke="#E6E3DC" strokeDasharray="3 3" />
+                  <text x={padLeft - 8} y={padTop + 4} fill="#6B7280" fontSize="9" textAnchor="end" className="tabular-nums font-medium">100</text>
 
                   {/* 85% (Global Elite threshold) */}
-                  <line x1={padLeft} y1={padTop + (1 - 0.85) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.85) * plotHeight} stroke="rgba(245,158,11,0.2)" strokeDasharray="2 4" />
-                  <text x={padLeft - 8} y={padTop + (1 - 0.85) * plotHeight + 3} fill="#d97706" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">85</text>
+                  <line x1={padLeft} y1={padTop + (1 - 0.85) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.85) * plotHeight} stroke="rgba(217,119,6,0.3)" strokeDasharray="2 4" />
+                  <text x={padLeft - 8} y={padTop + (1 - 0.85) * plotHeight + 3} fill="#b45309" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">85</text>
 
                   {/* 70% (Continental threshold) */}
-                  <line x1={padLeft} y1={padTop + (1 - 0.70) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.70) * plotHeight} stroke="rgba(56,189,248,0.2)" strokeDasharray="2 4" />
-                  <text x={padLeft - 8} y={padTop + (1 - 0.70) * plotHeight + 3} fill="#0284c7" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">70</text>
+                  <line x1={padLeft} y1={padTop + (1 - 0.70) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.70) * plotHeight} stroke="rgba(2,132,199,0.28)" strokeDasharray="2 4" />
+                  <text x={padLeft - 8} y={padTop + (1 - 0.70) * plotHeight + 3} fill="#0369a1" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">70</text>
 
                   {/* 50% (Established threshold) */}
-                  <line x1={padLeft} y1={padTop + (1 - 0.50) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.50) * plotHeight} stroke="rgba(16,185,129,0.15)" strokeDasharray="2 4" />
-                  <text x={padLeft - 8} y={padTop + (1 - 0.50) * plotHeight + 3} fill="#059669" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">50</text>
+                  <line x1={padLeft} y1={padTop + (1 - 0.50) * plotHeight} x2={svgWidth - padRight} y2={padTop + (1 - 0.50) * plotHeight} stroke="rgba(5,150,105,0.25)" strokeDasharray="2 4" />
+                  <text x={padLeft - 8} y={padTop + (1 - 0.50) * plotHeight + 3} fill="#047857" fontSize="8" textAnchor="end" className="tabular-nums font-semibold">50</text>
 
                   {/* Bottom Axis Baseline */}
-                  <line x1={padLeft} y1={padTop + plotHeight} x2={svgWidth - padRight} y2={padTop + plotHeight} stroke="rgba(255,255,255,0.15)" />
-                  <text x={padLeft - 8} y={padTop + plotHeight + 3} fill="#71717a" fontSize="9" textAnchor="end" className="tabular-nums font-medium">0</text>
+                  <line x1={padLeft} y1={padTop + plotHeight} x2={svgWidth - padRight} y2={padTop + plotHeight} stroke="#D4D0C7" />
+                  <text x={padLeft - 8} y={padTop + plotHeight + 3} fill="#6B7280" fontSize="9" textAnchor="end" className="tabular-nums font-medium">0</text>
 
                   {/* Gradient Area Fill */}
                   {areaPath && <path d={areaPath} fill="url(#repAreaGrad)" />}
@@ -377,7 +395,6 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                     />
                   )}
 
@@ -392,38 +409,34 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
                         className="cursor-pointer group"
                         onClick={() => setSelectedPointIndex(idx)}
                       >
-                        {/* Invisible hover target */}
                         <circle cx={x} cy={y} r="14" fill="transparent" />
 
-                        {/* Steady Halo Accent ring if selected or current (Replaced harsh animate-ping pulsating dot) */}
                         {isSelected && (
                           <circle
                             cx={x}
                             cy={y}
                             r="9"
                             fill="none"
-                            stroke="#f59e0b"
+                            stroke="#d97706"
                             strokeWidth="1.5"
-                            opacity="0.5"
+                            opacity="0.55"
                           />
                         )}
 
-                        {/* Outer circle */}
                         <circle
                           cx={x}
                           cy={y}
                           r={isSelected ? '6' : '4.5'}
-                          fill={pt.rep >= 85 ? '#f59e0b' : pt.rep >= 70 ? '#38bdf8' : pt.rep >= 50 ? '#10b981' : '#a1a1aa'}
-                          stroke="#000000"
+                          fill={pt.rep >= 85 ? '#d97706' : pt.rep >= 70 ? '#0284c7' : pt.rep >= 50 ? '#059669' : '#6B7280'}
+                          stroke="#ffffff"
                           strokeWidth="2"
                           className="transition-all duration-200"
                         />
 
-                        {/* Year label underneath */}
                         <text
                           x={x}
                           y={padTop + plotHeight + 16}
-                          fill={isSelected ? '#f59e0b' : '#a1a1aa'}
+                          fill={isSelected ? '#b45309' : '#6B7280'}
                           fontSize="10"
                           className="tabular-nums font-semibold"
                           fontWeight={isSelected ? 'bold' : 'normal'}
@@ -439,24 +452,24 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
             </div>
 
             {/* Threshold Legend */}
-            <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-3 pt-2.5 border-t border-white/[0.06] flex-wrap gap-2">
-              <span className="font-bold text-zinc-500 uppercase tracking-widest">{isDe ? 'Branchen-Stufen:' : 'Industry Thresholds:'}</span>
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-amber-400 font-bold" title="Tier 1 exclusive">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span> 85+ {isDe ? 'Weltklasse (Liga 1)' : 'Global Elite (Tier 1)'}
+            <div className="flex items-center justify-between text-[10px] text-[#6B7280] mt-3 pt-2.5 border-t border-[#E6E3DC] flex-wrap gap-2">
+              <span className="font-bold text-[#6B7280] uppercase tracking-widest">{isDe ? 'Branchen-Stufen:' : 'Industry Thresholds:'}</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="flex items-center gap-1 text-amber-800 font-bold" title="Tier 1 exclusive">
+                  <span className="w-2 h-2 rounded-full bg-amber-600"></span> 85+ {isDe ? 'Weltklasse (Liga 1)' : 'Global Elite (Tier 1)'}
                 </span>
-                <span className="flex items-center gap-1 text-sky-400 font-bold" title="Tier 1 exclusive">
-                  <span className="w-2 h-2 rounded-full bg-sky-400"></span> 70+ {isDe ? 'Kontinental (Liga 1)' : 'Continental (Tier 1)'}
+                <span className="flex items-center gap-1 text-sky-800 font-bold" title="Tier 1 exclusive">
+                  <span className="w-2 h-2 rounded-full bg-sky-600"></span> 70+ {isDe ? 'Kontinental (Liga 1)' : 'Continental (Tier 1)'}
                 </span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span> 50+ {isDe ? 'Etabliert' : 'Established'}
+                <span className="flex items-center gap-1 text-emerald-800 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span> 50+ {isDe ? 'Etabliert' : 'Established'}
                 </span>
               </div>
             </div>
 
             {state.club.tier > 1 && (
-              <div className="mt-2.5 bg-sky-500/10 border border-sky-400/20 rounded-xl px-3 py-2 flex items-center gap-2 text-[11px] text-sky-300">
-                <i className="fa-solid fa-circle-info text-sky-400 shrink-0"></i>
+              <div className="mt-2.5 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2 flex items-center gap-2 text-[11px] text-sky-800">
+                <i className="fa-solid fa-circle-info text-sky-600 shrink-0"></i>
                 <span>
                   {isDe
                     ? `Aktuelle Liga: Liga ${state.club.tier}. Weltklasse- und Kontinental-Status sind ausschließlich in der 1. Liga (Tier 1) erreichbar.`
@@ -467,35 +480,35 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
           </div>
 
           {/* Industry Stature Strip */}
-          <div className="bg-white/[0.03] rounded-2xl p-3 sm:p-4 border border-white/[0.06] shadow-sm">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2.5">
+          <div className="bg-[#FAF9F6] rounded-2xl p-3 sm:p-4 border border-[#E6E3DC]">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280] mb-2.5">
               {isDe ? 'Reputations-Faktoren' : 'Reputation Breakdown'}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-2.5 text-center">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+              <div className="bg-white border border-[#E6E3DC] rounded-xl p-2.5 text-center">
+                <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
                   🏆 {isDe ? 'Titel' : 'Silverware'}
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-amber-400 truncate tabular-nums">
+                <div className="text-xs sm:text-sm font-bold text-amber-700 truncate tabular-nums">
                   {totalTrophies} {isDe ? 'Titel' : 'Trophies'}
                 </div>
               </div>
 
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-2.5 text-center">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+              <div className="bg-white border border-[#E6E3DC] rounded-xl p-2.5 text-center">
+                <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
                   📊 {isDe ? 'Liga' : 'Division'}
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-sky-400 truncate tabular-nums">
+                <div className="text-xs sm:text-sm font-bold text-sky-700 truncate tabular-nums">
                   Tier {state.club.tier} · {state.club.baseOvr} OVR
                 </div>
               </div>
 
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-2.5 text-center">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+              <div className="bg-white border border-[#E6E3DC] rounded-xl p-2.5 text-center">
+                <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
                   🌍 {isDe ? 'WM' : 'World Cup'}
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-emerald-400 truncate">
+                <div className="text-xs sm:text-sm font-bold text-emerald-700 truncate">
                   {worldCupWins > 0
                     ? `${worldCupWins}x Champion`
                     : (state.worldCupCampaigns?.length || 0) > 0
@@ -504,11 +517,11 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-2.5 text-center">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">
+              <div className="bg-white border border-[#E6E3DC] rounded-xl p-2.5 text-center">
+                <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
                   🤝 {isDe ? 'Sponsoring' : 'Commercial'}
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-purple-400 truncate tabular-nums">
+                <div className="text-xs sm:text-sm font-bold text-purple-700 truncate tabular-nums">
                   +{sponsorBonusPct}% {isDe ? 'Bonus' : 'Sponsor Value'}
                 </div>
               </div>
@@ -517,11 +530,11 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-white/[0.06] bg-white/[0.02] flex justify-end shrink-0">
+        <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.08] text-white font-semibold text-xs tracking-wider transition cursor-pointer active:scale-95"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-xs tracking-wider transition cursor-pointer active:scale-95"
           >
             Close
           </button>

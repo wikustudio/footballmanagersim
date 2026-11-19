@@ -1,5 +1,7 @@
 import { LeagueInfo, PhilosophyInfo, Club } from '../types';
 import { formatMoneyWithCountry, getCountryCurrency, setGlobalCurrencyCountry, getGlobalCurrencyCountry, registerCustomModCurrencies } from '../utils/currencyHelpers';
+import { REAL_INTL_CUP_URLS, REAL_DOMESTIC_CUP_URLS, REAL_SUPERCUP_URLS } from '../utils/competitionLogos';
+import { getCatchmentAttendanceModifier } from '../engine/catchmentEngine';
 
 export { getCountryCurrency, setGlobalCurrencyCountry, getGlobalCurrencyCountry, registerCustomModCurrencies };
 
@@ -61,13 +63,13 @@ export const COUNTRY_LEAGUES: Record<string, Record<number, LeagueInfo>> = {
     5: { name: "National 3", tag: "NAT 3", css: "bg-purple-500/20 text-purple-400 border border-purple-500/30", avgOvr: 44, ticket: 7, tvPrize: 25, wages: 220, attBase: 500, stadBase: 2000 }
   },
   ECU: {
-    1: { name: "Liga Pro Serie A", tag: "ECU 1", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 74, ticket: 12, tvPrize: 2500, wages: 3800, attBase: 14000, stadBase: 35000 },
-    2: { name: "Liga Pro Serie B", tag: "ECU 2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 64, ticket: 6, tvPrize: 400, wages: 1200, attBase: 4500, stadBase: 12000 }
+    1: { name: "Liga Pro Serie A", tag: "ECU 1", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 74, ticket: 12, tvPrize: 2500, wages: 3800, attBase: 9500, stadBase: 35000 },
+    2: { name: "Liga Pro Serie B", tag: "ECU 2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 64, ticket: 6, tvPrize: 400, wages: 1200, attBase: 2200, stadBase: 12000 }
   },
   USA: {
     1: { name: "Major League Soccer", tag: "MLS", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 77, ticket: 45, tvPrize: 18000, wages: 28000, attBase: 22000, stadBase: 45000 },
-    2: { name: "USL Championship", tag: "USLC", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 66, ticket: 22, tvPrize: 3000, wages: 5500, attBase: 8500, stadBase: 15000 },
-    3: { name: "USL League One", tag: "USL1", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 58, ticket: 15, tvPrize: 700, wages: 2400, attBase: 4200, stadBase: 8000 },
+    2: { name: "USL Championship", tag: "USLC", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 66, ticket: 22, tvPrize: 3000, wages: 5500, attBase: 5600, stadBase: 15000 },
+    3: { name: "USL League One", tag: "USL1", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 58, ticket: 15, tvPrize: 700, wages: 2400, attBase: 2800, stadBase: 8000 },
     4: { name: "USL League Two", tag: "USL2", css: "bg-purple-500/20 text-purple-400 border border-purple-500/30", avgOvr: 48, ticket: 10, tvPrize: 0, wages: 120, attBase: 1200, stadBase: 5000 },
     5: { name: "NPSL", tag: "NPSL", css: "bg-pink-500/20 text-pink-400 border border-pink-500/30", avgOvr: 40, ticket: 5, tvPrize: 0, wages: 30, attBase: 500, stadBase: 2500 }
   },
@@ -76,11 +78,11 @@ export const COUNTRY_LEAGUES: Record<string, Record<number, LeagueInfo>> = {
     2: { name: "Scottish Championship", tag: "CHAMP", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 63, ticket: 12, tvPrize: 1000, wages: 1800, attBase: 4000, stadBase: 10000 }
   },
   WAL: {
-    1: { name: "Cymru Premier", tag: "CYM", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 60, ticket: 10, tvPrize: 500, wages: 650, attBase: 2000, stadBase: 5000 }
+    1: { name: "Cymru Premier", tag: "CYM", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 60, ticket: 10, tvPrize: 500, wages: 650, attBase: 750, stadBase: 3500 }
   },
   BRA: {
-    1: { name: "Brasileirão Série A", tag: "SERIE A", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 78, ticket: 15, tvPrize: 8000, wages: 18000, attBase: 30000, stadBase: 60000 },
-    2: { name: "Brasileirão Série B", tag: "SERIE B", css: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", avgOvr: 68, ticket: 8, tvPrize: 2000, wages: 5000, attBase: 12000, stadBase: 25000 }
+    1: { name: "Brasileirão Série A", tag: "SERIE A", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 78, ticket: 15, tvPrize: 8000, wages: 18000, attBase: 26000, stadBase: 60000 },
+    2: { name: "Brasileirão Série B", tag: "SERIE B", css: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", avgOvr: 68, ticket: 8, tvPrize: 2000, wages: 5000, attBase: 8500, stadBase: 25000 }
   },
   POL: {
     1: { name: "Ekstraklasa", tag: "POL1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 68, ticket: 15, tvPrize: 3000, wages: 5000, attBase: 10000, stadBase: 25000 },
@@ -96,21 +98,21 @@ export const COUNTRY_LEAGUES: Record<string, Record<number, LeagueInfo>> = {
     1: { name: "Swiss Super League", tag: "SUPER", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 70, ticket: 25, tvPrize: 5000, wages: 9000, attBase: 15000, stadBase: 30000 }
   },
   AUS: {
-    1: { name: "A-League", tag: "A-L", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 68, ticket: 20, tvPrize: 3000, wages: 6000, attBase: 10000, stadBase: 25000 }
+    1: { name: "A-League", tag: "A-L", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 68, ticket: 20, tvPrize: 3000, wages: 6000, attBase: 9200, stadBase: 25000 }
   },
   ARG: {
-    1: { name: "Primera División", tag: "PRIM", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 77, ticket: 12, tvPrize: 6000, wages: 14000, attBase: 35000, stadBase: 65000 },
-    2: { name: "Primera Nacional", tag: "PRIM N", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 67, ticket: 5, tvPrize: 1000, wages: 1900, attBase: 10000, stadBase: 20000 }
+    1: { name: "Primera División", tag: "PRIM", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 77, ticket: 12, tvPrize: 6000, wages: 14000, attBase: 25000, stadBase: 65000 },
+    2: { name: "Primera Nacional", tag: "PRIM N", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 67, ticket: 5, tvPrize: 1000, wages: 1900, attBase: 6800, stadBase: 20000 }
   },
   JPN: {
-    1: { name: "J1 League", tag: "J1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 72, ticket: 22, tvPrize: 6000, wages: 10000, attBase: 20000, stadBase: 40000 },
-    2: { name: "J2 League", tag: "J2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 64, ticket: 10, tvPrize: 1500, wages: 4000, attBase: 8000, stadBase: 20000 }
+    1: { name: "J1 League", tag: "J1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 72, ticket: 22, tvPrize: 6000, wages: 10000, attBase: 19500, stadBase: 40000 },
+    2: { name: "J2 League", tag: "J2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 64, ticket: 10, tvPrize: 1500, wages: 4000, attBase: 6400, stadBase: 20000 }
   },
   COL: {
-    1: { name: "Categoría Primera A", tag: "LIGA", css: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", avgOvr: 72, ticket: 10, tvPrize: 3000, wages: 6000, attBase: 20000, stadBase: 40000 }
+    1: { name: "Categoría Primera A", tag: "LIGA", css: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", avgOvr: 72, ticket: 10, tvPrize: 3000, wages: 6000, attBase: 14000, stadBase: 40000 }
   },
   MEX: {
-    1: { name: "Liga MX", tag: "MEX1", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 75, ticket: 18, tvPrize: 7000, wages: 15000, attBase: 25000, stadBase: 50000 }
+    1: { name: "Liga MX", tag: "MEX1", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 75, ticket: 18, tvPrize: 7000, wages: 15000, attBase: 22500, stadBase: 50000 }
   },
   CAN: {
     1: { name: "Canadian Premier League", tag: "CPL", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 63, ticket: 12, tvPrize: 1000, wages: 1500, attBase: 5000, stadBase: 15000 }
@@ -121,16 +123,16 @@ export const COUNTRY_LEAGUES: Record<string, Record<number, LeagueInfo>> = {
     3: { name: "2. Lig", tag: "2. LIG", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 57, ticket: 6, tvPrize: 80, wages: 480, attBase: 1300, stadBase: 6000 }
   },
   IND: {
-    1: { name: "Indian Super League", tag: "ISL", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 64, ticket: 10, tvPrize: 1200, wages: 2500, attBase: 12000, stadBase: 35000 },
-    2: { name: "I-League", tag: "I-LIG", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 55, ticket: 5, tvPrize: 200, wages: 350, attBase: 3500, stadBase: 12000 }
+    1: { name: "Indian Super League", tag: "ISL", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 64, ticket: 10, tvPrize: 1200, wages: 2500, attBase: 9500, stadBase: 35000 },
+    2: { name: "I-League", tag: "I-LIG", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 55, ticket: 5, tvPrize: 200, wages: 350, attBase: 2400, stadBase: 12000 }
   },
   SVK: {
     1: { name: "Niké Liga", tag: "SVK 1", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 68, ticket: 14, tvPrize: 2200, wages: 4200, attBase: 6500, stadBase: 18000 },
     2: { name: "2. Liga", tag: "SVK 2", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 58, ticket: 8, tvPrize: 400, wages: 650, attBase: 1800, stadBase: 6000 }
   },
   PER: {
-    1: { name: "Liga 1 Perú", tag: "PER 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 71, ticket: 12, tvPrize: 2600, wages: 4500, attBase: 14000, stadBase: 35000 },
-    2: { name: "Liga 2 Perú", tag: "PER 2", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 61, ticket: 6, tvPrize: 450, wages: 850, attBase: 4000, stadBase: 12000 }
+    1: { name: "Liga 1 Perú", tag: "PER 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 71, ticket: 12, tvPrize: 2600, wages: 4500, attBase: 10500, stadBase: 35000 },
+    2: { name: "Liga 2 Perú", tag: "PER 2", css: "bg-amber-500/20 text-amber-400 border border-amber-500/30", avgOvr: 61, ticket: 6, tvPrize: 450, wages: 850, attBase: 2200, stadBase: 12000 }
   },
   DEN: {
     1: { name: "Superligaen", tag: "SUPER", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 73, ticket: 22, tvPrize: 4000, wages: 8500, attBase: 11000, stadBase: 26000 },
@@ -145,21 +147,21 @@ export const COUNTRY_LEAGUES: Record<string, Record<number, LeagueInfo>> = {
     2: { name: "Superettan", tag: "SUPER", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 62, ticket: 11, tvPrize: 700, wages: 1300, attBase: 3000, stadBase: 9000 }
   },
   IDN: {
-    1: { name: "Liga 1 Indonesia", tag: "LIGA 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 64, ticket: 8, tvPrize: 1000, wages: 2200, attBase: 15000, stadBase: 35000 }
+    1: { name: "Liga 1 Indonesia", tag: "LIGA 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 64, ticket: 8, tvPrize: 1000, wages: 2200, attBase: 10000, stadBase: 35000 }
   },
   KOR: {
-    1: { name: "K League 1", tag: "K1", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 73, ticket: 18, tvPrize: 4500, wages: 9000, attBase: 14000, stadBase: 40000 },
-    2: { name: "K League 2", tag: "K2", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 64, ticket: 10, tvPrize: 900, wages: 1600, attBase: 4500, stadBase: 18000 }
+    1: { name: "K League 1", tag: "K1", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 73, ticket: 18, tvPrize: 4500, wages: 9000, attBase: 11000, stadBase: 40000 },
+    2: { name: "K League 2", tag: "K2", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 64, ticket: 10, tvPrize: 900, wages: 1600, attBase: 3400, stadBase: 18000 }
   },
   BOL: {
-    1: { name: "División Profesional", tag: "BOL 1", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 68, ticket: 8, tvPrize: 1500, wages: 2800, attBase: 10000, stadBase: 25000 }
+    1: { name: "División Profesional", tag: "BOL 1", css: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", avgOvr: 68, ticket: 8, tvPrize: 1500, wages: 2800, attBase: 8500, stadBase: 25000 }
   },
   PAR: {
-    1: { name: "Primera División de Paraguay", tag: "PAR 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 72, ticket: 10, tvPrize: 2200, wages: 4000, attBase: 11000, stadBase: 30000 }
+    1: { name: "Primera División de Paraguay", tag: "PAR 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 72, ticket: 10, tvPrize: 2200, wages: 4000, attBase: 8000, stadBase: 30000 }
   },
   CHI: {
-    1: { name: "Primera División de Chile", tag: "CHI 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 73, ticket: 14, tvPrize: 3200, wages: 6000, attBase: 13000, stadBase: 35000 },
-    2: { name: "Primera B de Chile", tag: "CHI 2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 63, ticket: 7, tvPrize: 500, wages: 950, attBase: 3500, stadBase: 12000 }
+    1: { name: "Primera División de Chile", tag: "CHI 1", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 73, ticket: 14, tvPrize: 3200, wages: 6000, attBase: 9500, stadBase: 35000 },
+    2: { name: "Primera B de Chile", tag: "CHI 2", css: "bg-blue-500/20 text-blue-400 border border-blue-500/30", avgOvr: 63, ticket: 7, tvPrize: 500, wages: 950, attBase: 2500, stadBase: 12000 }
   },
   CRO: {
     1: { name: "SuperSport HNL", tag: "HNL", css: "bg-red-500/20 text-red-400 border border-red-500/30", avgOvr: 72, ticket: 16, tvPrize: 3000, wages: 6000, attBase: 8500, stadBase: 25000 },
@@ -324,6 +326,12 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
     };
   }
 
+  // Pyramid attendance & stadium decay curve for custom/mod tiers beyond static definitions
+  const attTierCurve = [1, 1, 0.34, 0.14, 0.06, 0.025, 0.014, 0.009, 0.0055, 0.0032, 0.0018, 0.001];
+  const attCurveMult = attTierCurve[Math.min(Math.max(1, tier), attTierCurve.length - 1)] ?? Math.pow(0.55, Math.max(0, tier - 1));
+  const minFallbackAtt = tier >= 9 ? 30 : tier >= 7 ? 120 : 200;
+  const minFallbackStad = tier >= 9 ? 250 : tier >= 7 ? 800 : 1000;
+
   // 2. If country has static dictionary but tier is beyond defined tiers (e.g. community mod added Tier 5 or Tier 8)
   if (countryLeagues && countryLeagues[1]) {
     const topLeague = countryLeagues[1];
@@ -338,8 +346,8 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
       ticket: Math.max(8, Math.floor(topLeague.ticket / divisor)),
       tvPrize: Math.max(10, Math.floor(topLeague.tvPrize / divisor)),
       wages: Math.max(50, Math.floor(topLeague.wages / divisor)),
-      attBase: Math.max(200, Math.floor(topLeague.attBase / divisor)),
-      stadBase: Math.max(1000, Math.floor(topLeague.stadBase / divisor))
+      attBase: Math.max(minFallbackAtt, Math.floor(topLeague.attBase * attCurveMult)),
+      stadBase: Math.max(minFallbackStad, Math.floor(topLeague.stadBase * Math.max(attCurveMult * 1.4, 0.02)))
     };
   }
   
@@ -355,17 +363,18 @@ export const getLeagueInfo = (tier: number, country: string = 'GER', customName?
   const adjective = countryNames[code] || COUNTRIES[code]?.name || code;
   const baseLeagueInfo = COUNTRY_LEAGUES['GER']?.[tier] || COUNTRY_LEAGUES['GER']?.[4] || COUNTRY_LEAGUES['GER'][1];
   const divisor = Math.max(1, Math.pow(1.5, tier - 1));
+  const usedExactGerTier = Boolean(COUNTRY_LEAGUES['GER']?.[tier]);
   
   return {
     ...baseLeagueInfo,
     name: safeCustomName || `${adjective} League ${tier}`,
     tag: `L${tier}`,
-    avgOvr: Math.max(50, Math.floor(baseLeagueInfo.avgOvr - (tier - 1) * 5)),
-    ticket: Math.max(8, Math.floor(baseLeagueInfo.ticket / divisor)),
-    tvPrize: Math.max(10, Math.floor(baseLeagueInfo.tvPrize / divisor)),
-    wages: Math.max(50, Math.floor(baseLeagueInfo.wages / divisor)),
-    attBase: Math.max(200, Math.floor(baseLeagueInfo.attBase / divisor)),
-    stadBase: Math.max(1000, Math.floor(baseLeagueInfo.stadBase / divisor))
+    avgOvr: Math.max(50, Math.floor(baseLeagueInfo.avgOvr - (usedExactGerTier ? 0 : (tier - 1) * 5))),
+    ticket: Math.max(8, Math.floor(baseLeagueInfo.ticket / (usedExactGerTier ? 1 : divisor))),
+    tvPrize: Math.max(10, Math.floor(baseLeagueInfo.tvPrize / (usedExactGerTier ? 1 : divisor))),
+    wages: Math.max(50, Math.floor(baseLeagueInfo.wages / (usedExactGerTier ? 1 : divisor))),
+    attBase: usedExactGerTier ? baseLeagueInfo.attBase : Math.max(minFallbackAtt, Math.floor(baseLeagueInfo.attBase * attCurveMult)),
+    stadBase: usedExactGerTier ? baseLeagueInfo.stadBase : Math.max(minFallbackStad, Math.floor(baseLeagueInfo.stadBase * Math.max(attCurveMult * 1.4, 0.02)))
   };
 };
 
@@ -692,29 +701,29 @@ export const getFAInfo = (country: string = 'GER') => {
 };
 
 export const TOURNAMENT_LOGOS: Record<string, string> = {
-  dfbPokal: "",
-  supercup: "",
-  cl: "",
-  el: "",
-  ecl: "",
-  dfbTeam: "",
-  tacaDePortugal: "",
-  copaDelRey: "",
-  faCup: "",
-  concacaf: "",
-  copaLibertadores: "",
-  copaSudamericana: "",
-  leaguesCup: "",
-  campeonesCup: "",
-  recopaSudamericana: "",
-  afcChampionsLeague: "",
-  afcCup: "",
-  afcChallengeLeague: "",
-  coppaItalia: "",
-  coupeDeFrance: "",
-  copaEcuador: "",
-  usOpenCup: "",
-  cwc: "",
+  dfbPokal: REAL_DOMESTIC_CUP_URLS.GER,
+  supercup: REAL_SUPERCUP_URLS.UEFA,
+  cl: REAL_INTL_CUP_URLS.cl,
+  el: REAL_INTL_CUP_URLS.el,
+  ecl: REAL_INTL_CUP_URLS.ecl,
+  dfbTeam: REAL_INTL_CUP_URLS.wc,
+  tacaDePortugal: REAL_DOMESTIC_CUP_URLS.POR,
+  copaDelRey: REAL_DOMESTIC_CUP_URLS.ESP,
+  faCup: REAL_DOMESTIC_CUP_URLS.ENG,
+  concacaf: REAL_INTL_CUP_URLS.concacaf,
+  copaLibertadores: REAL_INTL_CUP_URLS.copaLibertadores,
+  copaSudamericana: REAL_INTL_CUP_URLS.copaSudamericana,
+  leaguesCup: REAL_INTL_CUP_URLS.leaguesCup,
+  campeonesCup: REAL_INTL_CUP_URLS.campeonesCup,
+  recopaSudamericana: REAL_INTL_CUP_URLS.recopaSudamericana,
+  afcChampionsLeague: REAL_INTL_CUP_URLS.afcChampionsLeague,
+  afcCup: REAL_INTL_CUP_URLS.afcCup,
+  afcChallengeLeague: REAL_INTL_CUP_URLS.afcChallengeLeague,
+  coppaItalia: REAL_DOMESTIC_CUP_URLS.ITA,
+  coupeDeFrance: REAL_DOMESTIC_CUP_URLS.FRA,
+  copaEcuador: REAL_DOMESTIC_CUP_URLS.ECU,
+  usOpenCup: REAL_DOMESTIC_CUP_URLS.USA,
+  cwc: REAL_INTL_CUP_URLS.cwc,
 };
 
 export const COUNTRIES: Record<string, { name: string; flag: string; active: boolean }> = {
@@ -1544,29 +1553,618 @@ export const formatMoney = (val: number | string, country?: string): string => {
   return formatMoneyWithCountry(val, country);
 };
 
+export type ClubAttendanceProfile = 'giant' | 'challenger' | 'standard';
+
+// National & Continental Giants (both real names and non-mod aliases)
+const GIANT_BY_COUNTRY: Record<string, string[]> = {
+  GER: [
+    'bayern munchen', 'bayern munich', 'bavaria', 'munich red',
+    'borussia dortmund', 'bvb', 'westfalen dortmund', 'borussia west', 'schalke', 'gelsenkirchen',
+    'hamburger sv', 'hamburg sv', 'hamburg blue', 'eintracht frankfurt', 'concordia frankfurt', 'frankfurt eagles',
+    'vfb stuttgart', 'vfl stuttgart', 'stuttgart red', 'cannstatt', '1. fc koln', 'fc koln', 'domstadt koln', 'cologne',
+    'monchengladbach', 'gladbach', 'werder bremen', 'weser bremen', 'kaiserslautern',
+    'hertha bsc', 'hertha berlin', 'spree berlin west', 'berlin blue', 'nurnberg', 'nuernberg',
+    'hannover 96', 'fortuna dusseldorf', 'fortuna duesseldorf', 'rhein dusseldorf'
+  ],
+  ENG: [
+    'manchester united', 'man utd', 'manchester red', 'man red', 'liverpool', 'merseyside red',
+    'arsenal', 'north london red', 'manchester city', 'man city', 'manchester blue', 'man blue',
+    'chelsea', 'london blue', 'west london blue', 'tottenham', 'london white', 'north london white',
+    'newcastle', 'tyneside', 'aston villa', 'birmingham claret', 'west ham', 'east london', 'everton', 'merseyside blue',
+    'sunderland', 'leeds', 'nottingham forest', 'leicester', 'sheffield wednesday',
+    'sheffield united', 'derby county', 'southampton', 'wolverhampton', 'wolves'
+  ],
+  ESP: [
+    'real madrid', 'madrid fc', 'madrid white', 'madrid blanco', 'fc barcelona', 'catalonia', 'catalunya',
+    'atletico de madrid', 'atletico madrid', 'madrid red', 'madrid rojo', 'athletic club', 'bilbao',
+    'real betis', 'betis', 'sevilla', 'valencia'
+  ],
+  ITA: [
+    'inter', 'internazionale', 'milan blue', 'milano blue', 'milano nerazzurro',
+    'ac milan', 'milan red', 'milano red', 'milano rossonero',
+    'juventus', 'piemonte calcio', 'torino b-w', 'torino bianconero',
+    'napoli', 'naples', 'as roma', 'roma giallorosso', 'rome yellow', 'lazio', 'rome blue'
+  ],
+  FRA: [
+    'paris saint-germain', 'paris sg', 'psg', 'olympique de marseille', 'olympique marseille',
+    'olympique lyonnais', 'olympique lyon', 'rc lens', 'lens', 'lille',
+    'saint-etienne', 'saint etienne', 'bordeaux', 'girondins', 'nantes'
+  ],
+  POR: ['sl benfica', 'lisboa red', 'lisboa vermelho', 'fc porto', 'porto azul', 'sporting cp', 'sporting lisbon', 'lisboa green', 'lisboa verde'],
+  SCO: ['celtic', 'glasgow green', 'rangers', 'glasgow blue'],
+  NED: ['ajax', 'feyenoord', 'psv', 'fc twente', 'twente'],
+  TUR: ['galatasaray', 'galata', 'fenerbahce', 'kadikoy', 'besiktas', 'kartal bogazici', 'trabzonspor', 'karadeniz trabzon'],
+  GRE: ['olympiacos', 'piraeus', 'panathinaikos', 'aek athens', 'paok'],
+  CRO: ['hajduk split', 'hajduk', 'dinamo zagreb'],
+  BRA: ['flamengo', 'corinthians', 'palmeiras', 'sao paulo', 'gremio', 'internacional', 'cruzeiro', 'atletico mineiro', 'bahia', 'vasco', 'santos', 'botafogo', 'fluminense', 'fortaleza', 'athletico paranaense'],
+  ARG: ['river plate', 'boca juniors', 'racing club', 'independiente', 'san lorenzo', 'rosario central', 'newell', 'talleres'],
+  MEX: ['club america', 'cf america', 'guadalajara', 'chivas', 'tigres', 'monterrey', 'cruz azul', 'pumas'],
+  USA: ['atlanta united', 'seattle sounders', 'inter miami', 'la galaxy', 'lafc', 'los angeles fc', 'charlotte fc', 'fc cincinnati', 'cincinnati', 'portland timbers', 'nashville'],
+  JPN: ['urawa', 'yokohama f. marinos', 'yokohama marinos', 'fc tokyo', 'gamba osaka', 'nagoya', 'albirex'],
+  KOR: ['fc seoul', 'ulsan', 'jeonbuk', 'suwon samsung'],
+  COL: ['atletico nacional', 'millonarios', 'america de cali', 'junior', 'santa fe', 'independiente medellin'],
+  PER: ['universitario', 'alianza lima', 'sporting cristal'],
+  CHI: ['colo-colo', 'colo colo', 'universidad de chile', 'universidad catolica'],
+  ECU: ['barcelona sc', 'liga de quito', 'ldu quito', 'emelec'],
+  IDN: ['persija', 'persib', 'persebaya'],
+  IND: ['mohun bagan', 'east bengal', 'kerala blasters'],
+  POL: ['legia', 'lech poznan'],
+  AUT: ['rapid wien', 'sturm graz', 'salzburg'],
+  SUI: ['young boys', 'fc basel', 'basel'],
+  DEN: ['kobenhavn', 'copenhagen', 'brondby'],
+  SWE: ['aik', 'hammarby', 'malmo', 'djurgarden'],
+  NOR: ['rosenborg', 'brann']
+};
+
+// Strong Secondary Challengers & Cult Lower-League Sleeping Giants
+const CHALLENGER_BY_COUNTRY: Record<string, string[]> = {
+  POR: [
+    'sc braga', 'braga vermelho', 'vitoria sc', 'vitoria de guimaraes', 'vitoria fc', 'vitoria de setubal',
+    'guimaraes', 'boavista', 'porto xadrez', 'maritimo', 'funchal verde',
+    'belenenses', 'belem', 'academica', 'coimbra', 'setubal', 'leiria', 'beira-mar', 'beira mar',
+    'farense', 'rio ave', 'pacos de ferreira', 'estrela da amadora'
+  ],
+  SCO: [
+    'heart of midlothian', 'edinburgh maroon', 'hibernian', 'edinburgh green', 'aberdeen',
+    'dundee united', 'dundee fc', 'motherwell', 'kilmarnock', 'partick thistle',
+    'dunfermline', 'falkirk', 'st mirren', 'st johnstone'
+  ],
+  NED: [
+    'az alkmaar', 'utrecht', 'heerenveen', 'groningen', 'vitesse', 'nac breda',
+    'ado den haag', 'de graafschap', 'willem ii', 'roda jc', 'cambuur',
+    'sparta rotterdam', 'nec nijmegen', 'pec zwolle', 'heracles'
+  ],
+  TUR: [
+    'bursaspor', 'yesil bursa', 'eskisehirspor', 'anadolu eskisehir', 'kocaelispor', 'korfez kocaeli',
+    'amed', 'diyar amed', 'samsunspor', 'samsun 19', 'goztepe', 'izmir goztepe',
+    'sakaryaspor', 'adana demirspor', 'ankaragucu', 'konyaspor', 'antalyaspor',
+    'altay', 'gaziantep', 'kayserispor', 'sivasspor', 'denizlispor', 'boluspor', 'elazigspor'
+  ],
+  GRE: ['aris', 'ofi', 'larissa', 'iraklis'],
+  CRO: ['rijeka', 'osijek'],
+  POL: ['wisla krakow', 'widzew', 'gornik zabrze', 'slask wroclaw', 'jagiellonia', 'pogon szczecin', 'ruch chorzow', 'motor lublin', 'arka gdynia', 'cracovia', 'lechia gdansk', 'lks lodz'],
+  AUT: ['austria wien', 'lask', 'gak', 'grazer ak', 'wacker innsbruck', 'admira'],
+  SUI: ['zurich', 'st. gallen', 'st gallen', 'luzern', 'servette', 'grasshopper', 'sion', 'lausanne'],
+  DEN: ['midtjylland', 'agf', 'aalborg', 'odense', 'esbjerg'],
+  SWE: ['ifk goteborg', 'goteborg', 'elfsborg', 'norrkoping', 'helsingborg', 'orebro'],
+  NOR: ['viking', 'valerenga', 'bodo', 'molde', 'fredrikstad', 'lillestrom', 'start'],
+  SVK: ['slovan bratislava', 'spartak trnava', 'dac ', 'dunajska streda', 'zilina', 'kosice'],
+  GER: [
+    'dynamo dresden', 'dresden', 'alemannia aachen', 'aachen', '1860 munchen', 'munchen sechzig', 'munich lions',
+    'hansa rostock', 'rostock', 'rot-weiss essen', 'rot weiss essen', 'r-w essen', 'msv duisburg', 'duisburg',
+    'energie cottbus', 'cottbus', 'erzgebirge aue', 'osnabruck', 'waldhof mannheim', 'mannheim',
+    'kickers offenbach', 'offenbach', 'hallescher', 'chemie halle', 'carl zeiss jena', 'kernberge jena',
+    'lokomotive leipzig', 'dampflok leipzig', 'chemie leipzig', 'leutzsch-leipzig',
+    'meppen', 'lubeck', 'zwickau', 'chemnitzer', 'himmelblau chemnitz',
+    '1. fc magdeburg', 'fc magdeburg', 'elbe magdeburg', 'braunschweig',
+    'karlsruher', 'karlsruhe', 'st. pauli', 'st pauli', 'bochum', 'bielefeld', 'preussen munster',
+    'stuttgarter kickers', 'blau stuttgart', 'saarbrucken', 'ssv ulm', 'munsterstadt ulm',
+    'wuppertaler', 'bergisch wuppertal', 'rot-weiss oberhausen', 'oberhausen',
+    'fortuna koln', 'sudstadt koln', 'kfc uerdingen', 'uerdingen', 'grotenburg krefeld', 'wattenscheid',
+    'borussia neunkirchen', 'ellerbach neunkirchen', 'eintracht trier', 'mosel trier',
+    'bfc dynamo', 'weinrot hoh', 'hessen kassel', 'spvgg bayreuth', 'altstadt bayreuth',
+    'vfb oldenburg', 'fsv frankfurt', 'frankfurt bornheim', 'tennis borussia', 'poststadion moabit',
+    'babelsberg', 'sportfreunde siegen', 'leimbach siegen',
+    'unterhaching', 'sv sandhausen', 'hardtwald sandhausen', 'reutlingen',
+    'greuther furth', 'kleeblatt furth', 'paderborn', 'heidenheim',
+    'holstein kiel', 'forde kiel', 'union berlin', 'eisern kopenick',
+    '1. fsv mainz', 'fsv mainz', 'mainz 05', 'karneval mainz', 'freiburg',
+    'fc augsburg', 'fugger augsburg', 'vfl wolfsburg', 'autostadt wolfsburg'
+  ],
+  ENG: [
+    'bradford', 'bolton', 'derby', 'portsmouth', 'charlton', 'barnsley', 'sheffield', 'birmingham',
+    'wrexham', 'notts county', 'nottingham black-white', 'stockport', 'chesterfield', 'southend', 'oldham', 'ipswich', 'norwich',
+    'middlesbrough', 'coventry', 'west brom', 'stoke', 'blackburn', 'preston', 'bristol city', 'bristol red',
+    'swansea', 'cardiff', 'millwall', 'south bermondsey', 'queens park rangers', 'qpr', 'west london hoops', 'plymouth', 'hull city',
+    'burnley', 'watford', 'huddersfield', 'blackpool', 'wigan', 'reading', 'luton',
+    'carlisle', 'tranmere', 'birkenhead white', 'bury', 'york city', 'scunthorpe', 'torquay', 'hartlepool',
+    'grimsby', 'swindon', 'port vale', 'burslem white', 'bristol rovers', 'wimbledon', 'crystal palace',
+    'brighton', 'fulham', 'brentford', 'bournemouth'
+  ],
+  FRA: [
+    'stade rennais', 'rennes', 'ogc nice', 'nice', 'strasbourg', 'toulouse', 'fc metz', 'metz',
+    'auxerre', 'sochaux', 'nancy', 'bastia', 'sm caen', 'caen', 'valenciennes', 'le havre',
+    'le mans', 'red star', 'saint-ouen', 'lorient', 'guingamp', 'troyes', 'grenoble', 'montpellier', 'reims',
+    'angers', 'brest', 'clermont', 'monaco'
+  ],
+  ESP: [
+    'deportivo de la coruna', 'deportivo la coruna', 'coruna', 'malaga', 'zaragoza',
+    'sporting de gijon', 'sporting gijon', 'gijon', 'real oviedo', 'oviedo',
+    'racing de santander', 'racing santander', 'cordoba', 'real murcia', 'las palmas',
+    'cadiz', 'granada', 'valladolid', 'osasuna', 'pamplona', 'real sociedad', 'san sebastian',
+    'villarreal', 'celta', 'vigo', 'espanyol', 'barcelona azul y blanco', 'rayo vallecano', 'vallecas',
+    'tenerife', 'mallorca', 'elche', 'levante', 'hercules', 'recreativo', 'numancia',
+    'gimnastic de tarragona', 'castellon', 'albacete', 'burgos', 'huesca', 'logrones'
+  ],
+  ITA: [
+    'palermo', 'bari', 'sampdoria', 'genoa', 'catania', 'cesena', 'salernitana', 'modena',
+    'reggiana', 'vicenza', 'foggia', 'pescara', 'avellino', 'parma', 'cagliari', 'bologna',
+    'fiorentina', 'atalanta', 'torino', 'lecce', 'hellas verona', 'verona gialloblu', 'udinese', 'brescia', 'pisa',
+    'padova', 'perugia', 'triestina', 'livorno', 'reggina', 'reggio calabria', 'messina',
+    'spal', 'ternana', 'benevento', 'cosenza', 'crotone', 'piacenza', 'novara', 'siena',
+    'ascoli', 'venezia', 'como', 'cremonese', 'empoli', 'frosinone', 'spezia', 'chievo'
+  ],
+  BRA: [
+    'coritiba', 'ceara', 'goias', 'sport recife', 'ec vitoria', 'santa cruz', 'remo',
+    'paysandu', 'nautico', 'parana', 'juventude', 'america mineiro', 'guarani',
+    'ponte preta', 'figueirense', 'avai', 'criciuma', 'vila nova'
+  ],
+  ARG: [
+    'estudiantes', 'gimnasia', 'velez', 'huracan', 'belgrano', 'colon', 'union de santa fe',
+    'lanus', 'banfield', 'argentinos juniors', 'atletico tucuman', 'chacarita', 'ferro carril',
+    'quilmes', 'instituto', 'san martin'
+  ]
+};
+
+const CLUB_ATTENDANCE_PROFILE_CACHE = new Map<string, ClubAttendanceProfile>();
+
+export const getClubAttendanceProfile = (clubName: string = '', country: string = 'GER'): ClubAttendanceProfile => {
+  const code = normalizeCountryCode(country);
+  const cacheKey = `${code}|${clubName}`;
+  const cached = CLUB_ATTENDANCE_PROFILE_CACHE.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const rawLower = (clubName || '').toLowerCase().trim();
+  if (!rawLower) return 'standard';
+  const norm = /[^\x00-\x7F]/.test(rawLower)
+    ? rawLower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    : rawLower;
+
+  // Explicit false-positive exclusions for regional/neighborhood namesake clubs
+  const isExcludedFromGiant =
+    (code === 'ENG' && (norm.includes('fc united') || norm.includes('united red'))) ||
+    (code === 'SCO' && norm.includes('cove')) ||
+    (code === 'BRA' && norm.includes('novorizontino')) ||
+    (code === 'ARG' && norm.includes('rivadavia'));
+  const isExcludedFromChallenger =
+    (code === 'SCO' && (norm.includes('cove') || norm.includes('kelty'))) ||
+    (code === 'ESP' && norm.includes('de los reyes'));
+
+  let result: ClubAttendanceProfile = 'standard';
+  const giants = GIANT_BY_COUNTRY[code];
+  if (!isExcludedFromGiant && giants && giants.some((p) => norm === p || norm.includes(p))) {
+    result = 'giant';
+  } else if (
+    (norm === 'paris' && code === 'FRA') ||
+    (norm === 'marseille' && code === 'FRA') ||
+    (norm === 'lyon' && code === 'FRA') ||
+    (norm === 'roma' && code === 'ITA') ||
+    (norm === 'porto' && code === 'POR') ||
+    (norm === 'benfica' && code === 'POR') ||
+    (norm === 'barcelona' && code === 'ESP') ||
+    (norm === 'hamburg' && code === 'GER') ||
+    (norm === 'fc bayern' && code === 'GER')
+  ) {
+    result = 'giant';
+  } else if (code === 'SCO' && norm.includes('hearts') && !norm.includes('kelty')) {
+    result = 'challenger';
+  } else if ((norm === 'braga' && code === 'POR') || (norm === 'hull' && code === 'ENG')) {
+    result = 'challenger';
+  } else if (!isExcludedFromChallenger) {
+    const challengers = CHALLENGER_BY_COUNTRY[code];
+    if (challengers && challengers.some((p) => norm === p || norm.includes(p))) {
+      result = 'challenger';
+    }
+  }
+
+  if (CLUB_ATTENDANCE_PROFILE_CACHE.size > 4000) {
+    CLUB_ATTENDANCE_PROFILE_CACHE.clear();
+  }
+  CLUB_ATTENDANCE_PROFILE_CACHE.set(cacheKey, result);
+  return result;
+};
+
 export const getLeagueMaxAttendance = (tier: number, isReserve: boolean, country: string = 'GER', clubName: string = ''): number => {
-  if (isReserve) return 900;
-  const isBigThreePOR = country === 'POR' && ['SL Benfica', 'Benfica', 'FC Porto', 'Sporting CP'].some(n => clubName.includes(n));
-  if (isBigThreePOR) return 100000;
+  const code = normalizeCountryCode(country);
+  if (isReserve || isReserveClub(clubName)) {
+    return tier <= 2 ? 2200 : tier === 3 ? 1350 : tier === 4 ? 750 : tier === 5 ? 420 : 250;
+  }
 
-  const isGiantsESP = country === 'ESP' && ['Madrid FC', 'Catalonia FC', 'Atlético M.'].some(n => clubName.includes(n));
-  if (isGiantsESP) return 100000;
+  const profile = getClubAttendanceProfile(clubName, code);
+  const league = getLeagueInfo(tier, code);
 
-  const isGiantsENG = country === 'ENG' && ['Manchester Red', 'Manchester Blue', 'North London Red', 'Merseyside Red', 'London Blue', 'London White'].some(n => clubName.includes(n));
-  if (isGiantsENG) return 100000;
+  if (tier === 1) {
+    if (code === 'WAL') return 2400;
+    if (code === 'CAN') {
+      const lower = (clubName || '').toLowerCase();
+      if (lower.includes('toronto') || lower.includes('whitecaps') || lower.includes('montr')) return 35000;
+      return 14000;
+    }
+    if (profile === 'giant') return 150000;
+    if (['ENG', 'GER', 'ESP', 'ITA', 'FRA', 'BRA', 'ARG', 'MEX', 'USA'].includes(code)) {
+      return 150000;
+    }
+    if (profile === 'challenger') {
+      return Math.max(45000, Math.round(league.attBase * 3.5));
+    }
+    return Math.max(35000, Math.round(league.attBase * 3.2));
+  }
 
-  const isGiantsITA = country === 'ITA' && ['Milan Blue', 'Milan Red', 'Piemonte Calcio', 'Naples FC', 'Rome Yellow', 'Rome Blue'].some(n => clubName.includes(n));
-  if (isGiantsITA) return 100000;
+  if (tier === 2) {
+    if (code === 'GER') return profile === 'giant' ? 70000 : profile === 'challenger' ? 62000 : 50000;
+    if (code === 'ENG') return profile === 'giant' ? 58000 : profile === 'challenger' ? 49000 : 40000;
+    if (['ESP', 'ITA', 'FRA', 'BRA', 'ARG'].includes(code)) {
+      if (profile === 'giant') return Math.max(48000, Math.round(league.attBase * 4.2));
+      if (profile === 'challenger') return Math.max(36000, Math.round(league.attBase * 3.4));
+      return Math.round(league.attBase * 2.8);
+    }
+    if (profile === 'giant') return Math.max(38000, Math.round(league.attBase * 4.2));
+    if (profile === 'challenger') return Math.max(24000, Math.round(league.attBase * 3.4));
+    return Math.round(league.attBase * 2.35);
+  }
 
-  const isBigThreeTUR = country === 'TUR' && ['Galatasaray', 'Fenerbahçe', 'Beşiktaş', 'Trabzonspor', 'Galata', 'Kadıköy', 'Boğaziçi', 'Karadeniz Trabzon'].some(n => clubName.includes(n));
-  if (isBigThreeTUR) return 100000;
+  if (tier === 3) {
+    if (code === 'GER') return profile === 'giant' ? 46000 : profile === 'challenger' ? 35000 : 24000;
+    if (code === 'ENG') return profile === 'giant' ? 42000 : profile === 'challenger' ? 32000 : 22000;
+    if (['ESP', 'ITA', 'FRA', 'TUR', 'BRA', 'ARG'].includes(code)) {
+      if (profile === 'giant') return Math.max(32000, Math.round(league.attBase * 4.2));
+      if (profile === 'challenger') return Math.max(24000, Math.round(league.attBase * 3.4));
+      return Math.round(league.attBase * 2.5);
+    }
+    if (profile === 'giant') return Math.max(24000, Math.round(league.attBase * 4.2));
+    if (profile === 'challenger') return Math.max(15000, Math.round(league.attBase * 3.4));
+    return Math.round(league.attBase * 2.4);
+  }
 
-  const isSleepingGiantTUR = country === 'TUR' && ['Bursaspor', 'Eskişehirspor', 'Kocaelispor', 'Amed SK', 'Samsunspor', 'Göztepe', 'Yeşil Bursa', 'Anadolu Eskişehir', 'Körfez Kocaeli', 'Diyar Amed', 'Samsun 19 Mayıs', 'İzmir Göztepe'].some(n => clubName.includes(n));
-  if (isSleepingGiantTUR) return 45000;
+  if (tier === 4) {
+    if (code === 'GER') return profile === 'giant' ? 32000 : profile === 'challenger' ? 21500 : 8200;
+    if (code === 'ENG') return profile === 'giant' ? 30000 : profile === 'challenger' ? 22000 : 11500;
+    if (profile === 'giant') return Math.max(22000, Math.round(league.attBase * 4.5));
+    if (profile === 'challenger') return Math.max(14000, Math.round(league.attBase * 3.6));
+    return Math.round(league.attBase * 2.35);
+  }
 
-  const league = getLeagueInfo(tier, country);
-  const mult = tier === 5 ? 3.5 : tier === 4 ? 3.0 : tier === 3 ? 2.5 : 5.0;
-  return Math.max(Math.floor(league.attBase * mult), Math.floor((league.stadBase || 15000) * 1.5));
+  if (tier === 5) {
+    if (code === 'ENG') return profile === 'giant' ? 18000 : profile === 'challenger' ? 12500 : 6200;
+    if (code === 'GER') return profile === 'giant' ? 14000 : profile === 'challenger' ? 9500 : 2100;
+    if (profile === 'giant') return Math.max(12000, Math.round(league.attBase * 4.5));
+    if (profile === 'challenger') return Math.max(7500, Math.round(league.attBase * 3.6));
+    return Math.round(league.attBase * 2.3);
+  }
+
+  if (tier === 6) {
+    if (code === 'ENG') return profile === 'giant' ? 11000 : profile === 'challenger' ? 8200 : 2600;
+    if (code === 'GER') return profile === 'giant' ? 7500 : profile === 'challenger' ? 5200 : 1150;
+    if (profile === 'giant') return Math.max(7000, Math.round(league.attBase * 4.5));
+    if (profile === 'challenger') return Math.max(4500, Math.round(league.attBase * 3.6));
+    return Math.round(league.attBase * 2.2);
+  }
+
+  if (tier === 7) {
+    if (code === 'ENG') return profile === 'giant' ? 6500 : profile === 'challenger' ? 4600 : 1250;
+    if (code === 'GER') return profile === 'giant' ? 5200 : profile === 'challenger' ? 3800 : 760;
+    if (profile === 'giant') return Math.max(4500, Math.round(league.attBase * 4.2));
+    if (profile === 'challenger') return Math.max(3000, Math.round(league.attBase * 3.4));
+    return Math.round(league.attBase * 2.15);
+  }
+
+  if (tier === 8) {
+    if (code === 'GER') return profile === 'giant' ? 3200 : profile === 'challenger' ? 2200 : 420;
+    if (profile === 'giant') return Math.max(2600, Math.round(league.attBase * 4.2));
+    if (profile === 'challenger') return Math.max(1600, Math.round(league.attBase * 3.4));
+    return Math.round(league.attBase * 2.05);
+  }
+
+  if (profile === 'giant') return Math.max(1800, Math.round(league.attBase * 4.5));
+  if (profile === 'challenger') return Math.max(1150, Math.round(league.attBase * 3.5));
+  return Math.max(45, Math.round(league.attBase * 2.0));
+};
+
+export interface ExpectedAttendanceParams {
+  club: {
+    id?: number | string;
+    name: string;
+    country?: string;
+    tier?: number;
+    stadium: number;
+    baseOvr: number;
+    fanBase?: number;
+  };
+  tier?: number;
+  year?: number;
+  ownership?: string;
+  stadiumPolicy?: string;
+  catchmentMod?: number;
+}
+
+export const calculateExpectedAttendance = ({
+  club,
+  tier: explicitTier,
+  year,
+  ownership,
+  stadiumPolicy,
+  catchmentMod,
+}: ExpectedAttendanceParams): number => {
+  const code = normalizeCountryCode(club.country || 'GER');
+  const effTier = Math.max(1, explicitTier ?? club.tier ?? 1);
+  const clubName = club.name || '';
+  const isReserve = isReserveClub(clubName);
+  const league = getLeagueInfo(effTier, code);
+  const stadium = Math.max(100, club.stadium || league.stadBase || 5000);
+  const baseOvr = club.baseOvr || league.avgOvr || 60;
+  let leagueMaxAtt = getLeagueMaxAttendance(effTier, isReserve, code, clubName);
+
+  // Player-built Champions League dynasties in any top flight can fill expanded mega-arenas
+  if (!isReserve && effTier === 1 && code !== 'WAL' && baseOvr >= 84) {
+    leagueMaxAtt = Math.max(leagueMaxAtt, 150000);
+  }
+
+  const sCount = year || 2026;
+  const pseudoRandom = Math.abs(Math.sin(sCount * 12.9898 + baseOvr + ((Number(club.id) || 0) % 17) * 0.37)) % 1;
+
+  if (isReserve) {
+    const reserveBase = effTier <= 2 ? 850 : effTier === 3 ? 650 : effTier === 4 ? 380 : 210;
+    const resVar = 0.88 + pseudoRandom * 0.24;
+    const resRaw = Math.round(reserveBase * resVar);
+    return Math.max(25, Math.min(stadium, leagueMaxAtt, resRaw));
+  }
+
+  const profile = getClubAttendanceProfile(clubName, code);
+  let fanBaseTemp =
+    club.fanBase ?? (profile !== 'standard' ? Math.max(league.attBase, leagueMaxAtt) : league.attBase);
+  if (ownership === 'fan_trust') {
+    fanBaseTemp = Math.floor(fanBaseTemp * 1.20);
+  }
+
+  const ovrDiff = baseOvr - (league.avgOvr || 60);
+  const clampVal = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+  const isMultiPurposeBowlNation = [
+    'IND', 'IDN', 'JPN', 'KOR', 'MEX', 'ECU', 'PER', 'COL', 'CHI', 'BOL', 'AUS', 'PAR'
+  ].includes(code);
+
+  const computeGiantBowlDemand = (rawFill: number): number => {
+    // In Asia, Latin America (outside River/Boca/Flamengo/Corinthians), & Australia, clubs often rent 55k-85k
+    // multi-purpose World Cup / athletics / cricket bowls rather than selling out 80k every regular matchday
+    if (isMultiPurposeBowlNation && stadium > 34000 && baseOvr < 86) {
+      return 34000 * (rawFill * 0.86) + (stadium - 34000) * 0.24;
+    }
+    return stadium * rawFill;
+  };
+
+  const computeTierTurnstileDemand = (targetTier: number): number => {
+    const tLeague = getLeagueInfo(targetTier, code);
+    const tOvrDiff = baseOvr - (tLeague.avgOvr || 60);
+    const tIsHighFillTopTwo = (code === 'GER' || code === 'ENG') && targetTier <= 2;
+    const tIsPolarizedTopFlight =
+      targetTier === 1 &&
+      ['POR', 'SCO', 'TUR', 'GRE', 'CRO', 'IND', 'IDN', 'PER', 'ECU', 'CHI', 'PAR', 'BOL', 'COL', 'SVK'].includes(code);
+
+    const expectedRegionalFans = Math.max(tLeague.attBase * 8, 25000);
+    const fanMomentum =
+      fanBaseTemp > expectedRegionalFans
+        ? Math.min(1.32, 1 + Math.log10(fanBaseTemp / expectedRegionalFans) * 0.24)
+        : 1.0;
+
+    if (tIsHighFillTopTwo) {
+      const fillRatio =
+        profile === 'giant'
+          ? 0.96
+          : profile === 'challenger'
+          ? 0.93
+          : (targetTier === 1 ? 0.90 : 0.85) + clampVal(tOvrDiff * 0.012, -0.08, 0.07);
+
+      if (targetTier === 2 && stadium > 36000 && profile === 'standard') {
+        return Math.min(tLeague.attBase * 1.45, 32000 * fillRatio + (stadium - 32000) * 0.14);
+      }
+      if (targetTier === 2 && stadium > 48000 && profile !== 'giant') {
+        return 45000 * fillRatio + (stadium - 45000) * 0.38;
+      }
+      return stadium * clampVal(fillRatio, 0.72, 0.98);
+    }
+
+    if (tIsPolarizedTopFlight) {
+      if (profile === 'giant' || baseOvr >= 83) {
+        const giantFill = 0.89 + clampVal(tOvrDiff * 0.008, -0.04, 0.07);
+        return computeGiantBowlDemand(giantFill);
+      }
+      if (profile === 'challenger' || baseOvr >= (tLeague.avgOvr || 72) + 2) {
+        const challengerTarget =
+          tLeague.attBase * (1.16 + clampVal(tOvrDiff * 0.032, -0.22, 0.35)) * Math.min(1.18, fanMomentum);
+        return Math.min(
+          stadium * 0.86,
+          Math.max(challengerTarget, Math.min(stadium * 0.56, tLeague.attBase * 0.95))
+        );
+      }
+      const nonGiantShare =
+        code === 'POR'
+          ? 0.42
+          : code === 'SCO'
+          ? 0.40
+          : code === 'TUR'
+          ? 0.52
+          : ['IND', 'IDN', 'PER', 'ECU', 'CHI', 'PAR', 'BOL'].includes(code)
+          ? 0.46
+          : 0.48;
+      const nonGiantBase = tLeague.attBase * nonGiantShare;
+      const ovrMult = 1 + clampVal(tOvrDiff * 0.04, -0.26, 0.50);
+      const stadFactor = 0.86 + 0.28 * clampVal(stadium / Math.max(8000, tLeague.stadBase * 0.45), 0.35, 1.45);
+      return Math.min(stadium * 0.82, nonGiantBase * ovrMult * stadFactor * fanMomentum);
+    }
+
+    if (targetTier === 1) {
+      if (code === 'WAL') {
+        const ovrMult = 1 + clampVal(tOvrDiff * 0.04, -0.28, 0.50);
+        const stadFactor = 0.85 + 0.25 * clampVal(stadium / 3000, 0.4, 1.5);
+        return Math.min(stadium * 0.74, tLeague.attBase * ovrMult * stadFactor * Math.min(1.18, fanMomentum));
+      }
+      if (profile === 'giant' || baseOvr >= (tLeague.avgOvr || 75) + 6) {
+        const giantFill = 0.90 + clampVal(tOvrDiff * 0.008, -0.03, 0.07);
+        return computeGiantBowlDemand(giantFill);
+      }
+      if (profile === 'challenger' || baseOvr >= (tLeague.avgOvr || 75) + 2) {
+        const cappedChalStad = isMultiPurposeBowlNation && stadium > 35000 ? 35000 : stadium;
+        return Math.min(
+          stadium * 0.86,
+          Math.max(tLeague.attBase * 1.12, cappedChalStad * 0.76)
+        );
+      }
+      const isSouthAmericaSpread = code === 'ARG' || code === 'BRA';
+      const ovrMult = 1 + clampVal(tOvrDiff * (isSouthAmericaSpread ? 0.05 : 0.035), isSouthAmericaSpread ? -0.40 : -0.24, 0.36);
+      const leagueFactor = isSouthAmericaSpread ? 0.72 : 0.86;
+      const targetFromLeague = tLeague.attBase * leagueFactor * ovrMult * Math.min(1.22, fanMomentum);
+      const compactCap = tLeague.attBase * 1.12;
+      const compactFill =
+        stadium <= compactCap
+          ? stadium * (0.80 + clampVal(tOvrDiff * 0.015, -0.12, 0.10))
+          : compactCap * 0.78 + (stadium - compactCap) * (isMultiPurposeBowlNation || isSouthAmericaSpread ? 0.14 : 0.22);
+      return Math.min(stadium * 0.88, targetFromLeague * 0.65 + compactFill * 0.35);
+    }
+
+    // Lower Divisions (Tiers 3-11 globally, plus Tier 2 outside ENG/GER)
+    const ovrMult = 1 + clampVal(tOvrDiff * 0.03, -0.25, 0.35);
+    const expectedNormalGround = Math.max(tLeague.attBase * 2.5, 1000);
+    const groundRatio = stadium / expectedNormalGround;
+    const heritageBoost =
+      groundRatio > 1
+        ? Math.min(0.74, Math.log10(groundRatio) * 0.62)
+        : clampVal((groundRatio - 1) * 0.32, -0.25, 0);
+    let statureMult = (1 + heritageBoost) * ovrMult;
+
+    if (profile === 'giant') {
+      statureMult *= 2.75;
+    } else if (profile === 'challenger') {
+      statureMult *= 2.05;
+    }
+
+    // Organic fanbase growth momentum (rewards long-term club building & marketing)
+    statureMult *= fanMomentum;
+
+    let demand = tLeague.attBase * statureMult;
+
+    // Loyal Core Supporter Floor for Bigger-Name Clubs in Lower Leagues:
+    // Historic national giants and sleeping-giant challengers retain a strong turnstile floor
+    // anchored to their ground even when playing in lower divisions (e.g., Duisburg, 1860, Bradford,
+    // Bordeaux, Oldham, Southend, Bursaspor, Académica, Palermo, Stuttgarter Kickers, Uerdingen).
+    if (profile !== 'standard') {
+      const effectiveBowl = Math.min(stadium, isMultiPurposeBowlNation ? 36000 : 58000);
+      const isCompactHistoricGround = stadium <= 22000;
+      const giantTierFill =
+        targetTier === 2
+          ? 0.80
+          : targetTier === 3
+          ? 0.66
+          : targetTier === 4
+          ? 0.54
+          : targetTier === 5
+          ? 0.40
+          : targetTier === 6
+          ? 0.28
+          : targetTier === 7
+          ? 0.22
+          : targetTier === 8
+          ? 0.14
+          : 0.09;
+      const challengerTierFill =
+        targetTier === 2
+          ? isCompactHistoricGround
+            ? 0.72
+            : 0.64
+          : targetTier === 3
+          ? isCompactHistoricGround
+            ? 0.58
+            : 0.50
+          : targetTier === 4
+          ? isCompactHistoricGround
+            ? 0.48
+            : 0.42
+          : targetTier === 5
+          ? isCompactHistoricGround
+            ? 0.35
+            : 0.30
+          : targetTier === 6
+          ? 0.25
+          : targetTier === 7
+          ? 0.19
+          : targetTier === 8
+          ? 0.11
+          : 0.06;
+
+      // Smaller domestic attendance markets scale core floor proportionally while keeping big names well ahead of small peers
+      const marketCoreScale =
+        ['POR', 'SCO', 'GRE', 'CRO', 'SVK', 'NOR', 'DEN', 'AUT', 'SUI'].includes(code)
+          ? 0.58
+          : 1.0;
+
+      const coreFill = (profile === 'giant' ? giantTierFill : challengerTierFill) * marketCoreScale;
+      const coreDemand = effectiveBowl * coreFill * clampVal(ovrMult, 0.88, 1.14);
+      demand = Math.max(demand, coreDemand);
+    }
+
+    return demand;
+  };
+
+  // Monotonic Promotion Floor: moving up a division must never collapse a club's home attendance
+  // below what the exact same squad, fanbase, and stadium would draw one tier lower.
+  const maxTierInCountry = getMaxTier(code);
+  const resolveMonotonicDemand = (targetTier: number, depth: number = 0): number => {
+    const raw = computeTierTurnstileDemand(targetTier);
+    if (raw >= stadium * 0.92 || targetTier >= maxTierInCountry || depth >= 2) {
+      return raw;
+    }
+    const lowerTierMax = getLeagueMaxAttendance(targetTier + 1, false, code, clubName);
+    const lowerTierDemand = Math.min(
+      resolveMonotonicDemand(targetTier + 1, depth + 1),
+      lowerTierMax,
+      stadium
+    );
+    const promotionLiftFloor = Math.min(stadium * 0.92, lowerTierDemand * 1.18);
+    return Math.max(raw, promotionLiftFloor);
+  };
+
+  let turnstileDemand = resolveMonotonicDemand(effTier);
+
+  if (stadiumPolicy === 'family') {
+    turnstileDemand *= 1.06;
+  }
+
+  const baseExpectedAtt = Math.min(
+    Math.round(turnstileDemand),
+    fanBaseTemp,
+    stadium,
+    leagueMaxAtt
+  );
+
+  const seasonalVariance =
+    effTier === 1 && baseOvr >= 85
+      ? 0.95 + pseudoRandom * 0.09
+      : 0.92 + pseudoRandom * 0.16;
+  const rawAttendance = Math.round(baseExpectedAtt * seasonalVariance);
+  const nonRoundOffset = Math.round((pseudoRandom - 0.5) * Math.min(38, Math.max(6, baseExpectedAtt * 0.08)));
+  let expectedAtt = Math.min(stadium, leagueMaxAtt, Math.max(15, rawAttendance + nonRoundOffset));
+
+  if (expectedAtt === stadium && effTier > 2) {
+    const noShows = Math.floor(pseudoRandom * (stadium * 0.03)) + 3;
+    expectedAtt = Math.max(15, expectedAtt - noShows);
+  }
+
+  const effectiveCatchmentMod =
+    typeof catchmentMod === 'number' ? catchmentMod : getCatchmentAttendanceModifier(club);
+  if (effectiveCatchmentMod < 1.0) {
+    expectedAtt = Math.max(15, Math.round(expectedAtt * effectiveCatchmentMod));
+  }
+
+  return expectedAtt;
 };
 
 export const calculateInitialFanBase = (stadium: number, tier: number, isReserve: boolean, country: string = 'GER', clubName: string = ''): number => {
@@ -1697,24 +2295,12 @@ export const calculateInitialFanBase = (stadium: number, tier: number, isReserve
     if (stadium >= 25000) return scaleBand(100000, 250000, 25000, 50000);
   }
 
-  // 4. Grassroots / Smaller Clubs Formula
+  // 4. Grassroots / Regional & Smaller Clubs Supporter Reach Formula
+  // Represents total regional sympathizers (turnstile attendance is governed by calculateExpectedAttendance)
   const league = getLeagueInfo(tier, country);
   const maxAtt = getLeagueMaxAttendance(tier, false, country, clubName);
-  let proportion = tier === 1 ? 0.75 : tier === 2 ? 0.60 : tier === 3 ? 0.45 : tier === 4 ? 0.30 : 0.20;
-  if (country === 'POR') {
-    proportion = tier === 1 ? 0.45 : tier === 2 ? 0.22 : tier === 3 ? 0.18 : tier === 4 ? 0.14 : 0.10;
-  } else if (country === 'ESP') {
-    proportion = tier === 1 ? 0.65 : tier === 2 ? 0.38 : tier === 3 ? 0.22 : tier === 4 ? 0.16 : 0.12;
-  } else if (country === 'ENG') {
-    proportion = tier === 1 ? 0.92 : tier === 2 ? 0.72 : tier === 3 ? 0.50 : tier === 4 ? 0.38 : 0.28;
-  } else if (country === 'ITA') {
-    proportion = tier === 1 ? 0.72 : tier === 2 ? 0.48 : tier === 3 ? 0.32 : tier === 4 ? 0.20 : 0.12;
-  } else if (country === 'TUR') {
-    const isSleepingGiant = ['Bursaspor', 'Eskişehirspor', 'Kocaelispor', 'Amed SK', 'Samsunspor', 'Göztepe', 'Yeşil Bursa', 'Anadolu Eskişehir', 'Körfez Kocaeli', 'Diyar Amed', 'Samsun 19 Mayıs', 'İzmir Göztepe'].some(n => clubName.includes(n));
-    proportion = isSleepingGiant ? 0.60 : (tier === 1 ? 0.50 : tier === 2 ? 0.28 : 0.18);
-  }
-  const baseFan = Math.floor(stadium * proportion);
-  return Math.max(Math.floor(league.attBase * 0.7), Math.min(maxAtt, baseFan));
+  const regionalPool = Math.round(Math.max(league.attBase * 3.2, stadium * 1.6, maxAtt * 1.8));
+  return Math.max(Math.floor(league.attBase * 1.5), Math.min(180000, regionalPool));
 };
 
 export const getLeagueStadiumRequirement = (tier: number, country: string = 'GER'): number => {
@@ -1942,6 +2528,7 @@ export const calculateClubFinancials = (state: {
   archetype?: string;
   ownership?: string;
   stadiumPolicy?: string;
+  vipHospitality?: boolean;
   youthPipeline?: any[];
   isPublic?: boolean;
   stockPrice?: number;
@@ -2095,40 +2682,22 @@ export const calculateClubFinancials = (state: {
   let totalWages = pureWages + veteranRingerWageSurcharge + stadiumMaintenance + venueRentFee + luxuryTax + youthMaintenance + academyUpkeep + medicalUpkeep + severanceTotal;
 
   // 2. Revenue Calculations
-  const maxAtt = getLeagueMaxAttendance(tier, isReserve, state.club.country || 'GER', state.club.name);
-  
-  let fanBaseTemp = state.club.fanBase ?? league.attBase;
-  if (state.ownership === 'fan_trust') {
-    fanBaseTemp = Math.floor(fanBaseTemp * 1.20);
-  }
-  
-  const baseExpectedAtt = isReserve
-    ? Math.min(700, maxAtt)
-    : Math.min(
-        fanBaseTemp,
-        state.club.stadium,
-        maxAtt
-      );
-      
-  // Apply a seasonal variance (-10% to +10%) based on year so it's deterministic per season
-  const sCount = state.year || 2024;
-  const pseudoRandom = Math.abs(Math.sin(sCount * 12.9898 + state.club.baseOvr)) % 1;
-  const seasonalVariance = 0.90 + (pseudoRandom * 0.20);
-  const rawAttendance = Math.round(baseExpectedAtt * seasonalVariance);
-  const nonRoundOffset = Math.round((pseudoRandom - 0.5) * Math.min(40, baseExpectedAtt * 0.1));
-  let expectedAtt = Math.min(state.club.stadium, Math.max(10, rawAttendance + nonRoundOffset));
-  if (expectedAtt === state.club.stadium && tier > 2) {
-    const noShows = Math.floor(pseudoRandom * (state.club.stadium * 0.03)) + 3;
-    expectedAtt = Math.max(10, expectedAtt - noShows);
-  }
+  const expectedAtt = calculateExpectedAttendance({
+    club: state.club,
+    tier,
+    year: state.year || 2024,
+    ownership: state.ownership,
+    stadiumPolicy: state.stadiumPolicy,
+  });
 
   const hasUltraliebling = (state.managerSkills || []).includes('ultraliebling');
   const hasSalesmaster = (state.managerSkills || []).includes('salesmaster');
 
   let matchdayMult = hasUltraliebling ? 1.15 : 1.0;
-  if (state.stadiumPolicy === 'commercial') {
+  if (state.vipHospitality || state.stadiumPolicy === 'commercial') {
     matchdayMult *= 1.18; // VIP hospitality & corporate suites yield
-  } else if (state.stadiumPolicy === 'ultras') {
+  }
+  if (state.stadiumPolicy === 'ultras') {
     matchdayMult *= 0.95; // Capped affordable standing terrace ticket prices for active fans
   }
   const matchdayIncomeK = Math.floor(((expectedAtt * league.ticket * 17) / 1000) * matchdayMult);
@@ -2195,9 +2764,13 @@ export const calculateClubFinancials = (state: {
   // Level 5 Youth Academy Solidarity Dividend (+€1.5M / yr scaled to country economy)
   const academyDividend = !isReserve && (state.club.academyLevel || 1) >= 5 ? Math.max(150, Math.round(1500 * cMult)) : 0;
 
+  const namingRightsIncome = !isReserve && (state as any).stadiumNamingRights && ((state as any).stadiumNamingRights.yearsLeft || 0) > 0
+    ? Math.max(0, Math.round(Number((state as any).stadiumNamingRights.annualPayoutK) || 0))
+    : 0;
+
   // FIX: Do NOT include extraSponsorInc in estRevenue to prevent double-counting upfront cash
   let boardSubsidy = 0;
-  let estRevenue = Math.floor(matchdayIncomeK + league.tvPrize + posPrizeK + euroRev + autoSponsorFinal + regionalGrant + academyDividend);
+  let estRevenue = Math.floor(matchdayIncomeK + league.tvPrize + posPrizeK + euroRev + autoSponsorFinal + regionalGrant + academyDividend + namingRightsIncome);
   
   // Ensure starting ops margin is net zero or slightly positive strictly at the inaugural season
   const startYr = state.startYear || 2026;
@@ -2251,16 +2824,30 @@ export const calculateClubFinancials = (state: {
     youthMaintenance = Math.floor(youthMaintenance * facilityRatio);
   }
 
-  const baseAcademyOp = youthMaintenance + academyUpkeep;
+  let baseAcademyOp = youthMaintenance + academyUpkeep;
   const scoutingDialPct = isReserve ? 0 : Math.max(0, Math.min(50, (state as any).academyScoutingDial ?? 0));
-  const scoutingDialExtraK = scoutingDialPct > 0
+  let scoutingDialExtraK = scoutingDialPct > 0
     ? Math.max(1, Math.round(baseAcademyOp * (scoutingDialPct / 100)))
     : 0;
 
-  let facilityExpenses = academyUpkeep + medicalUpkeep + extraPureWages + youthMaintenance + scoutingDialExtraK + luxuryTax;
-
   // 3. Enforce Uncapped Consequences (Recombine)
   pureWages = baselinePureWages + extraPureWages;
+
+  // Apply Club Identity 'heritage' operational efficiency (-20% on club wages & facility operations)
+  // directly to component line items so Ledger income/expense rows sum 100% identically to net margin
+  if (state.clubIdentity === 'heritage') {
+    pureWages = Math.round(pureWages * 0.8);
+    stadiumMaintenance = Math.round(stadiumMaintenance * 0.8);
+    venueRentFee = Math.round(venueRentFee * 0.8);
+    medicalUpkeep = Math.round(medicalUpkeep * 0.8);
+    youthMaintenance = Math.round(youthMaintenance * 0.8);
+    academyUpkeep = Math.round(academyUpkeep * 0.8);
+    baseAcademyOp = youthMaintenance + academyUpkeep;
+    scoutingDialExtraK = scoutingDialPct > 0
+      ? Math.max(1, Math.round(baseAcademyOp * (scoutingDialPct / 100)))
+      : 0;
+  }
+
   let debtInterest = 0;
   if (state.budget < 0) {
     // 10% interest on outstanding debt
@@ -2270,32 +2857,41 @@ export const calculateClubFinancials = (state: {
   if (state.bankLoan && (state.bankLoan.yearsLeft === undefined || state.bankLoan.yearsLeft > 0)) {
     bankLoanDebtService = state.bankLoan.annualPayment;
   }
+
+  const stadiumOp = stadiumMaintenance + venueRentFee;
+  const medicalOp = medicalUpkeep;
+  const academyOp = baseAcademyOp + scoutingDialExtraK;
+  const operatingExpensesBeforeDividend =
+    pureWages +
+    stadiumOp +
+    medicalOp +
+    academyOp +
+    luxuryTax +
+    severanceTotal +
+    debtInterest +
+    bankLoanDebtService;
+
   // Public Shareholder Dividend (Step 5)
   // 15% of operating profit, scaled by stock performance ratio (stockPrice / ipoPrice)
   let shareholderDividend = 0;
   if (state.isPublic) {
-    const operatingProfit = Math.max(0, estRevenue - (baselineExpenses + facilityExpenses + severanceTotal + debtInterest + bankLoanDebtService));
-    const baseDividend = Math.max(0, operatingProfit * 0.15); // 15% of profits
+    const operatingProfit = Math.max(0, estRevenue - operatingExpensesBeforeDividend);
+    const baseDividend = Math.floor(Math.max(0, operatingProfit * 0.15)); // 15% of profits
     const stockPrice = typeof state.stockPrice === 'number' ? state.stockPrice : 10;
     const ipoPrice = typeof state.ipoPrice === 'number' && state.ipoPrice > 0 ? state.ipoPrice : stockPrice;
     const actualDividendPayout = Math.floor(baseDividend * (stockPrice / ipoPrice));
     shareholderDividend = Math.min(Math.floor(operatingProfit * 0.60), actualDividendPayout);
   }
-  totalExpenses = baselineExpenses + facilityExpenses + severanceTotal + debtInterest + bankLoanDebtService + shareholderDividend;
-
-  if (state.clubIdentity === 'heritage') {
-    totalExpenses = Math.round(totalExpenses * 0.8);
-    pureWages = Math.round(pureWages * 0.8);
-  }
+  totalExpenses = operatingExpensesBeforeDividend + shareholderDividend;
 
   const net = estRevenue - totalExpenses;
 
   return {
     wages: totalExpenses,
     pureWages,
-    stadiumOp: stadiumMaintenance + venueRentFee,
-    medicalOp: medicalUpkeep,
-    academyOp: baseAcademyOp + scoutingDialExtraK,
+    stadiumOp,
+    medicalOp,
+    academyOp,
     baseAcademyOp,
     scoutingDialExtraK,
     scoutingDialPct,
@@ -2307,6 +2903,7 @@ export const calculateClubFinancials = (state: {
     parentClubGrant: regionalGrant,
     matchdayIncomeK,
     expectedAtt,
+    avgAtt: expectedAtt,
     tvPrize: league.tvPrize,
     posPrizeK,
     euroRev,
@@ -2318,6 +2915,7 @@ export const calculateClubFinancials = (state: {
     shareholderDividend,
     boardSubsidy,
     academyDividend,
+    namingRightsIncome,
     veteranRingerWageSurcharge,
   };
 };

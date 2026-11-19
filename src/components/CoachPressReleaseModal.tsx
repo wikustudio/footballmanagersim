@@ -63,64 +63,75 @@ export const CoachPressReleaseModal: React.FC<CoachPressReleaseModalProps> = ({
 
   const bodyText = isDe ? (isHire ? hireBodyDe : fireBodyDe) : (isHire ? hireBodyEn : fireBodyEn);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [onClose]);
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }} 
       transition={{ duration: 0.1, ease: 'linear' }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-2xl flex flex-col items-center justify-center p-2.5 sm:p-4 z-[70] text-left overflow-y-auto overscroll-contain"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 bg-[#18191F]/50 backdrop-blur-sm flex flex-col items-center justify-center p-2.5 sm:p-4 z-[70] text-left overflow-y-auto overscroll-contain cursor-pointer"
     >
       <motion.div 
         initial={{ scale: 0.98, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.98, opacity: 0 }}
+        exit={{ scale: 0.98, opacity: 0 }} 
         transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-[#12141c]/95 w-full max-w-lg rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(0,0,0,0.6)] backdrop-blur-3xl relative overflow-hidden font-sans border border-white/[0.08] text-white max-h-[92vh] sm:max-h-[88vh] flex flex-col min-h-0 my-auto shrink-0"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-lg rounded-[28px] sm:rounded-[32px] shadow-[0_24px_64px_rgba(24,25,31,0.18)] relative overflow-hidden font-sans border border-[#E6E3DC] text-[#18191F] max-h-[92vh] sm:max-h-[88vh] flex flex-col min-h-0 my-auto shrink-0 cursor-default"
       >
-        {/* Subtle Ambient Glow */}
-        <div className={`absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl pointer-events-none ${isHire ? 'bg-sky-500/10' : 'bg-rose-500/10'}`} />
-
         {/* Header Ribbon */}
-        <div className="p-6 pb-4 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between relative z-10">
+        <div className="p-6 pb-4 border-b border-[#E6E3DC] bg-[#FAF9F6] flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
             <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0 ${
               isHire 
-                ? 'bg-sky-500/15 border-sky-400/30 text-sky-300' 
-                : 'bg-rose-500/15 border-rose-400/30 text-rose-300'
+                ? 'bg-sky-50 border-sky-200 text-sky-700' 
+                : 'bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               <i className={`fa-solid ${isHire ? 'fa-handshake' : 'fa-door-open'} text-base`}></i>
             </div>
             <div>
-              <div className={`text-[10px] font-semibold uppercase tracking-wider ${isHire ? 'text-sky-400' : 'text-rose-400'}`}>
+              <div className={`text-[10px] font-semibold uppercase tracking-wider ${isHire ? 'text-sky-700' : 'text-rose-700'}`}>
                 {t('Official Press Release', 'Offizielle Pressemitteilung')}
               </div>
-              <div className="text-xs text-zinc-400 font-medium">
+              <div className="text-xs text-[#6B7280] font-medium">
                 {clubName}
               </div>
             </div>
           </div>
 
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 tabular-nums px-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] tabular-nums px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC]">
             {new Date().toLocaleDateString(isDe ? 'de-DE' : 'en-US')}
           </div>
         </div>
 
         {/* Content Body */}
-        <div className="p-4 sm:p-6 relative z-10 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
-          <h2 className="text-xl sm:text-2xl font-bold uppercase leading-tight tracking-tight text-white">
+        <div className="p-4 sm:p-6 relative z-10 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar bg-white">
+          <h2 className="text-xl sm:text-2xl font-bold uppercase leading-tight tracking-tight text-[#18191F]">
             {headline}
           </h2>
           
-          <div className="bg-white/[0.03] rounded-2xl p-4 sm:p-5 border border-white/[0.06] backdrop-blur-md">
-            <p className="text-xs sm:text-sm font-normal leading-relaxed text-zinc-300">
+          <div className="bg-[#FAF9F6] rounded-2xl p-4 sm:p-5 border border-[#E6E3DC]">
+            <p className="text-xs sm:text-sm font-normal leading-relaxed text-[#4B5563]">
               {bodyText}
             </p>
             
             {isHire && coachStyle && (
-              <div className="mt-4 p-3.5 border-l-2 border-sky-400 bg-sky-500/[0.06] rounded-r-xl text-xs font-medium text-sky-200">
+              <div className="mt-4 p-3.5 border-l-2 border-sky-600 bg-sky-50 rounded-r-xl text-xs font-medium text-sky-900">
                 "{isDe ? `Wir werden kompromisslosen ${coachStyle}-Fußball spielen!` : `We will play uncompromising ${coachStyle} football!`}"
-                <span className="text-sky-400 text-[11px] mt-1 block not-italic font-semibold">— {coachName}</span>
+                <span className="text-sky-700 text-[11px] mt-1 block not-italic font-semibold">— {coachName}</span>
               </div>
             )}
           </div>
@@ -128,7 +139,7 @@ export const CoachPressReleaseModal: React.FC<CoachPressReleaseModalProps> = ({
           <div className="flex justify-end pt-2">
             <button
               onClick={onClose}
-              className="w-full sm:w-auto font-bold text-xs px-7 py-3 rounded-xl transition-all cursor-pointer bg-sky-500 hover:bg-sky-400 text-white border border-sky-400/30 shadow-[0_4px_20px_rgba(56,189,248,0.25)] flex items-center justify-center gap-2"
+              className="w-full sm:w-auto font-bold text-xs px-7 py-3 rounded-xl transition-all cursor-pointer bg-[#18191F] hover:bg-[#2A2C35] text-white flex items-center justify-center gap-2"
             >
               <span>{t('Acknowledge Statement', 'Mitteilung bestätigen')}</span>
               <i className="fa-solid fa-arrow-right text-xs"></i>
