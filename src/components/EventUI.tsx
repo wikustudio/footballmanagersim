@@ -220,14 +220,33 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
         {/* Offers Section */}
         <div className="flex flex-col relative z-10 space-y-3">
           {!event.isForced && (
-            <button
-              onClick={(e) => { e.stopPropagation(); handleChoice(0); }}
-              disabled={isResolving}
-              className="w-full bg-[#F6F5F1] hover:bg-[#EAE7E0] disabled:opacity-50 disabled:cursor-not-allowed py-3 px-4 rounded-2xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 border border-[#E6E3DC] text-[#18191F] font-semibold text-xs tracking-wide shadow-sm cursor-pointer mb-1"
-            >
-              <i className="fa-solid fa-arrow-left text-[11px] text-[#52525B]"></i>
-              <span>{t('Decline & Remain at Current Club', 'Ablehnen & Beim Verein bleiben', 'Permanecer en el Club')}</span>
-            </button>
+            <div className="rounded-2xl border-2 border-emerald-500/70 bg-emerald-50/90 p-3.5 sm:p-4 shadow-sm mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center text-[11px] shrink-0">
+                    <i className="fa-solid fa-shield-heart"></i>
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900">
+                    {t('Stay at Current Club', 'Beim aktuellen Verein bleiben')}
+                  </span>
+                </div>
+                {String(event.id || '').startsWith('proactive_poach_') && (
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-emerald-300 text-emerald-800 text-[10px] font-bold tabular-nums">
+                    +3 Morale Loyalty Boost
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                data-testid="job-offer-decline-btn"
+                onClick={(e) => { e.stopPropagation(); handleChoice(0); }}
+                disabled={isResolving}
+                className="w-full bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed py-3 px-4 rounded-xl transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 text-white font-bold text-xs sm:text-sm tracking-wide shadow-sm cursor-pointer"
+              >
+                <i className="fa-solid fa-arrow-left text-xs"></i>
+                <span>{t('Decline & Remain at Current Club', 'Ablehnen & Beim Verein bleiben', 'Permanecer en el Club')}</span>
+              </button>
+            </div>
           )}
 
           <div className="grid grid-cols-1 gap-3">
@@ -368,6 +387,18 @@ export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onRe
               );
             })}
           </div>
+
+          {!event.isForced && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleChoice(0); }}
+              disabled={isResolving}
+              className="w-full bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-900 border-2 border-emerald-500/60 text-xs font-bold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-1"
+            >
+              <i className="fa-solid fa-shield-heart text-xs text-emerald-700"></i>
+              <span>Stay at Current Club · Decline All Offers</span>
+            </button>
+          )}
 
           {/* Retirement option */}
           <button

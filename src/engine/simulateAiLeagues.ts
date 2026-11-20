@@ -321,15 +321,24 @@ function* simulateAiLeaguesGen(
     let newOvr = c.baseOvr;
 
     if (isGiant && !c.isInsolventGiant) {
-      const ovrShift = rand(-1, 1);
-      newOvr = Math.max(78, Math.min(98, c.baseOvr + ovrShift));
+      // Generational squad cycles: 93+ OVR clubs experience gentle rebuild regression so one club doesn't sit at 96+ forever,
+      // while 78-90 OVR challengers have an occasional recruitment breakthrough cycle (+1 to +3).
+      let ovrShift = rand(-1, 1);
+      if (c.baseOvr >= 93) {
+        ovrShift = Math.random() < 0.58 ? rand(-2, 0) : rand(-1, 1);
+      } else if (c.baseOvr <= 90 && Math.random() < 0.18) {
+        ovrShift = rand(1, 3);
+      } else if (Math.random() < 0.10) {
+        ovrShift = Math.random() < 0.5 ? -2 : 2;
+      }
+      newOvr = Math.max(78, Math.min(96, c.baseOvr + ovrShift));
     } else {
       let ovrShift = rand(-1, 2);
       // Steady Multi-Year Rise: non-giant clubs in Tier 2+ get 8% chance of an organic development surge (+1 to +3 OVR)
       if (!isGiant && c.tier >= 2 && Math.random() < 0.08) {
         ovrShift += Math.floor(Math.random() * 3) + 1; // +1 to +3
       }
-      newOvr = Math.max(1, Math.min(98, c.baseOvr + ovrShift));
+      newOvr = Math.max(1, Math.min(96, c.baseOvr + ovrShift));
     }
 
     const facProg = getAiFacilityProgression(newOvr, c.tier, isGiant, c.isInsolventGiant);
@@ -625,8 +634,13 @@ function* simulateAiLeaguesGen(
       }
 
       const scoredTier = tierClubs.map((c) => {
-        let score = (c.baseOvr || 65) + rand(-5, 5);
-        const isGiant = (c.baseOvr || 0) >= 85 || topHeavyweightNames.has(c.name);
+        const rawOvr = c.baseOvr || 65;
+        // Diminishing returns above 86 OVR in Tier 1 so a 95 OVR giant does not automatically outscore an 85-88 OVR rival every single year
+        const effectiveOvr = tier === 1 && rawOvr > 86
+          ? 86 + Math.round((rawOvr - 86) * 0.45)
+          : rawOvr;
+        let score = effectiveOvr + rand(-6, 6);
+        const isGiant = rawOvr >= 84 || topHeavyweightNames.has(c.name);
 
         if (c.id === userClubId) {
           // The manager's club is strictly exempt from automated AI giant safety nets or artificial boosts
@@ -642,16 +656,19 @@ function* simulateAiLeaguesGen(
 
         if (tier === 1 && isGiant && !c.isInsolventGiant) {
           // Heavyweight Giants in Tier 1:
-          // ~8% chance of rare crisis dip (managerial turmoil, injury wave, European hangover)
-          const isCrisisSeason = Math.random() < 0.08;
+          // ~12% chance of crisis / transitional dip (managerial turmoil, injury wave, rebuild)
+          const isCrisisSeason = Math.random() < 0.12;
           if (isCrisisSeason) {
-            score -= rand(5, 10); // Slumps into mid-table 6th-11th position
-            score = Math.max(score, 76);
+            score -= rand(6, 12); // Slumps into mid-table 6th-12th position
+            score = Math.max(score, 74);
           } else {
-            // Anchor powerhouse near top in title contention (top 1-4)
-            score += rand(22, 30);
+            // Flexible powerhouse title-race band: lets multiple top clubs alternate in #1/#2 spots
+            score += rand(17, 31);
           }
-        } else if (tier > 1 && (isGiant || (c.baseOvr || 0) >= 75) && !c.isInsolventGiant) {
+        } else if (tier === 1 && rawOvr >= 76 && !c.isInsolventGiant && Math.random() < 0.16) {
+          // Ambitious Tier 1 challengers occasionally hit a hot tactical streak to crash the top 3
+          score += rand(12, 22);
+        } else if (tier > 1 && (isGiant || rawOvr >= 75) && !c.isInsolventGiant) {
           // In lower tiers, heavyweight clubs with superior quality dominate promotion races
           score += rand(18, 26);
         }
@@ -751,8 +768,8 @@ function* simulateAiLeaguesGen(
           const champClubObj = clubById.get(topRow.id);
           if (champClubObj) {
             tier1ChampionsByCountry.set(country, champClubObj);
-            if (champClubObj.id !== userClubId && champClubObj.baseOvr < 94 && Math.random() < 0.65) {
-              champClubObj.baseOvr = Math.min(94, champClubObj.baseOvr + 1);
+            if (champClubObj.id !== userClubId && champClubObj.baseOvr < 92 && Math.random() < 0.45) {
+              champClubObj.baseOvr = Math.min(92, champClubObj.baseOvr + 1);
             }
           }
         }

@@ -22,6 +22,7 @@ interface YouthModalProps {
   onOpenChampionship?: () => void;
   clubsDb?: Club[];
   isModActive?: boolean;
+  onTournamentStart?: () => void;
   onTournamentVictory?: (prizeMoney: number, cohortBoost: number) => void;
 }
 
@@ -41,6 +42,7 @@ export const YouthModal: React.FC<YouthModalProps> = ({
   financials,
   clubsDb,
   isModActive,
+  onTournamentStart,
   onTournamentVictory,
 }) => {
   const isDe = lang === 'de';
@@ -735,6 +737,7 @@ export const YouthModal: React.FC<YouthModalProps> = ({
             lang={lang}
             clubsDb={clubsDb}
             isModActive={isModActive}
+            onTournamentStart={onTournamentStart}
             onClose={(_won) => {
               setShowTournamentSubModal(false);
             }}

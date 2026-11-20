@@ -130,6 +130,87 @@ export const evaluateDecisionDayTrigger = (
   };
 };
 
+export interface Md33TableRowLike {
+  pos: number;
+  name: string;
+  pts: number;
+  gd: string | number;
+  gf?: number;
+  ga?: number;
+  isUser?: boolean;
+}
+
+export interface Md33StandingsContext<T extends Md33TableRowLike = Md33TableRowLike> {
+  md33UserRow?: T;
+  md33TopRivalRow?: T;
+  md33RelRivalRow?: T;
+  effectiveUserMd33Pts?: number;
+  md33TitleGap: number;
+  md33RelGap: number;
+}
+
+/**
+ * Extracts exact Matchday 33 points, title rival, and survival rival from an MD 33 table snapshot.
+ * Uses the user's actual MD 33 rank (not post-MD 34 approxPos) so title/survival gaps are never
+ * skipped or compared against the user's own row when positions swap on Matchday 34.
+ */
+export const computeMd33StandingsContext = <T extends Md33TableRowLike>(params: {
+  md33Table: T[];
+  approxPos: number;
+  pointsDeducted?: number;
+}): Md33StandingsContext<T> => {
+  const { md33Table, approxPos, pointsDeducted = 0 } = params;
+  const md33UserRow = md33Table.find((r) => Boolean(r.isUser));
+  const md33UserPos = md33UserRow?.pos ?? approxPos;
+
+  const md33TopRivalRow = md33Table.find(
+    (r) => !r.isUser && (md33UserPos === 1 ? r.pos === 2 : r.pos === 1)
+  );
+  const md33RelRivalRow = md33Table.find(
+    (r) =>
+      !r.isUser &&
+      (md33UserPos === 15
+        ? r.pos === 16
+        : md33UserPos === 16
+        ? r.pos === 15
+        : approxPos === 15
+        ? r.pos === 16
+        : r.pos === 15)
+  );
+
+  const effectiveUserMd33Pts = md33UserRow
+    ? Math.max(0, md33UserRow.pts - Math.max(0, pointsDeducted))
+    : undefined;
+
+  const md33TitleGap =
+    effectiveUserMd33Pts !== undefined && md33TopRivalRow
+      ? Math.abs(effectiveUserMd33Pts - md33TopRivalRow.pts)
+      : 99;
+
+  const md33RelGap =
+    effectiveUserMd33Pts !== undefined && md33RelRivalRow
+      ? Math.abs(effectiveUserMd33Pts - md33RelRivalRow.pts)
+      : 99;
+
+  return {
+    md33UserRow,
+    md33TopRivalRow,
+    md33RelRivalRow,
+    effectiveUserMd33Pts,
+    md33TitleGap,
+    md33RelGap,
+  };
+};
+
+/**
+ * Returns true when Decision Day IS Matchday 34 itself (title race or same-tier survival duel),
+ * meaning the 2nd-half live ticker & standings table must pause at Matchday 33 (index 32)
+ * instead of pre-populating Matchday 34 before the user plays Decision Day.
+ */
+export const shouldPauseInlineSimBeforeMd34 = (
+  trigger: DecisionDayTriggerResult
+): boolean => Boolean(trigger.shouldTrigger && !trigger.isPostSeasonPlayoff);
+
 export interface DecisionDayOutcomeInput {
   ddType: DecisionDayType;
   isCrossTierPlayoff: boolean;

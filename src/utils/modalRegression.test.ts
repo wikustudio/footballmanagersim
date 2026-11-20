@@ -584,6 +584,7 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
     it('verifies Decision Day match results parse score, userRank, and promote winner to upper tier', async () => {
       const fs = await import('fs');
       const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const ddEngineSrc = fs.readFileSync('src/engine/decisionDayEngine.ts', 'utf-8');
 
       // Verify ddResult has userRank, finalPts, finalGd, score
       expect(appSrc).toContain('userRank?: number');
@@ -594,10 +595,11 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
 
       // Verify promotion playoff victory triggers wonPlayoff without corrupting regular season position
       expect(appSrc).toContain("if (ddType === 'promotion_playoff') {");
-      expect(appSrc).toContain('wonPlayoff = ddWon;');
+      expect(appSrc).toContain('wonPlayoff = ddOutcome.userWonDuel;');
+      expect(appSrc).toContain('ddOutcome = resolveDecisionDayOutcome({');
 
       // Verify 34-game final stats account for Decision Day victory on top of MD 33
-      expect(appSrc).toContain('userFinalPts = userPreGamePts + 3');
+      expect(ddEngineSrc).toContain('userFinalPts = userPreGamePts + userDeltaPts;');
       expect(appSrc).toContain('wins = baseW33 + (ddWon ? 1 : 0)');
     });
 
@@ -1163,7 +1165,9 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(pkgSrc.scripts.build).toBe('vite build');
       expect(mainSrc.startsWith("import './utils/safeStoragePolyfill';")).toBe(true);
       expect(mainSrc).toContain("window.location.hostname.endsWith('.run.app')");
-      expect(appSrc).toContain("React.lazy(() => import('./components/SeasonFinishModal')");
+      expect(appSrc).toContain("import { SeasonFinishModal } from './components/SeasonFinishModal';");
+      expect(appSrc).toContain("import { MidSeasonDilemmaModal } from './components/MidSeasonDilemmaModal';");
+      expect(appSrc).not.toContain('React.lazy(');
       expect(appSrc).toContain('<React.Suspense fallback={null}>');
     });
   });

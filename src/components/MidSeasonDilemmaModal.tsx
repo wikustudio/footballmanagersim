@@ -20,18 +20,59 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
   const lang = gameState.language || 'en';
   const dilemmas = getManagerialDilemmas(gameState);
   const dilemma = dilemmas.find((d) => d.id === dilemmaId) || dilemmas[0];
+  const hasResolvedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    hasResolvedRef.current = false;
+  }, [isOpen, dilemmaId]);
+
+  const handleResolveOnce = React.useCallback(
+    (choice: 'A' | 'B', resolvedDilemma: ManagerialDilemma) => {
+      if (hasResolvedRef.current) return;
+      hasResolvedRef.current = true;
+      onResolveDilemma(choice, resolvedDilemma);
+    },
+    [onResolveDilemma]
+  );
 
   React.useEffect(() => {
     if (isOpen && !dilemma) {
-      onResolveDilemma('B', {
+      handleResolveOnce('B', {
         id: 'fallback',
-        title: { en: 'Standard Preparation', de: 'Standard-Vorbereitung' },
-        desc: { en: '', de: '' },
-        optionA: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'emerald' },
-        optionB: { label: { en: 'Continue', de: 'Weiter' }, subtext: { en: '', de: '' }, effects: {}, badge: { en: '', de: '' }, tone: 'sky' },
+        titleEn: 'Standard Preparation',
+        titleDe: 'Standard-Vorbereitung',
+        categoryEn: 'Mid-Season Briefing',
+        categoryDe: 'Halbzeit-Briefing',
+        descEn: 'Proceeding with standard mid-season preparation.',
+        descDe: 'Standard-Vorbereitung für die Rückrunde.',
+        icon: 'fa-clipboard-check',
+        optionA: {
+          labelEn: 'Continue',
+          labelDe: 'Weiter',
+          subEn: '',
+          subDe: '',
+          budgetDeltaK: 0,
+          ovrDelta: 0,
+          moraleDelta: 0,
+          badgeEn: 'NEUTRAL',
+          badgeDe: 'NEUTRAL',
+          tone: 'emerald',
+        },
+        optionB: {
+          labelEn: 'Continue',
+          labelDe: 'Weiter',
+          subEn: '',
+          subDe: '',
+          budgetDeltaK: 0,
+          ovrDelta: 0,
+          moraleDelta: 0,
+          badgeEn: 'NEUTRAL',
+          badgeDe: 'NEUTRAL',
+          tone: 'sky',
+        },
       });
     }
-  }, [isOpen, dilemma, onResolveDilemma]);
+  }, [isOpen, dilemma, handleResolveOnce]);
 
   if (!isOpen || !dilemma) return null;
 
@@ -184,7 +225,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
               type="button"
               onClick={() => {
                 playSound('click');
-                onResolveDilemma('A', dilemma);
+                handleResolveOnce('A', dilemma);
               }}
               className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 group cursor-pointer active:scale-[0.99] ${toneA.border} ${toneA.bg}`}
             >
@@ -211,7 +252,7 @@ export const MidSeasonDilemmaModal: React.FC<MidSeasonDilemmaModalProps> = ({
               type="button"
               onClick={() => {
                 playSound('click');
-                onResolveDilemma('B', dilemma);
+                handleResolveOnce('B', dilemma);
               }}
               className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 group cursor-pointer active:scale-[0.99] ${toneB.border} ${toneB.bg}`}
             >

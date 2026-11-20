@@ -94,12 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
     document.addEventListener('mousedown', handleOutsideClick);
     document.addEventListener('keydown', handleKeyDown);
 
-    const prefetchTimer = setTimeout(() => {
-      import('./LeaderboardPage').catch(() => {});
-    }, 1200);
-
     return () => {
-      clearTimeout(prefetchTimer);
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };

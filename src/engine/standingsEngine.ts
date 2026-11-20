@@ -738,6 +738,31 @@ export const buildDeterministicDivisionTable = (
           (rivalNameLower && c.name.toLowerCase().trim() === rivalNameLower))
     );
 
+  const getSeasonalPeerStrengthScore = (club: Club): number => {
+    const rawOvr = club.baseOvr || 65;
+    // Dampen extreme Tier 1 OVR gap above 86 so an initial 95-96 giant doesn't lock peer slot #1 100% of seasons
+    const base =
+      tier === 1 && rawOvr > 86 ? 86 + (rawOvr - 86) * 0.42 : rawOvr;
+    const formSwing = seededInt(`str-${year}-${country}-${tier}-${club.id}-${club.name}`, -7, 7);
+    let arcDelta = 0;
+
+    if (tier === 1 && !club.isInsolventGiant) {
+      const arcRoll = deterministicHash(`arc-${year}-${country}-${tier}-${club.id}-${club.name}`);
+      if (rawOvr >= 83 && arcRoll < 0.12) {
+        // Transitional slump / injury wave (-8 to -14)
+        arcDelta = -seededInt(`slump-${year}-${club.id}`, 8, 14);
+      } else if (rawOvr >= 78 && arcRoll >= 0.78) {
+        // Title challenger breakthrough (+5 to +11)
+        arcDelta = seededInt(`surge-${year}-${club.id}`, 5, 11);
+      } else if (rawOvr >= 72 && rawOvr < 80 && arcRoll >= 0.64 && arcRoll < 0.78) {
+        // Dark-horse European push (+7 to +12)
+        arcDelta = seededInt(`dark-${year}-${club.id}`, 7, 12);
+      }
+    }
+
+    return base + formSwing + arcDelta;
+  };
+
   // Order peers deterministically by season strength & promotion/relegation coherence
   const orderedPeers = [...peers].sort((a, b) => {
     if (promotedPeerIds || promotedPeerNames) {
@@ -752,8 +777,8 @@ export const buildDeterministicDivisionTable = (
       if (aRel && !bRel) return 1;
       if (!aRel && bRel) return -1;
     }
-    const bScore = (b.baseOvr || 65) + seededInt(`str-${year}-${country}-${tier}-${b.id}-${b.name}`, -4, 4);
-    const aScore = (a.baseOvr || 65) + seededInt(`str-${year}-${country}-${tier}-${a.id}-${a.name}`, -4, 4);
+    const bScore = getSeasonalPeerStrengthScore(b);
+    const aScore = getSeasonalPeerStrengthScore(a);
     if (bScore !== aScore) return bScore - aScore;
     return a.name.localeCompare(b.name);
   });
@@ -1415,3 +1440,84 @@ export const estimateDebtPointDeduction = (
   }
   return Math.min(15, Math.max(3, baseDeduction * seasonsInDebt));
 };
+
+export type StandingsZoneStatus =
+  | 'champion'
+  | 'champions_league'
+  | 'euro_quali'
+  | 'auto_promo'
+  | 'playoff'
+  | 'relegation'
+  | undefined;
+
+export interface StandingsRowPresentation {
+  consequenceBorder: string;
+  consequenceTitle: string;
+  rowBg: string;
+  showRivalBadge: boolean;
+}
+
+export const resolveStandingsRowPresentation = (params: {
+  status: StandingsZoneStatus;
+  cannotPromote: boolean;
+  isUser?: boolean;
+  isRival?: boolean;
+  rowIndex: number;
+  legendLabels: {
+    champTooltip: string;
+    primaryTooltip: string;
+    secondaryTooltip: string;
+    relegation: string;
+  };
+}): StandingsRowPresentation => {
+  const { status, cannotPromote, isUser, isRival, rowIndex, legendLabels } = params;
+  let consequenceBorder = 'border-l-4 border-transparent';
+  let consequenceTitle = '';
+  let hasZoneTint = false;
+
+  if (!cannotPromote) {
+    if (status === 'champion') {
+      consequenceBorder = 'border-l-4 border-amber-500 bg-amber-50/75';
+      consequenceTitle = legendLabels.champTooltip;
+      hasZoneTint = true;
+    } else if (status === 'champions_league') {
+      consequenceBorder = 'border-l-4 border-amber-400 bg-amber-50/45';
+      consequenceTitle = legendLabels.primaryTooltip;
+      hasZoneTint = true;
+    } else if (status === 'auto_promo') {
+      consequenceBorder = 'border-l-4 border-emerald-500 bg-emerald-50/70';
+      consequenceTitle = 'Automatic Promotion';
+      hasZoneTint = true;
+    } else if (status === 'euro_quali') {
+      consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
+      consequenceTitle = legendLabels.secondaryTooltip;
+      hasZoneTint = true;
+    } else if (status === 'playoff') {
+      consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
+      consequenceTitle = 'Promotion Playoff';
+      hasZoneTint = true;
+    }
+  }
+
+  if (status === 'relegation') {
+    consequenceBorder = 'border-l-4 border-rose-500 bg-rose-50/65';
+    consequenceTitle = legendLabels.relegation;
+    hasZoneTint = true;
+  }
+
+  const rowBg = isUser
+    ? 'bg-sky-50 ring-1 ring-inset ring-sky-300 relative z-10'
+    : hasZoneTint
+    ? ''
+    : rowIndex % 2 === 0
+    ? ''
+    : 'bg-[#FAF9F6]';
+
+  return {
+    consequenceBorder,
+    consequenceTitle,
+    rowBg,
+    showRivalBadge: Boolean(isRival && !isUser),
+  };
+};
+

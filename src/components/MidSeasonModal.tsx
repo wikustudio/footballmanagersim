@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Club, GameState, Language } from '../types';
 import { t } from '../data/translations';
 import { getLeagueInfo, isReserveClub } from '../data/gameConstants';
 import { generateMidSeasonEvent } from '../engine/midSeasonEngine';
+import { shouldShowMidSeasonPressBriefingBadge } from '../engine/midSeasonFlow';
 import { getCupName } from '../data/randomEvents';
 import { getContinentalCupNames } from '../utils/regionHelpers';
 import { getPressureLevelMeta } from '../engine/pressureEngine';
@@ -27,6 +28,22 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
   onOpenCoachMarket
 }) => {
   const [event] = useState(() => generateMidSeasonEvent(state));
+  const isClosingRef = useRef(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleCloseOnce = () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setIsClosing(true);
+    onClose(event);
+  };
+
+  const handleOpenCoachMarketOnce = () => {
+    if (isClosingRef.current || !onOpenCoachMarket) return;
+    isClosingRef.current = true;
+    setIsClosing(true);
+    onOpenCoachMarket(event);
+  };
 
   const liveMidUserRow = useMemo(() => {
     if (!clubsDb || clubsDb.length === 0) return undefined;
@@ -226,7 +243,13 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
   const activeCount = compList.filter(c => c.isActive).length;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-4 bg-[#18191F]/40 backdrop-blur-md overflow-y-auto overscroll-contain">
+    <motion.div
+      data-midseason-modal="true"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className={`fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-4 bg-[#18191F]/40 backdrop-blur-md overflow-y-auto overscroll-contain ${isClosing ? 'pointer-events-none' : ''}`}
+    >
       <motion.div 
         initial={{ scale: 0.96, y: 15 }} 
         animate={{ scale: 1, y: 0 }} 
@@ -248,8 +271,10 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
               <i className="fas fa-snowflake"></i>
             </div>
             <button 
-              onClick={() => onClose(event)} 
-              className="w-8 h-8 rounded-full bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#52525B] hover:text-[#18191F] transition-colors cursor-pointer"
+              type="button"
+              disabled={isClosing}
+              onClick={handleCloseOnce} 
+              className="w-8 h-8 rounded-full bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#52525B] hover:text-[#18191F] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               title={t(lang, 'Close', 'Schließen')}
             >
               <i className="fas fa-times text-xs"></i>
@@ -362,8 +387,10 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 </div>
                 {onOpenCoachMarket && (
                   <button
-                    onClick={() => onOpenCoachMarket(event)}
-                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    type="button"
+                    disabled={isClosing}
+                    onClick={handleOpenCoachMarketOnce}
+                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
                     <span>{t(lang, 'Hire Coach', 'Trainer suchen')}</span>
@@ -387,8 +414,10 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                 </div>
                 {onOpenCoachMarket && (
                   <button
-                    onClick={() => onOpenCoachMarket(event)}
-                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    type="button"
+                    disabled={isClosing}
+                    onClick={handleOpenCoachMarketOnce}
+                    className="shrink-0 bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold py-2 px-3.5 rounded-xl transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <i className="fas fa-users-viewfinder text-xs"></i>
                     <span>{t(lang, 'Hire Coach', 'Trainer suchen')}</span>
@@ -416,7 +445,7 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${pMeta.textClass}`}>
                       {pMeta.label} · {pScore}/100
                     </span>
-                    {state.pressureContext?.triggerMoment && (
+                    {shouldShowMidSeasonPressBriefingBadge(state) && (
                       <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">
                         Press Briefing Next
                       </span>
@@ -448,8 +477,10 @@ export const MidSeasonModal: React.FC<MidSeasonModalProps> = ({
         {/* Footer */}
         <div className="p-3.5 sm:p-4 border-t border-[#E6E3DC] bg-[#FAF9F6] shrink-0 relative z-10 flex items-center justify-end">
           <button
-            onClick={() => onClose(event)}
-            className="w-full sm:w-auto px-6 py-2.5 bg-[#18191F] hover:bg-[#2A2B33] text-white rounded-xl font-semibold text-xs shadow-sm transition cursor-pointer flex items-center justify-center gap-2"
+            type="button"
+            disabled={isClosing}
+            onClick={handleCloseOnce}
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#18191F] hover:bg-[#2A2B33] text-white rounded-xl font-semibold text-xs shadow-sm transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span>{t(lang, 'Continue', 'Weiter')}</span>
             <i className="fas fa-chevron-right text-[10px]"></i>

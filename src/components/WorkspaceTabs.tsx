@@ -33,6 +33,7 @@ import {
 import { calculateSponsorDealOffers } from '../engine/commercialEngine';
 import { getLoanProgress } from '../engine/creditFacilityEngine';
 import { getIncubatorCapacity } from '../engine/incubatorEngine';
+import { calculateYouthCohortOvr, evaluateYouthChampionshipEntry } from '../engine/ovrAndYouthHelpers';
 import { StadiumBowl3D } from './StadiumBowl3D';
 import { ClubCampus3D } from './ClubCampus3D';
 import {
@@ -440,27 +441,26 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 mt-3">
-        <div className="editorial-well p-2.5">
-          <div className="text-[10px] font-medium text-[#6B7280]">Revenue</div>
-          <div className="text-xs font-extrabold text-emerald-700 tabular-nums mt-0.5">
-            +{formatMoney(financials.estRevenue)}
+        <div className="editorial-well p-2 sm:p-2.5 min-w-0 flex flex-col justify-between">
+          <div className="text-[10px] font-medium text-[#6B7280] leading-tight truncate">Revenue</div>
+          <div className="text-[10.5px] sm:text-[11px] xl:text-xs font-extrabold text-emerald-700 tabular-nums whitespace-nowrap leading-tight mt-1">
+            {`+${formatMoney(Math.abs(financials.estRevenue))}`}
           </div>
         </div>
-        <div className="editorial-well p-2.5">
-          <div className="text-[10px] font-medium text-[#6B7280]">Expenses</div>
-          <div className="text-xs font-extrabold text-rose-700 tabular-nums mt-0.5">
-            -{formatMoney(financials.wages)}
+        <div className="editorial-well p-2 sm:p-2.5 min-w-0 flex flex-col justify-between">
+          <div className="text-[10px] font-medium text-[#6B7280] leading-tight truncate">Expenses</div>
+          <div className="text-[10.5px] sm:text-[11px] xl:text-xs font-extrabold text-rose-700 tabular-nums whitespace-nowrap leading-tight mt-1">
+            {`-${formatMoney(Math.abs(financials.wages))}`}
           </div>
         </div>
-        <div className="editorial-well p-2.5">
-          <div className="text-[10px] font-medium text-[#6B7280]">Net</div>
+        <div className="editorial-well p-2 sm:p-2.5 min-w-0 flex flex-col justify-between">
+          <div className="text-[10px] font-medium text-[#6B7280] leading-tight truncate">Net</div>
           <div
-            className={`text-xs font-extrabold tabular-nums mt-0.5 ${
+            className={`text-[10.5px] sm:text-[11px] xl:text-xs font-extrabold tabular-nums whitespace-nowrap leading-tight mt-1 ${
               financials.net >= 0 ? 'text-emerald-700' : 'text-rose-700'
             }`}
           >
-            {financials.net >= 0 ? '+' : ''}
-            {formatMoney(financials.net)}
+            {`${financials.net >= 0 ? '+' : ''}${formatMoney(financials.net)}`}
           </div>
         </div>
       </div>
@@ -1644,39 +1644,55 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
           </div>
 
           {/* Youth Tournament (Stretches to align bottom edge flush) */}
-          <div className="editorial-card p-4 sm:p-5 flex-1 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-[#18191F]">Youth Tournament</h3>
-                <span className="text-[10px] font-bold text-[#6B7280] tabular-nums">
-                  {readyCount} Ready
-                </span>
-              </div>
-              <div className="text-[11px] text-[#6B7280] mt-2">U19 National Championship</div>
-              <div className="text-xl font-black text-[#18191F] tabular-nums mt-0.5">
-                {Math.max(55, (state.club.baseOvr || 65) - 14 + (state.club.academyLevel || 1) * 2)} Cohort OVR
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <div className="editorial-well p-2.5">
-                  <div className="text-[10px] text-[#6B7280]">Champion bonus</div>
-                  <div className="text-xs font-extrabold text-emerald-700 mt-0.5">+1 OVR · +15%</div>
-                </div>
-                <div className="editorial-well p-2.5">
-                  <div className="text-[10px] text-[#6B7280]">Youth titles</div>
-                  <div className="text-xs font-extrabold text-[#18191F] tabular-nums mt-0.5">
-                    {state.youthTrophies || 0} won
+          {(() => {
+            const youthCohortOvr = calculateYouthCohortOvr(state);
+            const entryCheck = evaluateYouthChampionshipEntry(state);
+            const isPlayed = entryCheck.reasonCode === 'already_played';
+            const isMidSeasonLocked = entryCheck.reasonCode === 'not_preseason';
+            return (
+              <div className="editorial-card p-4 sm:p-5 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold text-[#18191F]">Youth Tournament</h3>
+                    <span className="text-[10px] font-bold text-[#6B7280] tabular-nums">
+                      {readyCount} Ready
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-[#6B7280] mt-2">U19 National Championship</div>
+                  <div className="text-xl font-black text-[#18191F] tabular-nums mt-0.5">
+                    {youthCohortOvr} Cohort OVR
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="editorial-well p-2.5">
+                      <div className="text-[10px] text-[#6B7280]">Champion bonus</div>
+                      <div className="text-xs font-extrabold text-emerald-700 mt-0.5">+2 OVR Cohort</div>
+                    </div>
+                    <div className="editorial-well p-2.5">
+                      <div className="text-[10px] text-[#6B7280]">Youth titles</div>
+                      <div className="text-xs font-extrabold text-[#18191F] tabular-nums mt-0.5">
+                        {state.youthTrophies || 0} won
+                      </div>
+                    </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={onOpenYouthChampionship}
+                  className={`w-full mt-4 py-2.5 rounded-2xl border text-xs font-bold transition cursor-pointer ${
+                    isPlayed || isMidSeasonLocked
+                      ? 'bg-[#FAF9F6] border-[#E6E3DC] text-[#6B7280] hover:bg-[#EFECE4]'
+                      : 'bg-[#F6F5F1] hover:bg-[#EAE7E0] border-[#E6E3DC] text-[#18191F]'
+                  }`}
+                >
+                  {isPlayed
+                    ? `Completed Season ${state.year} · Next: ${state.year + 1}`
+                    : isMidSeasonLocked
+                    ? `Pre-Season Only · Next: ${state.year + 1}`
+                    : 'Enter U19 Championship'}
+                </button>
               </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenYouthChampionship}
-              className="w-full mt-4 py-2.5 rounded-2xl bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] text-[#18191F] text-xs font-bold transition cursor-pointer"
-            >
-              Enter U19 Championship
-            </button>
-          </div>
+            );
+          })()}
         </div>
 
         {/* Center Column */}

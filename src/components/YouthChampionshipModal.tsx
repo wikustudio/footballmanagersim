@@ -6,13 +6,14 @@ import { t as tr } from '../data/translations';
 import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
 import { isReserveClub, formatMoney, getLeagueScaledVal } from '../data/gameConstants';
+import { calculateYouthCohortOvr } from '../engine/ovrAndYouthHelpers';
 
 interface Props {
   state: GameState;
   lang: Language;
   clubsDb?: Club[];
   isModActive?: boolean;
-  onClose: (won: boolean) => void;
+  onClose: (won: boolean, hasStarted?: boolean) => void;
   onTournamentStart?: () => void;
   onTournamentVictory?: (prizeMoney: number, cohortBoost: number) => void;
 }
@@ -114,11 +115,11 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
   const [tournamentWon, setTournamentWon] = useState<boolean>(false);
   const [reachedFinal, setReachedFinal] = useState<boolean>(false);
   const rewardsClaimedRef = React.useRef(false);
+  const hasStartedRef = React.useRef(false);
 
   // Scaled tournament prize purse (250k baseline in Tier 1 -> 125k in USA at 0.50x)
   const prizeMoney = getLeagueScaledVal(state.club.tier || 1, 250, state.club.country || 'GER');
   const academyLvl = Math.max(1, Math.min(5, state.club.academyLevel || 1));
-  const facilityBonus = (academyLvl - 1) * 6;
 
   const claimRewardsIfNeeded = (won: boolean) => {
     if (won && !rewardsClaimedRef.current && onTournamentVictory) {
@@ -134,18 +135,8 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
     // Dynamic database resolution: Respect user choice (custom mod, community mod, or default clubs)
     const activeDb = (clubsDb && clubsDb.length > 0) ? clubsDb : ALL_CLUBS;
 
-    // Calculate player's U19 OVR: Higher level of youth academy = higher chance of winning the youth title
-    const avgProspectBoost = state.youthPipeline && state.youthPipeline.length > 0
-      ? state.youthPipeline.reduce((sum, p) => sum + (p.boost || 1), 0) / state.youthPipeline.length
-      : 1;
-    const talentBonus = Math.round(avgProspectBoost * 2.5);
-    
-    // Level 1: ~55-58 OVR (Underdogs)
-    // Level 2: ~61-64 OVR
-    // Level 3: ~67-70 OVR (Competitive)
-    // Level 4: ~73-76 OVR
-    // Level 5: ~79-85 OVR (Elite tournament contenders)
-    const finalPlayerOvr = Math.max(48, Math.min(86, 52 + facilityBonus + Math.max(-4, Math.min(10, talentBonus))));
+    // Unified Cohort OVR from Academy Level + Youth Pipeline prospects
+    const finalPlayerOvr = calculateYouthCohortOvr(state);
 
     const countryStr = state.club.country || 'GER';
     const playerTeam: YouthTeam = { 
@@ -329,6 +320,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
   const handleNextPhase = () => {
     if (phase === 'intro') {
+      hasStartedRef.current = true;
       if (onTournamentStart) {
         onTournamentStart();
       }
@@ -363,7 +355,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
       }
     } else if (phase === 'result') {
       claimRewardsIfNeeded(tournamentWon);
-      onClose(tournamentWon);
+      onClose(tournamentWon, hasStartedRef.current);
     }
   };
 
@@ -415,7 +407,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
             <button 
               aria-label="Close modal" 
-              onClick={() => { claimRewardsIfNeeded(tournamentWon); onClose(tournamentWon); }} 
+              onClick={() => { claimRewardsIfNeeded(tournamentWon); onClose(tournamentWon, hasStartedRef.current); }} 
               className="w-8 h-8 rounded-full bg-[#F5F4F0] hover:bg-[#EAE7E0] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] cursor-pointer shrink-0"
             >
               <i className="fas fa-xmark text-xs"></i>

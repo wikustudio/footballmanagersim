@@ -124,9 +124,10 @@ export const IPOModal: React.FC<IPOModalProps> = ({
   }, []);
 
   // Post-IPO metrics
-  const ticker = state.club.name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() + ' PLC';
-  const currentPrice = state.stockPrice || basePrice;
-  const ipoReferencePrice = state.ipoPrice || basePrice;
+  const tickerLetters = (state.club?.name || 'FMS').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'FMS';
+  const ticker = `${tickerLetters} PLC`;
+  const currentPrice = Number.isFinite(Number(state.stockPrice)) && Number(state.stockPrice) > 0 ? Number(state.stockPrice) : basePrice;
+  const ipoReferencePrice = Number.isFinite(Number(state.ipoPrice)) && Number(state.ipoPrice) > 0 ? Number(state.ipoPrice) : basePrice;
   const allTimeDeltaPct =
     ipoReferencePrice > 0
       ? Number((((currentPrice - ipoReferencePrice) / ipoReferencePrice) * 100).toFixed(1))
@@ -635,17 +636,19 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                 </div>
 
                 {(() => {
-                  const rawHistory = state.stockHistory || [];
+                  const rawHistory = Array.isArray(state.stockHistory) ? state.stockHistory : [];
 
                   // 1. Always anchor the chart at the IPO Issue Price
                   let chartData: { year: string | number; price: number }[] = [
-                    { year: 'IPO', price: state.ipoPrice || 10.00 },
+                    { year: 'IPO', price: ipoReferencePrice },
                   ];
 
-                  // 2. Append all simulated seasons (filtering out duplicate origins if they exist)
+                  // 2. Append all valid simulated seasons (filtering out duplicate origins and invalid numbers)
                   rawHistory.forEach((entry) => {
-                    if (entry.price !== state.ipoPrice || chartData.length > 1) {
-                      chartData.push({ year: entry.year, price: entry.price });
+                    const entryPrice = Number(entry?.price);
+                    if (!Number.isFinite(entryPrice) || entryPrice <= 0) return;
+                    if (entryPrice !== ipoReferencePrice || chartData.length > 1) {
+                      chartData.push({ year: entry.year ?? state.year ?? 'Season', price: entryPrice });
                     }
                   });
 
@@ -802,7 +805,7 @@ export const IPOModal: React.FC<IPOModalProps> = ({
                     <span>
                       Current multiplier:{' '}
                       <span className="text-amber-700 font-bold tabular-nums">
-                        {(currentPrice / ipoReferencePrice).toFixed(2)}x
+                        {(ipoReferencePrice > 0 ? currentPrice / ipoReferencePrice : 1).toFixed(2)}x
                       </span>{' '}
                       relative to IPO launch.
                     </span>

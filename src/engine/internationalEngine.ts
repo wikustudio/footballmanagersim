@@ -10,7 +10,8 @@ import {
   HostNation,
   GroupStageResult,
   GroupTeam,
-  InternationalFirstHalfState
+  InternationalFirstHalfState,
+  WorldCupShootoutKick
 } from '../types';
 
 export const NATIONAL_TEAMS: NationalTeam[] = [
@@ -127,6 +128,55 @@ export const getEligibleNationalOffers = (managerCountry: string, reputation: nu
   if (elitePool[1] && offers.length < 4) offers.push(elitePool[1]);
 
   return offers.slice(0, 4);
+};
+
+// Selects realistic dynamic World Cup knockout opponents from all eligible nations (including Host Nation)
+export const selectWorldCupKnockoutOpponent = (
+  stage: 'Quarter-Final' | 'Semi-Final' | 'Grand Final',
+  userTeam: NationalTeam,
+  hostNation?: HostNation,
+  excludedCodes: string[] = []
+): NationalTeam => {
+  const excluded = new Set([userTeam.code, ...excludedCodes]);
+  const poolMap = new Map<string, NationalTeam>();
+
+  for (const t of NATIONAL_TEAMS) {
+    if (!excluded.has(t.code)) {
+      poolMap.set(t.code, t);
+    }
+  }
+
+  if (hostNation && !excluded.has(hostNation.code) && !poolMap.has(hostNation.code)) {
+    poolMap.set(hostNation.code, {
+      name: hostNation.name,
+      code: hostNation.code,
+      flag: hostNation.flag,
+      color: '#1d4ed8',
+      ovr: hostNation.ovr || 82,
+      continent: 'HOST',
+    });
+  }
+
+  const allEligible = Array.from(poolMap.values());
+  const minOvr = stage === 'Grand Final' ? 85 : stage === 'Semi-Final' ? 83 : 81;
+  let tierPool = allEligible.filter((t) => t.ovr >= minOvr);
+  if (tierPool.length === 0) {
+    tierPool = allEligible.length > 0 ? allEligible : NATIONAL_TEAMS.filter((t) => t.code !== userTeam.code);
+  }
+
+  // Weight higher-rated contenders and host nation realistically for late knockout rounds
+  const weights = tierPool.map((t) => {
+    const base = Math.max(1, t.ovr - (minOvr - 2));
+    const hostBoost = hostNation && t.code === hostNation.code ? 1.35 : 1;
+    return base * base * hostBoost;
+  });
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let r = Math.random() * totalWeight;
+  for (let i = 0; i < tierPool.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return tierPool[i];
+  }
+  return tierPool[0];
 };
 
 // Generates 3 distinct coaching candidates for the Director of Football to appoint
@@ -645,35 +695,42 @@ export const simulateInternationalFirstHalf = (
 };
 
 // Authentic FIFA penalty shootout simulator (Best-of-5 with early mathematical elimination check + sudden death)
-const simulateFifaShootout = (t1Advantage: number = 0): { t1Pens: number; t2Pens: number; t1Wins: boolean } => {
+export const simulateFifaShootout = (
+  t1Advantage: number = 0
+): { t1Pens: number; t2Pens: number; t1Wins: boolean; sequence: WorldCupShootoutKick[] } => {
   const p1Prob = Math.max(0.60, Math.min(0.88, 0.75 + t1Advantage * 0.02));
   const p2Prob = Math.max(0.60, Math.min(0.88, 0.75 - t1Advantage * 0.02));
 
   let s1 = 0;
   let s2 = 0;
+  const sequence: WorldCupShootoutKick[] = [];
 
   // Best of 5 kicks
   for (let round = 1; round <= 5; round++) {
     // Team 1 takes kick
-    if (Math.random() < p1Prob) s1++;
+    const k1 = Math.random() < p1Prob;
+    if (k1) s1++;
+    sequence.push({ round, taker: 'user', scored: k1 });
     const rem2After1 = 5 - (round - 1);
     const rem1After1 = 5 - round;
     if (s1 > s2 + rem2After1) {
-      return { t1Pens: s1, t2Pens: s2, t1Wins: true };
+      return { t1Pens: s1, t2Pens: s2, t1Wins: true, sequence };
     }
     if (s2 > s1 + rem1After1) {
-      return { t1Pens: s1, t2Pens: s2, t1Wins: false };
+      return { t1Pens: s1, t2Pens: s2, t1Wins: false, sequence };
     }
 
     // Team 2 takes kick
-    if (Math.random() < p2Prob) s2++;
+    const k2 = Math.random() < p2Prob;
+    if (k2) s2++;
+    sequence.push({ round, taker: 'opp', scored: k2 });
     const rem1After2 = 5 - round;
     const rem2After2 = 5 - round;
     if (s1 > s2 + rem2After2) {
-      return { t1Pens: s1, t2Pens: s2, t1Wins: true };
+      return { t1Pens: s1, t2Pens: s2, t1Wins: true, sequence };
     }
     if (s2 > s1 + rem1After2) {
-      return { t1Pens: s1, t2Pens: s2, t1Wins: false };
+      return { t1Pens: s1, t2Pens: s2, t1Wins: false, sequence };
     }
   }
 
@@ -682,15 +739,19 @@ const simulateFifaShootout = (t1Advantage: number = 0): { t1Pens: number; t2Pens
     const k1 = Math.random() < p1Prob;
     const k2 = Math.random() < p2Prob;
     if (k1) s1++;
+    sequence.push({ round: sd, taker: 'user', scored: k1 });
     if (k2) s2++;
+    sequence.push({ round: sd, taker: 'opp', scored: k2 });
     if (s1 !== s2) {
-      return { t1Pens: s1, t2Pens: s2, t1Wins: s1 > s2 };
+      return { t1Pens: s1, t2Pens: s2, t1Wins: s1 > s2, sequence };
     }
   }
 
   // Decisive tiebreak fallback if still tied after 12 rounds
   s1++;
-  return { t1Pens: s1, t2Pens: s2, t1Wins: true };
+  sequence.push({ round: 13, taker: 'user', scored: true });
+  sequence.push({ round: 13, taker: 'opp', scored: false });
+  return { t1Pens: s1, t2Pens: s2, t1Wins: true, sequence };
 };
 
 export const simulateInternationalMatch = (
@@ -896,6 +957,7 @@ export const simulateInternationalMatch = (
   let pens = false;
   let teamPenGoals: number | undefined;
   let oppPenGoals: number | undefined;
+  let shootoutSequence: WorldCupShootoutKick[] | undefined;
   let won = false;
 
   if (teamGoals !== oppGoals) {
@@ -964,6 +1026,7 @@ export const simulateInternationalMatch = (
       const shootout = simulateFifaShootout(t1Advantage);
       teamPenGoals = shootout.t1Pens;
       oppPenGoals = shootout.t2Pens;
+      shootoutSequence = shootout.sequence;
       won = shootout.t1Wins;
 
       minuteEvents.push({
@@ -999,6 +1062,7 @@ export const simulateInternationalMatch = (
     pens,
     teamPenGoals,
     oppPenGoals,
+    shootoutSequence,
     won,
     summary,
     minuteEvents

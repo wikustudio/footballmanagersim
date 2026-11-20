@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  computeMd33StandingsContext,
   evaluateDecisionDayTrigger,
   getDecisionDayStakesSummary,
   isDirectHeadToHeadMatch,
   isPostSeasonPlayoffMode,
   resolveDecisionDayOutcome,
+  shouldPauseInlineSimBeforeMd34,
 } from './decisionDayEngine';
 import {
   buildDeterministicDivisionTable,
@@ -405,4 +407,96 @@ test('All 378 Tier 1 clubs across all 21 leagues have curated real-world stadium
     resolveClubStadiumStyle(byId(1), 'open_terrace'),
     'open_terrace'
   );
+});
+
+test('MD 33 standings context blocks 79 vs 74 title deciders, handles position swaps, and pauses 2nd-half sim before MD 34', () => {
+  // 1. 79 pts vs 74 pts at MD 33 -> 5-pt uncatchable lead: MUST NOT trigger Decision Day or pause before MD 34
+  const uncatchableCtx = computeMd33StandingsContext({
+    md33Table: [
+      { pos: 1, name: 'Bayern Munich', pts: 79, gd: '+45', isUser: true },
+      { pos: 2, name: 'Borussia Dortmund', pts: 74, gd: '+32', isUser: false },
+      { pos: 3, name: 'RB Leipzig', pts: 66, gd: '+21', isUser: false },
+    ],
+    approxPos: 1,
+    pointsDeducted: 0,
+  });
+  assert.equal(uncatchableCtx.md33TitleGap, 5);
+  assert.equal(uncatchableCtx.md33TopRivalRow?.name, 'Borussia Dortmund');
+
+  const uncatchableTrigger = evaluateDecisionDayTrigger({
+    approxPos: 1,
+    pointsDeducted: 0,
+    md33TitleGap: uncatchableCtx.md33TitleGap,
+    md33RelGap: uncatchableCtx.md33RelGap,
+    titleDramaRoll: 0.05,
+    titleDramaChance: 1.0,
+    hasPromotionPlayoffs: false,
+    isReserveBlockedFromPlayoff: false,
+    maxPlayoffPos: 3,
+    seasonLeague: 1,
+    isBottomTier: false,
+    isTier1Only: false,
+  });
+  assert.equal(uncatchableTrigger.shouldTrigger, false);
+  assert.equal(shouldPauseInlineSimBeforeMd34(uncatchableTrigger), false);
+
+  // 2. Position swap edge case: user is #1 at MD 33 (76 pts vs #2 74 pts) even when post-MD34 approxPos is 2
+  const swappedCtx = computeMd33StandingsContext({
+    md33Table: [
+      { pos: 1, name: 'Bayern Munich', pts: 76, gd: '+40', isUser: true },
+      { pos: 2, name: 'Bayer Leverkusen', pts: 74, gd: '+38', isUser: false },
+    ],
+    approxPos: 2,
+    pointsDeducted: 0,
+  });
+  assert.equal(swappedCtx.md33TopRivalRow?.name, 'Bayer Leverkusen');
+  assert.equal(swappedCtx.md33TitleGap, 2);
+
+  const liveTitleTrigger = evaluateDecisionDayTrigger({
+    approxPos: 2,
+    pointsDeducted: 0,
+    md33TitleGap: swappedCtx.md33TitleGap,
+    md33RelGap: swappedCtx.md33RelGap,
+    titleDramaRoll: 0.05,
+    titleDramaChance: 1.0,
+    hasPromotionPlayoffs: false,
+    isReserveBlockedFromPlayoff: false,
+    maxPlayoffPos: 3,
+    seasonLeague: 1,
+    isBottomTier: false,
+    isTier1Only: false,
+  });
+  assert.equal(liveTitleTrigger.shouldTrigger, true);
+  assert.equal(liveTitleTrigger.ddType, 'title');
+  assert.equal(shouldPauseInlineSimBeforeMd34(liveTitleTrigger), true);
+
+  // 3. Debt point deduction (2 pts) adjusts effectiveUserMd33Pts coherently
+  const deductedCtx = computeMd33StandingsContext({
+    md33Table: [
+      { pos: 1, name: 'Bayern Munich', pts: 76, gd: '+40', isUser: true },
+      { pos: 2, name: 'Borussia Dortmund', pts: 75, gd: '+35', isUser: false },
+    ],
+    approxPos: 1,
+    pointsDeducted: 2,
+  });
+  assert.equal(deductedCtx.effectiveUserMd33Pts, 74);
+  assert.equal(deductedCtx.md33TitleGap, 1);
+
+  // 4. Post-season playoffs run AFTER all 34 matchdays (do NOT pause at MD 33)
+  const postSeasonPlayoff = evaluateDecisionDayTrigger({
+    approxPos: 3,
+    pointsDeducted: 0,
+    md33TitleGap: 14,
+    md33RelGap: 30,
+    titleDramaRoll: 0.5,
+    titleDramaChance: 1.0,
+    hasPromotionPlayoffs: true,
+    isReserveBlockedFromPlayoff: false,
+    maxPlayoffPos: 3,
+    seasonLeague: 2,
+    isBottomTier: false,
+    isTier1Only: false,
+  });
+  assert.equal(postSeasonPlayoff.shouldTrigger, true);
+  assert.equal(shouldPauseInlineSimBeforeMd34(postSeasonPlayoff), false);
 });

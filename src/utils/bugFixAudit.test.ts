@@ -288,22 +288,23 @@ describe('Surgical Bug Fix Verification: Mod Sync Customization & Cup Desync', (
     expect(appSrc).toContain('managerialImmortality');
   });
 
-  it('ensures Stale Tactic penalty is hard and un-cushioned by Level 5 facilities', () => {
+  it('ensures Stale Tactic penalty matches simulation rules and facility cushion across App, OvrModal, and SeasonFinishModal', () => {
     const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+    const ovrHelpersSrc = fs.readFileSync('src/engine/ovrAndYouthHelpers.ts', 'utf-8');
     const ovrModalSrc = fs.readFileSync('src/components/OvrModal.tsx', 'utf-8');
     const seasonFinishSrc = fs.readFileSync('src/components/SeasonFinishModal.tsx', 'utf-8');
 
-    // App.tsx enforces clean -4 penalty without facility cushion
+    // App.tsx & ovrAndYouthHelpers both apply -4 penalty (cushioned to -2 at Level 5 Academy + Medical)
+    expect(appSrc).toContain('const penalty = hasFacilityImmunity ? 2 : 4;');
     expect(appSrc).toContain("tacticalSynergyText += ` (Stale Tactic: The league has figured out your system! -${penalty} OVR)`;");
-    expect(appSrc).not.toContain('(Stale Tactic cushioned by Level 5 Facilities');
 
-    // OvrModal uses hard -4 OVR penalty
-    expect(ovrModalSrc).toContain('const stalePenalty = isStale ? 4 : 0;');
-    expect(ovrModalSrc).not.toContain('Cushioned to -2 OVR by Level 5 Facilities');
+    expect(ovrHelpersSrc).toContain('const stalePenalty = isStale ? (hasFacilityImmunity ? 2 : 4) : 0;');
+    expect(ovrModalSrc).toContain('computeMatchdayOvrBreakdown');
+    expect(ovrModalSrc).toContain('Full -${stalePenalty} OVR penalty in matches.');
 
-    // SeasonFinishModal enforces unavoidable -4 OVR
-    expect(seasonFinishSrc).toContain('unavoidable <strong className="text-rose-700">-4 OVR penalty</strong>');
-    expect(seasonFinishSrc).toContain("'Stale (-4 OVR Penalty)'");
+    // SeasonFinishModal dynamically displays -2 or -4 OVR based on hasSystemicImmunity
+    expect(seasonFinishSrc).toContain('hasSystemicImmunity ? 2 : 4');
+    expect(seasonFinishSrc).toContain('Stale (-${hasSystemicImmunity ? 2 : 4} OVR Penalty)');
   });
 
   it('ensures exponential wage bill scaling kicks in at 95+ OVR', async () => {
@@ -496,13 +497,15 @@ describe('Surgical Bug Fix Verification: Mod Sync Customization & Cup Desync', (
     const earlyPromoRes = promoteProspectToSenior(incubatingProspect, 75, 3, true);
     expect(earlyPromoRes.netGain).toBe(2); // 3 - 1 integrationCost = 2
 
-    // 4. Verify OvrModal and DashboardHeader share unified OVR fallback and matchday modifier display
+    // 4. Verify OvrModal delegates to buildSeasonOvrBreakdown and DashboardHeader share unified OVR fallback and matchday modifier display
     const ovrModalSrc = fs.readFileSync('src/components/OvrModal.tsx', 'utf-8');
+    const ovrHelpersSrc = fs.readFileSync('src/engine/ovrAndYouthHelpers.ts', 'utf-8');
     const headerSrc = fs.readFileSync('src/components/DashboardHeader.tsx', 'utf-8');
     const youthModalSrc = fs.readFileSync('src/components/YouthModal.tsx', 'utf-8');
 
     expect(ovrModalSrc).toContain('Effective Matchday OVR');
-    expect(ovrModalSrc).toContain('const prevOvrRaw = state.lastOvr !== undefined');
+    expect(ovrModalSrc).toContain('buildSeasonOvrBreakdown(state)');
+    expect(ovrHelpersSrc).toContain('state.lastOvr !== undefined');
     expect(headerSrc).toContain('const prevOvrRaw = state.lastOvr !== undefined');
     expect(youthModalSrc).toContain('Call Up Early');
     expect(youthModalSrc).toContain('isSquadFull');

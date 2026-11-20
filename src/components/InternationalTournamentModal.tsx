@@ -20,12 +20,14 @@ import {
   calculateDirectorSynergy,
   simulateGroupStage,
   simulateInternationalMatch,
-  simulateInternationalFirstHalf
+  simulateInternationalFirstHalf,
+  selectWorldCupKnockoutOpponent
 } from '../engine/internationalEngine';
 
 import confetti from 'canvas-confetti';
 import { BroadcastBadge } from './BroadcastBadge';
 import { PrestigeTrophy } from './PrestigeTrophy';
+import { WorldCupLiveMatchArena, WorldCupLiveEvent } from './WorldCupLiveMatchArena';
 
 interface InternationalTournamentModalProps {
   year: number;
@@ -180,18 +182,17 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     return null;
   }, [storageKey]);
 
-  // If the tournament was already persisted in gameState from before without active step state (i.e. restarted after winning the World Cup),
-  // automatically recover directly into the World Cup Trophy Presentation!
-  const isRecoveredVictory = !initialSavedState && !isFreshInvite && offeredTeams.length > 0;
+  // Recover trophy celebration ONLY if persisted state actually recorded a completed victory summary
+  const isRecoveredVictory =
+    !isFreshInvite &&
+    Boolean(initialSavedState?.step === 'summary' && initialSavedState?.wonTrophy === true);
 
   const [step, setStep] = useState<'invite' | 'strategy' | 'group' | 'knockout' | 'final' | 'summary'>(() => {
     if (initialSavedState?.step) return initialSavedState.step;
-    if (isRecoveredVictory) return 'summary';
     return 'invite';
   });
   const [selectedTeam, setSelectedTeam] = useState<NationalTeam | null>(() => {
     if (initialSavedState?.selectedTeam) return initialSavedState.selectedTeam;
-    if (isRecoveredVictory) return offeredTeams[0] || null;
     return null;
   });
 
@@ -206,20 +207,22 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
   // Group Stage State (Matchday-by-Matchday progression: 1, 2, 3)
   const [groupResult, setGroupResult] = useState<GroupStageResult | null>(() => initialSavedState?.groupResult || null);
   const [groupMatchdayRevealed, setGroupMatchdayRevealed] = useState<number>(() => initialSavedState?.groupMatchdayRevealed ?? 1);
+  const [groupLiveMatchday, setGroupLiveMatchday] = useState<number | null>(null);
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState<boolean>(false);
 
   // Knockout Stage State
   const [matches, setMatches] = useState<InternationalMatchResult[]>(() => initialSavedState?.matches || []);
   const [currentMatch, setCurrentMatch] = useState<InternationalMatchResult | null>(() => initialSavedState?.currentMatch || null);
-  const [isSimulatingMatch, setIsSimulatingMatch] = useState<boolean>(false);
-  const [knockoutPhase, setKnockoutPhase] = useState<'prep' | 'simulating' | 'result'>(() => {
+  const [pendingLiveResult, setPendingLiveResult] = useState<InternationalMatchResult | null>(null);
+  const [knockoutLiveEvents, setKnockoutLiveEvents] = useState<WorldCupLiveEvent[]>([]);
+  const [knockoutPhase, setKnockoutPhase] = useState<'prep' | 'live' | 'result'>(() => {
     const saved = initialSavedState?.knockoutPhase;
-    return saved === 'simulating' ? 'prep' : (saved || 'prep');
+    return saved === 'simulating' || saved === 'live' ? 'prep' : (saved || 'prep');
   });
   const [currentStage, setCurrentStage] = useState<'Quarter-Final' | 'Semi-Final'>(() => initialSavedState?.currentStage || 'Quarter-Final');
   const [pendingOpponent, setPendingOpponent] = useState<NationalTeam | null>(() => initialSavedState?.pendingOpponent || null);
   const [wonTrophy, setWonTrophy] = useState<boolean>(() => {
     if (typeof initialSavedState?.wonTrophy === 'boolean') return initialSavedState.wonTrophy;
-    if (isRecoveredVictory) return true;
     return false;
   });
 
@@ -234,6 +237,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
   const [finalLiveTeamScore, setFinalLiveTeamScore] = useState<number>(() => initialSavedState?.finalLiveTeamScore || 0);
   const [finalLiveOppScore, setFinalLiveOppScore] = useState<number>(() => initialSavedState?.finalLiveOppScore || 0);
   const [isFinalLiveRunning, setIsFinalLiveRunning] = useState<boolean>(false);
+  const [finalHalftimeIntervention, setFinalHalftimeIntervention] = useState<'steady' | 'all_out_attack' | 'park_the_bus' | null>(null);
   const [grandFinalFirstHalf, setGrandFinalFirstHalf] = useState<InternationalFirstHalfState | null>(() => initialSavedState?.grandFinalFirstHalf || null);
 
   // Persist active tournament progression so any remount or refresh never restarts the World Cup
@@ -365,11 +369,16 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     onComplete(wonTrophy, activeTeam.name, campaignStats);
   };
 
-  const handleDeclineOrClose = () => {
-    if (step === 'summary' || (step === 'final' && finalPhase === 'result')) {
-      handleFinishTournament();
-      return;
-    }
+  const clearAllTimers = () => {
+    timerRefs.current.forEach(t => {
+      clearInterval(t);
+      clearTimeout(t);
+    });
+    timerRefs.current = [];
+  };
+
+  const handleConfirmWithdraw = () => {
+    clearAllTimers();
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(storageKey);
@@ -377,7 +386,32 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
         // ignore
       }
     }
+    setConfirmWithdrawOpen(false);
     onDecline();
+  };
+
+  const handleDeclineOrClose = () => {
+    const isEliminatedInGroup =
+      step === 'group' && groupMatchdayRevealed >= 3 && groupResult && !groupResult.userQualified;
+    const isEliminatedInKnockout =
+      step === 'knockout' && knockoutPhase === 'result' && currentMatch && !currentMatch.won;
+
+    if (
+      step === 'summary' ||
+      (step === 'final' && finalPhase === 'result') ||
+      isEliminatedInGroup ||
+      isEliminatedInKnockout
+    ) {
+      handleFinishTournament();
+      return;
+    }
+
+    if (step === 'invite') {
+      handleConfirmWithdraw();
+      return;
+    }
+
+    setConfirmWithdrawOpen(true);
   };
 
   const timerRefs = React.useRef<any[]>([]);
@@ -533,48 +567,40 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
   const prepareKnockoutStage = (stage: 'Quarter-Final' | 'Semi-Final', excludedCodes: string[]) => {
     if (!selectedTeam) return;
-    const pool = [
-      { name: 'France', code: 'FRA', flag: '🇫🇷', color: '#2563eb', ovr: 89, continent: 'UEFA' as const },
-      { name: 'Brazil', code: 'BRA', flag: '🇧🇷', color: '#16a34a', ovr: 88, continent: 'CONMEBOL' as const },
-      { name: 'Argentina', code: 'ARG', flag: '🇦🇷', color: '#38bdf8', ovr: 88, continent: 'CONMEBOL' as const },
-      { name: 'Spain', code: 'ESP', flag: '🇪🇸', color: '#e11d48', ovr: 87, continent: 'UEFA' as const },
-      { name: 'England', code: 'ENG', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', color: '#dc2626', ovr: 87, continent: 'UEFA' as const },
-      { name: 'Germany', code: 'GER', flag: '🇩🇪', color: '#f59e0b', ovr: 86, continent: 'UEFA' as const },
-      { name: 'Portugal', code: 'POR', flag: '🇵🇹', color: '#b91c1c', ovr: 86, continent: 'UEFA' as const },
-      { name: 'Netherlands', code: 'NED', flag: '🇳🇱', color: '#ea580c', ovr: 85, continent: 'UEFA' as const },
-      { name: 'Italy', code: 'ITA', flag: '🇮🇹', color: '#1d4ed8', ovr: 85, continent: 'UEFA' as const }
-    ].filter(t => t.code !== selectedTeam.code && !excludedCodes.includes(t.code));
-
-    const opp = pool[Math.floor(Math.random() * pool.length)] || pool[0];
+    const opp = selectWorldCupKnockoutOpponent(stage, selectedTeam, hostNation, excludedCodes);
     setPendingOpponent(opp);
+    setPendingLiveResult(null);
+    setKnockoutLiveEvents([]);
     setKnockoutPhase('prep');
     setCurrentMatch(null);
   };
 
   const executeKnockoutMatch = () => {
     if (!selectedTeam || !appointedCoach || !pendingOpponent) return;
-    setIsSimulatingMatch(true);
-    setKnockoutPhase('simulating');
+    const result = simulateInternationalMatch(
+      selectedTeam,
+      pendingOpponent,
+      currentStage,
+      squadDirection,
+      federationInvestment,
+      appointedCoach,
+      synergy,
+      trainingFocus,
+      preGameDirective
+    );
+    setPendingLiveResult(result);
+    setKnockoutLiveEvents([]);
+    setKnockoutPhase('live');
+  };
 
-    registerTimer(setTimeout(() => {
-      if (!isMountedRef.current) return;
-      const result = simulateInternationalMatch(
-        selectedTeam,
-        pendingOpponent,
-        currentStage,
-        squadDirection,
-        federationInvestment,
-        appointedCoach,
-        synergy,
-        trainingFocus,
-        preGameDirective
-      );
-      setCurrentMatch(result);
-      setMatches(prev => [...prev, result]);
-      setIsSimulatingMatch(false);
-      setKnockoutPhase('result');
-      if (!result.won) setWonTrophy(false);
-    }, 750));
+  const finalizeKnockoutLiveMatch = () => {
+    if (!pendingLiveResult) return;
+    const finishedResult = pendingLiveResult;
+    setCurrentMatch(finishedResult);
+    setMatches(prev => [...prev, finishedResult]);
+    setPendingLiveResult(null);
+    setKnockoutPhase('result');
+    if (!finishedResult.won) setWonTrophy(false);
   };
 
   const handleProceedAfterKnockout = () => {
@@ -593,19 +619,14 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     setStep('final');
     setFinalPhase('prep');
     setGrandFinalFirstHalf(null);
+    setFinalHalftimeIntervention(null);
+    setCurrentMatch(null);
 
-    const finalists = [
-      { name: 'France', code: 'FRA', flag: '🇫🇷', color: '#2563eb', ovr: 89, continent: 'UEFA' as const },
-      { name: 'Brazil', code: 'BRA', flag: '🇧🇷', color: '#16a34a', ovr: 88, continent: 'CONMEBOL' as const },
-      { name: 'Argentina', code: 'ARG', flag: '🇦🇷', color: '#38bdf8', ovr: 88, continent: 'CONMEBOL' as const },
-      { name: 'Spain', code: 'ESP', flag: '🇪🇸', color: '#e11d48', ovr: 87, continent: 'UEFA' as const }
-    ].filter(t => t.code !== selectedTeam.code && !excludedCodes.includes(t.code));
-
-    const finalOpp = finalists[Math.floor(Math.random() * finalists.length)] || finalists[0];
+    const finalOpp = selectWorldCupKnockoutOpponent('Grand Final', selectedTeam, hostNation, excludedCodes);
     setFinalOpponent(finalOpp);
   };
 
-  // Kickoff First Half of Grand Final (minute-by-minute simulation up to 45', pauses for Director Halftime Call)
+  // Kickoff First Half of Grand Final (live pitch simulation up to 45', pauses for Director Halftime Call)
   const startGrandFinalFirstHalf = () => {
     if (!selectedTeam || !appointedCoach || !finalOpponent) return;
     const firstHalf = simulateInternationalFirstHalf(
@@ -619,42 +640,20 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       preGameDirective
     );
     setGrandFinalFirstHalf(firstHalf);
+    setFinalHalftimeIntervention(null);
+    setCurrentMatch(null);
     setFinalPhase('live');
     setIsFinalLiveRunning(true);
     setFinalMinute(1);
     setFinalLiveTeamScore(0);
     setFinalLiveOppScore(0);
     setFinalTickerEvents([]);
-
-    let currentMin = 1;
-    const interval = registerTimer(setInterval(() => {
-      if (!isMountedRef.current) {
-        clearInterval(interval);
-        return;
-      }
-      currentMin += 1;
-      setFinalMinute(currentMin);
-
-      const triggered = (firstHalf.minuteEvents || []).filter(e => e.minute <= currentMin);
-      setFinalTickerEvents(triggered);
-      setFinalLiveTeamScore(triggered.filter(e => e.isGoal && e.forUser).length);
-      setFinalLiveOppScore(triggered.filter(e => e.isGoal && !e.forUser).length);
-
-      if (currentMin >= 45) {
-        clearInterval(interval);
-        setFinalMinute(45);
-        setFinalLiveTeamScore(firstHalf.teamGoals);
-        setFinalLiveOppScore(firstHalf.oppGoals);
-        setFinalTickerEvents(firstHalf.minuteEvents);
-        setIsFinalLiveRunning(false);
-        setFinalPhase('halftime');
-      }
-    }, 45));
   };
 
   // Resolve Second Half of Grand Final after Director Halftime Intervention
   const resolveGrandFinalSecondHalf = (intervention: 'steady' | 'all_out_attack' | 'park_the_bus') => {
     if (!selectedTeam || !appointedCoach || !finalOpponent) return;
+    setFinalHalftimeIntervention(intervention);
     setFinalPhase('live');
     setIsFinalLiveRunning(true);
 
@@ -674,34 +673,6 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
     setCurrentMatch(result);
     setMatches(prev => [...prev, result]);
-
-    const targetEndMin = result.pens || result.extraTime ? 120 : 90;
-    let currentMin = 45;
-
-    const interval = registerTimer(setInterval(() => {
-      if (!isMountedRef.current) {
-        clearInterval(interval);
-        return;
-      }
-      currentMin += 1;
-      setFinalMinute(currentMin);
-
-      const triggered = (result.minuteEvents || []).filter(e => e.minute <= currentMin);
-      setFinalTickerEvents(triggered);
-      setFinalLiveTeamScore(triggered.filter(e => e.isGoal && e.forUser).length);
-      setFinalLiveOppScore(triggered.filter(e => e.isGoal && !e.forUser).length);
-
-      if (currentMin >= targetEndMin) {
-        clearInterval(interval);
-        setFinalMinute(targetEndMin);
-        setFinalLiveTeamScore(result.teamGoals);
-        setFinalLiveOppScore(result.oppGoals);
-        setFinalTickerEvents(result.minuteEvents || []);
-        setIsFinalLiveRunning(false);
-        setFinalPhase('result');
-        setWonTrophy(result.won);
-      }
-    }, 45));
   };
 
   const activeOpponent = step === 'final' ? finalOpponent : step === 'knockout' ? pendingOpponent : null;
@@ -755,13 +726,39 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
           </div>
 
           <button
+            type="button"
             onClick={handleDeclineOrClose}
+            aria-label={step === 'summary' ? 'Complete & Return to Club' : 'Decline & Return to Club'}
             className="w-9 h-9 rounded-full bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center text-[#4B5563] hover:text-[#18191F] transition cursor-pointer shrink-0"
             title={step === 'summary' ? 'Complete & Return to Club' : 'Decline & Return to Club'}
           >
             <i className="fas fa-times text-xs"></i>
           </button>
         </div>
+
+        {confirmWithdrawOpen && (
+          <div className="px-5 py-3 sm:px-6 bg-rose-50 border-b border-rose-200 flex flex-wrap items-center justify-between gap-2.5 text-xs shrink-0 relative z-20">
+            <span className="font-semibold text-rose-900">
+              Withdraw from World Cup {year}? Active tournament progress will be forfeited.
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleConfirmWithdraw}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold transition cursor-pointer"
+              >
+                Withdraw Campaign
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmWithdrawOpen(false)}
+                className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-[#18191F] font-bold transition cursor-pointer"
+              >
+                Resume Tournament
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Streamlined Single Sleek Non-Wrapping Status Ribbon */}
         {step !== 'invite' && selectedTeam && (
@@ -1118,7 +1115,11 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   </div>
                   {groupMatchdayRevealed < 3 ? (
                     <button
-                      onClick={() => setGroupMatchdayRevealed(3)}
+                      type="button"
+                      onClick={() => {
+                        setGroupLiveMatchday(null);
+                        setGroupMatchdayRevealed(3);
+                      }}
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-bold text-[#18191F] transition cursor-pointer"
                     >
                       Fast-Forward Group ⏩
@@ -1131,6 +1132,55 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     </span>
                   )}
                 </div>
+
+                {/* Group Matchday Live Highlight Reel */}
+                {groupLiveMatchday !== null && selectedTeam && (() => {
+                  const mdIdx = groupLiveMatchday - 1;
+                  const mdMatches = groupResult.matches.slice(mdIdx * 2, (mdIdx + 1) * 2);
+                  const userFix = mdMatches.find(
+                    m => m.home.code === selectedTeam.code || m.away.code === selectedTeam.code
+                  );
+                  if (!userFix) return null;
+                  const userIsHome = userFix.home.code === selectedTeam.code;
+                  const oppTeam = userIsHome ? userFix.away : userFix.home;
+                  const uGoals = userIsHome ? userFix.homeScore : userFix.awayScore;
+                  const oGoals = userIsHome ? userFix.awayScore : userFix.homeScore;
+                  const syntheticEvents: WorldCupLiveEvent[] = [];
+                  for (let i = 0; i < uGoals; i++) {
+                    syntheticEvents.push({
+                      minute: Math.min(88, 16 + i * 24),
+                      text: `${selectedTeam.name} scores in Matchday ${groupLiveMatchday}!`,
+                      isGoal: true,
+                      forUser: true,
+                    });
+                  }
+                  for (let i = 0; i < oGoals; i++) {
+                    syntheticEvents.push({
+                      minute: Math.min(89, 25 + i * 24),
+                      text: `${oppTeam.name} responds in Matchday ${groupLiveMatchday}!`,
+                      isGoal: true,
+                      forUser: false,
+                    });
+                  }
+                  return (
+                    <WorldCupLiveMatchArena
+                      stageLabel={`${groupResult.groupName} · Matchday ${groupLiveMatchday}`}
+                      team={selectedTeam}
+                      opponent={oppTeam}
+                      hostNation={hostNation}
+                      teamGoals={uGoals}
+                      oppGoals={oGoals}
+                      minuteEvents={syntheticEvents}
+                      directive={preGameDirective}
+                      effectiveUserOvr={effectiveUserOvr}
+                      mode="group"
+                      onComplete={() => {
+                        setGroupMatchdayRevealed(prev => Math.max(prev, groupLiveMatchday));
+                        setGroupLiveMatchday(null);
+                      }}
+                    />
+                  );
+                })()}
 
                 {/* Live Group Standings Table */}
                 <div className="bg-white rounded-2xl border border-[#E6E3DC] overflow-hidden">
@@ -1222,14 +1272,21 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 <div className="pt-1">
                   {groupMatchdayRevealed < 3 ? (
                     <button
-                      onClick={() => setGroupMatchdayRevealed(prev => prev + 1)}
-                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                      type="button"
+                      disabled={groupLiveMatchday !== null}
+                      onClick={() => setGroupLiveMatchday(groupMatchdayRevealed + 1)}
+                      className="w-full min-h-[48px] py-3.5 rounded-xl bg-[#18191F] hover:bg-[#2A2C35] disabled:opacity-50 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <i className="fas fa-forward-step"></i>
-                      <span>Simulate Group Matchday {groupMatchdayRevealed + 1}</span>
+                      <i className="fas fa-play"></i>
+                      <span>
+                        {groupLiveMatchday !== null
+                          ? `Playing Group Matchday ${groupLiveMatchday}...`
+                          : `Play Group Matchday ${groupMatchdayRevealed + 1}`}
+                      </span>
                     </button>
                   ) : groupResult.userQualified ? (
                     <button
+                      type="button"
                       onClick={handleStartKnockouts}
                       className="w-full min-h-[48px] py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
                     >
@@ -1238,6 +1295,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => {
                         setWonTrophy(false);
                         setStep('summary');
@@ -1261,15 +1319,46 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 transition={{ duration: 0.14 }}
                 className="flex flex-col gap-4"
               >
-                {isSimulatingMatch ? (
-                  <div className="py-20 flex flex-col items-center justify-center gap-3">
-                    <i className="fas fa-futbol fa-spin text-amber-600 text-4xl mb-1"></i>
-                    <span className="text-base font-black tracking-wide text-[#18191F]">
-                      Simulating {currentStage} Clash...
-                    </span>
-                    <span className="text-xs text-[#6B7280]">
-                      Executing matchday tactical directive on the pitch
-                    </span>
+                {knockoutPhase === 'live' && pendingLiveResult && pendingOpponent ? (
+                  <div className="space-y-3">
+                    <WorldCupLiveMatchArena
+                      stageLabel={currentStage}
+                      team={selectedTeam}
+                      opponent={pendingOpponent}
+                      hostNation={hostNation}
+                      teamGoals={pendingLiveResult.teamGoals}
+                      oppGoals={pendingLiveResult.oppGoals}
+                      minuteEvents={pendingLiveResult.minuteEvents || []}
+                      extraTime={pendingLiveResult.extraTime}
+                      pens={pendingLiveResult.pens}
+                      teamPenGoals={pendingLiveResult.teamPenGoals}
+                      oppPenGoals={pendingLiveResult.oppPenGoals}
+                      shootoutSequence={pendingLiveResult.shootoutSequence}
+                      directive={preGameDirective}
+                      effectiveUserOvr={effectiveUserOvr}
+                      mode="knockout"
+                      onMinuteUpdate={(_, __, ___, revealed) => setKnockoutLiveEvents(revealed)}
+                      onComplete={finalizeKnockoutLiveMatch}
+                    />
+                    {knockoutLiveEvents.length > 0 && (
+                      <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3 space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar text-left">
+                        {knockoutLiveEvents.map((evt, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 border ${
+                              evt.isGoal
+                                ? evt.forUser
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold'
+                                  : 'bg-rose-50 border-rose-200 text-rose-800 font-bold'
+                                : 'bg-white border-[#E6E3DC] text-[#4B5563]'
+                            }`}
+                          >
+                            <span className="font-mono font-black text-amber-700 tabular-nums shrink-0">{evt.minute}'</span>
+                            <span>{evt.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : knockoutPhase === 'prep' && pendingOpponent ? (
                   <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 space-y-4">
@@ -1411,7 +1500,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
             {/* ================= ACT 5: GRAND FINAL WITH HALFTIME DIRECTOR CALL ================= */}
             {step === 'final' && selectedTeam && finalOpponent && (
               <motion.div
-                key={`final-${finalPhase}`}
+                key="final-act"
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
@@ -1493,34 +1582,64 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 sm:p-6 text-center space-y-4">
-                    <div className="inline-flex items-center gap-2 text-rose-700 text-xs font-mono font-black tabular-nums">
-                      <span className={`w-2 h-2 rounded-full bg-rose-600 ${isFinalLiveRunning ? 'animate-ping' : ''}`}></span>
-                      <span>{finalMinute === 45 && finalPhase === 'halftime' ? "45' HALF-TIME" : `${finalMinute}' ${finalMinute >= 90 ? 'FT' : 'LIVE'}`}</span>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5 my-2 w-full max-w-md mx-auto">
-                      <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl">{selectedTeam.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
-                      </div>
-                      <div className="flex flex-col items-center shrink-0">
-                        <div className="bg-white border border-amber-300 rounded-2xl px-5 sm:px-6 py-2.5 font-mono font-black text-3xl sm:text-5xl text-[#18191F] whitespace-nowrap tabular-nums inline-flex items-center justify-center tracking-wide shadow-xs">
-                          <span>{finalLiveTeamScore}</span>
-                          <span className="mx-2.5 text-[#C7C4BC] font-sans text-xl sm:text-2xl">–</span>
-                          <span>{finalLiveOppScore}</span>
-                        </div>
-                        {currentMatch?.pens && !isFinalLiveRunning && finalPhase === 'result' && (
-                          <span className="text-[11px] font-mono font-bold text-amber-800 mt-1.5 tabular-nums">
-                            Shootout: {currentMatch.teamPenGoals} : {currentMatch.oppPenGoals}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-4xl sm:text-5xl">{finalOpponent.flag}</span>
-                        <span className="font-black text-xs sm:text-base text-[#18191F] truncate max-w-full">{finalOpponent.name}</span>
-                      </div>
-                    </div>
+                  <div className="space-y-4">
+                    <WorldCupLiveMatchArena
+                      stageLabel="World Cup™ Grand Final"
+                      team={selectedTeam}
+                      opponent={finalOpponent}
+                      hostNation={hostNation}
+                      teamGoals={
+                        currentMatch
+                          ? currentMatch.teamGoals
+                          : grandFinalFirstHalf?.teamGoals ?? finalLiveTeamScore
+                      }
+                      oppGoals={
+                        currentMatch
+                          ? currentMatch.oppGoals
+                          : grandFinalFirstHalf?.oppGoals ?? finalLiveOppScore
+                      }
+                      minuteEvents={
+                        currentMatch
+                          ? currentMatch.minuteEvents || []
+                          : grandFinalFirstHalf?.minuteEvents || []
+                      }
+                      startMinute={currentMatch ? 45 : 1}
+                      endMinute={currentMatch ? (currentMatch.pens || currentMatch.extraTime ? 120 : 90) : 45}
+                      pauseAtMinute={!currentMatch ? 45 : null}
+                      extraTime={currentMatch?.extraTime}
+                      pens={currentMatch?.pens}
+                      teamPenGoals={currentMatch?.teamPenGoals}
+                      oppPenGoals={currentMatch?.oppPenGoals}
+                      shootoutSequence={currentMatch?.shootoutSequence}
+                      directive={preGameDirective}
+                      halftimeIntervention={finalHalftimeIntervention}
+                      effectiveUserOvr={effectiveUserOvr}
+                      mode="final"
+                      onMinuteUpdate={(m, ug, og, revealed) => {
+                        setFinalMinute(m);
+                        setFinalLiveTeamScore(ug);
+                        setFinalLiveOppScore(og);
+                        setFinalTickerEvents(revealed);
+                      }}
+                      onComplete={() => {
+                        if (!currentMatch && grandFinalFirstHalf) {
+                          setFinalMinute(45);
+                          setFinalLiveTeamScore(grandFinalFirstHalf.teamGoals);
+                          setFinalLiveOppScore(grandFinalFirstHalf.oppGoals);
+                          setFinalTickerEvents(grandFinalFirstHalf.minuteEvents);
+                          setIsFinalLiveRunning(false);
+                          setFinalPhase('halftime');
+                        } else if (currentMatch) {
+                          setFinalMinute(currentMatch.pens || currentMatch.extraTime ? 120 : 90);
+                          setFinalLiveTeamScore(currentMatch.teamGoals);
+                          setFinalLiveOppScore(currentMatch.oppGoals);
+                          setFinalTickerEvents(currentMatch.minuteEvents || []);
+                          setIsFinalLiveRunning(false);
+                          setFinalPhase('result');
+                          setWonTrophy(currentMatch.won);
+                        }
+                      }}
+                    />
 
                     {/* Halftime Director Call */}
                     {finalPhase === 'halftime' && (
@@ -1531,6 +1650,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <button
+                            type="button"
                             onClick={() => resolveGrandFinalSecondHalf('steady')}
                             className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
@@ -1538,6 +1658,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             <div className="text-[10px] text-[#6B7280] group-hover:text-zinc-300">Trust {appointedCoach?.name}'s gameplan</div>
                           </button>
                           <button
+                            type="button"
                             onClick={() => resolveGrandFinalSecondHalf('all_out_attack')}
                             className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
@@ -1545,6 +1666,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                             <div className="text-[10px] text-[#6B7280] group-hover:text-zinc-300">+Goal Surge / Counter Risk</div>
                           </button>
                           <button
+                            type="button"
                             onClick={() => resolveGrandFinalSecondHalf('park_the_bus')}
                             className="p-3 rounded-xl bg-white hover:bg-[#18191F] text-[#18191F] hover:text-white border border-[#E6E3DC] text-left transition cursor-pointer group"
                           >
@@ -1556,26 +1678,33 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                     )}
 
                     {/* Commentary Ticker */}
-                    <div className="pt-3 border-t border-[#E6E3DC] space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-left">
-                      {finalTickerEvents.map((evt, idx) => (
-                        <div
-                          key={idx}
-                          className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2.5 border ${
-                            evt.isGoal
-                              ? evt.forUser
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold'
-                                : 'bg-rose-50 border-rose-200 text-rose-800 font-bold'
-                              : 'bg-white border-[#E6E3DC] text-[#4B5563]'
-                          }`}
-                        >
-                          <span className="font-mono font-black text-amber-700 tabular-nums shrink-0">{evt.minute}'</span>
-                          <span>{evt.text}</span>
+                    <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-3 space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-left">
+                      {finalTickerEvents.length === 0 ? (
+                        <div className="text-xs text-[#6B7280] px-2 py-1">
+                          Kickoff at {hostNation.stadium} · Waiting for key match highlights...
                         </div>
-                      ))}
+                      ) : (
+                        finalTickerEvents.map((evt, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-xs px-3 py-2 rounded-xl flex items-center gap-2.5 border ${
+                              evt.isGoal
+                                ? evt.forUser
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-bold'
+                                  : 'bg-rose-50 border-rose-200 text-rose-800 font-bold'
+                                : 'bg-white border-[#E6E3DC] text-[#4B5563]'
+                            }`}
+                          >
+                            <span className="font-mono font-black text-amber-700 tabular-nums shrink-0">{evt.minute}'</span>
+                            <span>{evt.text}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
 
                     {!isFinalLiveRunning && finalPhase === 'result' && (
                       <button
+                        type="button"
                         onClick={() => setStep('summary')}
                         className="w-full min-h-[48px] py-3.5 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white font-semibold text-xs sm:text-sm uppercase tracking-wider transition shadow-sm cursor-pointer active:scale-[0.98]"
                       >

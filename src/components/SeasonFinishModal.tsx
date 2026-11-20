@@ -46,6 +46,7 @@ interface SeasonFinishModalProps {
     transfersOut?: number;
     newBaseOvr?: number;
     startOvr?: number;
+    seasonStartOvr?: number;
     decayReasons?: string[];
     pointsEarned?: number;
     totalSkillPoints?: number;
@@ -404,7 +405,8 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
   const fillPercentage = Math.min(100, Math.round((avgAttendance / Math.max(1, state.club.stadium)) * 100));
 
   const goalDiff = seasonData.gf - seasonData.ga;
-  const ovrDelta = (seasonData.newBaseOvr || state.club.baseOvr) - (seasonData.startOvr || state.club.baseOvr);
+  const fullSeasonStartOvr = seasonData.seasonStartOvr ?? seasonData.startOvr ?? state.club.baseOvr;
+  const ovrDelta = (seasonData.newBaseOvr || state.club.baseOvr) - fullSeasonStartOvr;
   const hasPromotionPlayoffs = seasonData.tier > 1 && getMaxTier(country, clubsDb) > 1;
 
   const isStaleActive = Boolean(state.staleTactic && state.tactic === state.staleTactic);
@@ -1360,7 +1362,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] uppercase font-bold text-rose-700">Tactical Obsolescence · System Decoded</div>
                         <p className="text-xs text-[#4B5563] mt-0.5">
-                          The league has decoded your tactic ({state.tactic})! You face an unavoidable <strong className="text-rose-700">-4 OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-700 font-semibold">-5 MP</span>).
+                          The league has decoded your tactic ({state.tactic})! You face {hasSystemicImmunity ? 'a cushioned' : 'an unavoidable'} <strong className="text-rose-700">-{hasSystemicImmunity ? 2 : 4} OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-700 font-semibold">-5 MP</span>).
                         </p>
                       </div>
                     </div>
@@ -1621,9 +1623,11 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                               : isUserPromoted
                               ? 'bg-emerald-50'
                               : 'bg-sky-50'
-                            : r.isRival
-                            ? 'bg-rose-50/70'
-                            : isManagerSackingZone
+                            : isContinental || isPromo
+                            ? 'bg-emerald-50/50'
+                            : isPlayoff || isRelegationPlayoff
+                            ? 'bg-amber-50/45'
+                            : isDirectRelegation || isManagerSackingZone
                             ? 'bg-rose-50/50'
                             : i % 2 === 0 ? 'bg-white' : 'bg-[#FAF9F6]';
 
@@ -1634,7 +1638,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                             >
                               {/* Position */}
                               <div className={`w-7 sm:w-8 text-center font-bold tabular-nums shrink-0 ${
-                                r.isUser ? (isUserChamp ? 'text-amber-700 font-black' : isUserPromoted ? 'text-emerald-700 font-extrabold' : 'text-sky-700') : r.isRival ? 'text-rose-700' : isContinental ? 'text-emerald-700' : isPromo ? 'text-emerald-700' : isPlayoff ? 'text-amber-700' : isRelegationPlayoff ? 'text-amber-700 font-bold' : (isDirectRelegation || isManagerSackingZone) ? 'text-rose-700 font-extrabold' : 'text-[#6B7280]'
+                                r.isUser ? (isUserChamp ? 'text-amber-700 font-black' : isUserPromoted ? 'text-emerald-700 font-extrabold' : 'text-sky-700') : isContinental ? 'text-emerald-700' : isPromo ? 'text-emerald-700' : isPlayoff ? 'text-amber-700' : isRelegationPlayoff ? 'text-amber-700 font-bold' : (isDirectRelegation || isManagerSackingZone) ? 'text-rose-700 font-extrabold' : 'text-[#6B7280]'
                               }`}>
                                 {r.pos}
                               </div>
@@ -1650,7 +1654,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                                   className="w-4 h-4 sm:w-5 sm:h-5 object-contain shrink-0"
                                   fallbackClassName="w-4 h-4 sm:w-5 sm:h-5 text-[8px] rounded-md"
                                 />
-                                <span className={`truncate font-semibold text-xs py-0.5 leading-normal ${r.isUser ? 'text-[#18191F] font-extrabold' : r.isRival ? 'text-rose-800 font-bold' : 'text-[#18191F]'}`}>
+                                <span className={`truncate font-semibold text-xs py-0.5 leading-normal ${r.isUser ? 'text-[#18191F] font-extrabold' : 'text-[#18191F]'}`}>
                                   {r.name}
                                 </span>
 
@@ -2049,9 +2053,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
 
                     <div className="grid grid-cols-2 gap-2.5 my-3">
                       <div className="p-3 rounded-xl bg-[#FAF9F6] border border-[#E6E3DC]">
-                        <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Squad OVR</div>
+                        <div className="text-[9px] uppercase font-semibold text-[#6B7280]">Squad OVR (Full Season)</div>
                         <div className="flex items-center gap-1.5 mt-1 tabular-nums">
-                          <span className="text-sm font-semibold text-[#6B7280]">{seasonData.startOvr || state.club.baseOvr}</span>
+                          <span className="text-sm font-semibold text-[#6B7280]">{fullSeasonStartOvr}</span>
                           <i className="fas fa-arrow-right text-[10px] text-[#9CA3AF]"></i>
                           <span className="text-xl font-bold text-[#18191F]">{seasonData.newBaseOvr || state.club.baseOvr}</span>
                           {ovrDelta !== 0 && (
@@ -2168,7 +2172,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}>
                           {isStaleActive 
-                            ? 'Stale (-4 OVR Penalty)' 
+                            ? `Stale (-${hasSystemicImmunity ? 2 : 4} OVR Penalty)` 
                             : isStaleWarning 
                             ? 'Under League Surveillance' 
                             : 'Tactically Fresh'}

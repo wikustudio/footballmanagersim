@@ -1,6 +1,7 @@
 import React, { ErrorInfo, ReactNode } from 'react';
 import { recordCrashReport, formatDiagnosticSummary, submitFeedbackReport } from '../utils/crashReporter';
 import { removeFromIndexedDB } from '../utils/storageManager';
+import { isStaleBundleOrProxyModuleError } from '../utils/bundleRecovery';
 
 interface Props {
   children: ReactNode;
@@ -14,17 +15,8 @@ interface State {
 const STALE_CHUNK_RELOAD_KEY = 'fms_stale_chunk_reload_at';
 const STALE_CHUNK_COOLDOWN_MS = 15000;
 
-const isStaleBundleOrReactMismatch = (error: Error): boolean => {
-  const msg = `${error?.message || ''} ${error?.stack || ''}`;
-  return (
-    /reading ['"]use(Context|State|Ref|Effect|Memo|Callback)['"]/i.test(msg) ||
-    /Invalid hook call/i.test(msg) ||
-    /Failed to fetch dynamically imported module/i.test(msg) ||
-    /Importing a module script failed/i.test(msg) ||
-    /ChunkLoadError/i.test(msg) ||
-    /Loading chunk \d+ failed/i.test(msg)
-  );
-};
+const isStaleBundleOrReactMismatch = (error: Error): boolean =>
+  isStaleBundleOrProxyModuleError(error);
 
 export class ErrorBoundary extends React.Component<Props, State> {
   props: Props;
@@ -61,7 +53,29 @@ export class ErrorBoundary extends React.Component<Props, State> {
         const lastReload = Number(sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) || '0');
         if (!Number.isFinite(lastReload) || Date.now() - lastReload > STALE_CHUNK_COOLDOWN_MS) {
           sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()));
-          window.location.reload();
+          const flushTasks: Promise<unknown>[] = [];
+          if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+            flushTasks.push(
+              navigator.serviceWorker
+                .getRegistrations()
+                .then((regs) => Promise.allSettled(regs.map((r) => r.update())))
+                .catch(() => {})
+            );
+          }
+          if (typeof window !== 'undefined' && 'caches' in window) {
+            flushTasks.push(
+              caches
+                .keys()
+                .then((keys) => Promise.allSettled(keys.map((k) => caches.delete(k))))
+                .catch(() => {})
+            );
+          }
+          Promise.race([
+            Promise.allSettled(flushTasks),
+            new Promise((resolve) => setTimeout(resolve, 350)),
+          ]).finally(() => {
+            window.location.reload();
+          });
           return;
         }
       } catch {

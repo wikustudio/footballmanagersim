@@ -567,6 +567,7 @@ export interface PendingSeasonState {
     lockedFirstHalfAnchorPos?: number;
     lockedFirstHalfAnchorPts?: number;
     lockedFirstHalfAnchorGd?: number;
+    titleDramaRoll?: number;
   };
 }
 
@@ -679,6 +680,12 @@ export interface NationalTeam {
   continent: string;
 }
 
+export interface WorldCupShootoutKick {
+  round: number;
+  taker: 'user' | 'opp';
+  scored: boolean;
+}
+
 export interface InternationalMatchResult {
   stage: 'Quarter-Final' | 'Semi-Final' | 'Grand Final';
   opponent: NationalTeam;
@@ -688,6 +695,7 @@ export interface InternationalMatchResult {
   pens?: boolean;
   teamPenGoals?: number;
   oppPenGoals?: number;
+  shootoutSequence?: WorldCupShootoutKick[];
   won: boolean;
   summary: string;
   minuteEvents?: Array<{ minute: number; text: string; isGoal?: boolean; forUser?: boolean }>;

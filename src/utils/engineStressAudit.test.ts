@@ -205,9 +205,26 @@ describe('Comprehensive Game Logic Stress Audit & State Guardians', () => {
     it('verifies Decision Day survival battle triggers for bottom-tier teams in drop danger', async () => {
       const fs = await import('fs');
       const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
+      const { evaluateDecisionDayTrigger } = await import('../engine/decisionDayEngine');
 
-      // Survival scrap is enabled on 15th/16th place regardless of whether bottom tier
-      expect(appSrc).toContain('const triggerRelBattle = (approxPos === 15 || approxPos === 16);');
+      expect(appSrc).toContain('evaluateDecisionDayTrigger(');
+      const bottomRelRes = evaluateDecisionDayTrigger({
+        approxPos: 16,
+        pointsDeducted: 0,
+        md33TitleGap: 20,
+        md33RelGap: 2,
+        titleDramaRoll: 0.9,
+        titleDramaChance: 0.65,
+        hasPromotionPlayoffs: false,
+        isReserveBlockedFromPlayoff: false,
+        maxPlayoffPos: 0,
+        seasonLeague: 11,
+        isBottomTier: true,
+        isTier1Only: false,
+      });
+      expect(bottomRelRes.shouldTrigger).toBe(true);
+      expect(bottomRelRes.ddType).toBe('relegation');
+      expect(bottomRelRes.isCrossTierPlayoff).toBe(false);
     });
 
     it('verifies dynamic universe storage key persists AI club movements across interrupted sessions', async () => {

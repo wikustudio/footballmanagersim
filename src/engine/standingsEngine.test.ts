@@ -4,6 +4,7 @@ import {
   buildDeterministicDivisionTable,
   estimateDebtPointDeduction,
   resolveDivisionClubs,
+  resolveStandingsRowPresentation,
 } from './standingsEngine';
 import { ALL_CLUBS } from '../data/clubsData';
 import { calculateProbabilisticSeason } from './seasonSimEngine';
@@ -438,6 +439,70 @@ describe('standingsEngine unified table & ranking integrity', () => {
       assert.ok(fs.existsSync(asset) && fs.statSync(asset).size > 500, `${asset} must exist and be non-empty`);
     }
   });
+
+  it('preserves promotion/continental zone backgrounds for rival clubs and only uses rose for relegation', () => {
+    const legendLabels = {
+      champTooltip: 'League Champion',
+      primaryTooltip: 'Continental Primary',
+      secondaryTooltip: 'Continental Secondary',
+      relegation: 'Relegation Zone',
+    };
+
+    // Case 1: SV Darmstadt 98 in #3 auto_promo behind non-promotable reserve team while flagged as isRival
+    const darmstadtPromo = resolveStandingsRowPresentation({
+      status: 'auto_promo',
+      cannotPromote: false,
+      isUser: false,
+      isRival: true,
+      rowIndex: 2,
+      legendLabels,
+    });
+    assert.ok(
+      darmstadtPromo.consequenceBorder.includes('bg-emerald-50/70'),
+      'Promoted rival must retain emerald promotion tint'
+    );
+    assert.equal(
+      darmstadtPromo.rowBg.includes('bg-rose-'),
+      false,
+      'Promoted rival must NEVER get rose/red row shading'
+    );
+    assert.equal(darmstadtPromo.showRivalBadge, true, 'Rival club must display explicit Rival badge');
+
+    // Case 2: Odd-indexed automatic promotion row (rowIndex = 1, e.g. #2 Hertha BSC) must not be clobbered by zebra shading
+    const secondPromo = resolveStandingsRowPresentation({
+      status: 'auto_promo',
+      cannotPromote: false,
+      isUser: false,
+      isRival: false,
+      rowIndex: 1,
+      legendLabels,
+    });
+    assert.equal(secondPromo.rowBg, '', 'Zone-tinted rows must not be overridden by alternating #FAF9F6 fill');
+
+    // Case 3: Non-promotable #1 reserve team (e.g. Dortmund II) keeps neutral zebra/white shading and no promo tint
+    const reserveTop = resolveStandingsRowPresentation({
+      status: undefined,
+      cannotPromote: true,
+      isUser: false,
+      isRival: false,
+      rowIndex: 0,
+      legendLabels,
+    });
+    assert.equal(reserveTop.consequenceBorder, 'border-l-4 border-transparent');
+    assert.equal(reserveTop.rowBg, '');
+
+    // Case 4: Relegation zone retains rose shading
+    const relegatedRow = resolveStandingsRowPresentation({
+      status: 'relegation',
+      cannotPromote: false,
+      isUser: false,
+      isRival: false,
+      rowIndex: 16,
+      legendLabels,
+    });
+    assert.ok(relegatedRow.consequenceBorder.includes('bg-rose-50/65'));
+  });
 });
+
 
 

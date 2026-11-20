@@ -14,6 +14,7 @@ import {
   buildDeterministicDivisionTable,
   estimateDebtPointDeduction,
   resolveDivisionClubs,
+  resolveStandingsRowPresentation,
 } from '../engine/standingsEngine';
 import {
   formatSeasonYearSpan,
@@ -1257,39 +1258,20 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                 <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar divide-y divide-[#EFECE4]">
                   {tableData.map((r, i) => {
                     const status = promoStatusMap.get(i);
-                    let consequenceBorder = 'border-l-4 border-transparent';
-                    let consequenceTitle = '';
-                    const cannotPromote = r.isReserve && !canPromoteReserve(r.name);
-                    if (!cannotPromote) {
-                      if (status === 'champion') {
-                        consequenceBorder = 'border-l-4 border-amber-500 bg-amber-50/75';
-                        consequenceTitle = regionalLegend.champTooltip;
-                      } else if (status === 'champions_league') {
-                        consequenceBorder = 'border-l-4 border-amber-400 bg-amber-50/45';
-                        consequenceTitle = regionalLegend.primaryTooltip;
-                      } else if (status === 'auto_promo') {
-                        consequenceBorder = 'border-l-4 border-emerald-500 bg-emerald-50/70';
-                        consequenceTitle = 'Automatic Promotion';
-                      } else if (status === 'euro_quali') {
-                        consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
-                        consequenceTitle = regionalLegend.secondaryTooltip;
-                      } else if (status === 'playoff') {
-                        consequenceBorder = 'border-l-4 border-sky-500 bg-sky-50/55';
-                        consequenceTitle = 'Promotion Playoff';
-                      }
-                    }
-                    if (status === 'relegation') {
-                      consequenceBorder = 'border-l-4 border-rose-500 bg-rose-50/65';
-                      consequenceTitle = regionalLegend.relegation;
-                    }
-
-                    const rowBg = r.isUser
-                      ? 'bg-sky-50 ring-1 ring-inset ring-sky-300 relative z-10'
-                      : r.isRival
-                      ? 'bg-rose-50/80'
-                      : i % 2 === 0
-                      ? ''
-                      : 'bg-[#FAF9F6]';
+                    const cannotPromote = Boolean(r.isReserve && !canPromoteReserve(r.name));
+                    const {
+                      consequenceBorder,
+                      consequenceTitle,
+                      rowBg,
+                      showRivalBadge,
+                    } = resolveStandingsRowPresentation({
+                      status,
+                      cannotPromote,
+                      isUser: r.isUser,
+                      isRival: r.isRival,
+                      rowIndex: i,
+                      legendLabels: regionalLegend,
+                    });
 
                     return (
                       <div
@@ -1330,6 +1312,16 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                           {r.isUser && (
                             <span className="px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase bg-[#18191F] text-white tracking-wider shrink-0">
                               YOU
+                            </span>
+                          )}
+
+                          {/* Rival Badge */}
+                          {showRivalBadge && (
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200 tracking-wider shrink-0"
+                              title="Club Rival"
+                            >
+                              Rival
                             </span>
                           )}
 
@@ -1518,6 +1510,14 @@ export const LeagueTableModal: React.FC<LeagueTableModalProps> = ({
                             <span>Relegated</span>
                           </>
                         )}
+                      </span>
+                    )}
+                    {isRivalInThisTier && (
+                      <span className="inline-flex items-center gap-1 mr-2">
+                        <span className="px-1 py-0.2 rounded text-[7px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                          Rival
+                        </span>
+                        <span>Club Rival</span>
                       </span>
                     )}
                     <span className="italic">Res. = B-Teams legally barred from promotion to senior division</span>

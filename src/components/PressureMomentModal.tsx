@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Club, GameState, PressureAssessment, PressureChoiceId, PressureOption } from '../types';
 import {
@@ -34,6 +34,26 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
   onClose,
 }) => {
   const [resolution, setResolution] = useState<PressureResolutionResult | null>(null);
+  const isClosingRef = useRef(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleCloseOnce = () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setIsClosing(true);
+    onClose();
+  };
+
+  const handleOpenCoachMarketOnce = () => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setIsClosing(true);
+    if (onOpenCoachMarket) {
+      onOpenCoachMarket();
+    } else {
+      onClose();
+    }
+  };
 
   const resolvedClub = useMemo(
     () =>
@@ -118,7 +138,7 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-5 bg-[#18191F]/40 backdrop-blur-md overflow-y-auto overscroll-contain"
+      className={`fixed inset-0 z-50 flex flex-col justify-center items-center p-2.5 sm:p-5 bg-[#18191F]/40 backdrop-blur-md overflow-y-auto overscroll-contain ${isClosing ? 'pointer-events-none' : ''}`}
     >
       <motion.div
         initial={{ scale: 0.96, y: 12 }}
@@ -160,9 +180,10 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
           {(!canActThisSeason || resolution) && (
             <button
               type="button"
+              disabled={isClosing}
               aria-label="Close press briefing"
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#52525B] hover:text-[#18191F] transition cursor-pointer shrink-0"
+              onClick={handleCloseOnce}
+              className="w-8 h-8 rounded-full bg-[#F6F5F1] hover:bg-[#EAE7E0] border border-[#E6E3DC] flex items-center justify-center text-[#52525B] hover:text-[#18191F] transition cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <i className="fas fa-xmark text-sm"></i>
             </button>
@@ -378,11 +399,9 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
             {resolution?.coachDismissed && onOpenCoachMarket && (
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenCoachMarket();
-                }}
-                className="px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                disabled={isClosing}
+                onClick={handleOpenCoachMarketOnce}
+                className="px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <i className="fas fa-user-plus text-xs"></i>
                 <span>Appoint Replacement Coach</span>
@@ -390,8 +409,9 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
             )}
             <button
               type="button"
-              onClick={onClose}
-              className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold text-xs shadow-sm transition cursor-pointer flex items-center gap-2"
+              disabled={isClosing}
+              onClick={handleCloseOnce}
+              className="px-6 py-2.5 rounded-xl bg-[#18191F] hover:bg-[#2A2B33] text-white font-semibold text-xs shadow-sm transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>Continue</span>
               <i className="fas fa-chevron-right text-[10px]"></i>

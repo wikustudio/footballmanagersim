@@ -2,7 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GameState, Language } from '../types';
 import { t as tr } from '../data/translations';
-import { getLeagueInfo, isTacticalSynergy, TACTICS } from '../data/gameConstants';
+import { getLeagueInfo, TACTICS } from '../data/gameConstants';
+import { buildSeasonOvrBreakdown, computeMatchdayOvrBreakdown } from '../engine/ovrAndYouthHelpers';
 
 export type OvrTierId = 'championship' | 'mid_table' | 'low_table_risk' | 'relegation_risk';
 
@@ -95,77 +96,39 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
   const isDe = lang === 'de';
   const t = (en: string, de?: string) => tr(lang, en, de);
 
-  const baseOvr = (typeof state.club.baseOvr === 'number' && !Number.isNaN(state.club.baseOvr)) ? state.club.baseOvr : 60;
-  const prevOvrRaw = state.lastOvr !== undefined ? state.lastOvr : (state.history && state.history.length > 0 ? state.history[state.history.length - 1].ovr : baseOvr);
-  const startOvr = (typeof prevOvrRaw === 'number' && !Number.isNaN(prevOvrRaw)) ? prevOvrRaw : baseOvr;
-  const diff = baseOvr - startOvr;
+  const seasonBreakdown = buildSeasonOvrBreakdown(state);
+  const startOvr = seasonBreakdown.startOvr;
+  const baseOvr = seasonBreakdown.baseOvr;
+  const diff = seasonBreakdown.diff;
+  const seasonOvrEntries = seasonBreakdown.entries;
   const coachBoost = state.currentCoach ? (state.currentCoach.ovrBoost || 0) : -4;
-  
-  const hasSynergy = Boolean(state.currentCoach && isTacticalSynergy(state.currentCoach.style, state.tactic));
-  const synergyGain = hasSynergy
-    ? (state.clubIdentity === 'moneyball' ? 4 : state.currentCoach?.weakness === 'Tactical Rigidity' ? 3 : 2)
-    : 0;
-  const isStale = Boolean(state.staleTactic && state.tactic === state.staleTactic);
-  const isSurveillance = Boolean(!isStale && (state.consecutiveTitlesWithSameTactic || 0) >= 1);
-  const stalePenalty = isStale ? 4 : 0;
+
+  const matchday = computeMatchdayOvrBreakdown(state);
+  const {
+    avgOvr,
+    hasSynergy,
+    synergyGain,
+    isStale,
+    isSurveillance,
+    stalePenalty,
+    hasMastermind,
+    coachTraitMod,
+    caretakerPenalty,
+    bounceMod,
+    tenureMod,
+    moraleMod,
+    pressureBoostMod,
+    mediaPressurePenalty,
+    leagueMetaMod,
+    tacticBonus,
+    tacticalNetMod,
+    effectiveMatchdayOvr,
+  } = matchday;
 
   const leagueInfo = getLeagueInfo(state.club.tier, state.club.country || 'GER');
-  const avgOvr = leagueInfo?.avgOvr || 60;
   const tierConfig = getOvrTierConfig(baseOvr, avgOvr);
-
-  const hasMastermind = (state.managerSkills || []).includes('tactical_mastermind') || state.currentCoach?.strength === 'Tactical Chessboard Maestro' || (state.currentCoach as any)?.archetype === 'chessboard_maestro';
-  let coachTraitMod = 0;
-  if (state.currentCoach?.hiddenAttributes) {
-    const { tacticalFlexibility = 10, motivationalDrive = 10, discipline = 10 } = state.currentCoach.hiddenAttributes;
-    if (tacticalFlexibility >= 16) coachTraitMod += (tacticalFlexibility >= 18 ? 1.5 : 1.0);
-    if (motivationalDrive >= 16 && baseOvr < avgOvr) coachTraitMod += 1.5;
-    if (discipline >= 16) coachTraitMod += 0.5;
-  }
-  if (state.currentCoach?.weakness === 'Tactical Rigidity' && !hasSynergy) {
-    coachTraitMod -= 5;
-  }
-  const caretakerPenalty = !state.currentCoach ? -4 : 0;
-  const bounceMod = state.currentCoach && state.hasNewManagerBounce ? 2 : 0;
-  const tenureMod = state.currentCoach && (state.coachTenure || 0) >= 3 && state.currentCoach?.strength !== 'Continental Legend' ? -1 : 0;
-  const currentMorale = state.club.morale ?? 100;
-  const moraleMod = currentMorale >= 85 ? 1.0 : currentMorale < 45 ? -1.5 : 0;
-  const ultrasMod = state.stadiumPolicy === 'ultras' ? 1 : 0;
-
-  const getLeagueAdvantage = (myTac: string, metaTac: string) => {
-    const p = myTac === 'Catenaccio' || myTac === 'Defensive' ? 'Park the Bus' : myTac;
-    if (p === 'Tiki-Taka' && metaTac === 'Park the Bus') return 1;
-    if (p === 'Tiki-Taka' && metaTac === 'Gegenpressing') return -1;
-    if (p === 'Park the Bus' && metaTac === 'Direct Counter') return 1;
-    if (p === 'Park the Bus' && metaTac === 'Tiki-Taka') return -1;
-    if (p === 'Direct Counter' && metaTac === 'Gegenpressing') return 1;
-    if (p === 'Direct Counter' && metaTac === 'Park the Bus') return -1;
-    if (p === 'Gegenpressing' && metaTac === 'Tiki-Taka') return 1;
-    if (p === 'Gegenpressing' && metaTac === 'Direct Counter') return -1;
-    return 0;
-  };
-  const leagueMetaAdv = getLeagueAdvantage(state.tactic || 'Total Football', (state as any).leagueMetaTactic || 'Total Football');
-  const leagueMetaMod = leagueMetaAdv === 1 ? 2 : leagueMetaAdv === -1 ? -2 : 0;
-
   const tacticKey = state.tactic || 'Total Football';
   const tacticInfo = (TACTICS as Record<string, any>)[tacticKey] || (TACTICS as Record<string, any>)['Total Football'];
-  let tacticBonus = 0;
-  if (tacticInfo?.ovrBonusType === 'underdog' && baseOvr < avgOvr) {
-    tacticBonus = 3;
-  } else if (tacticInfo?.ovrBonusType === 'dominance') {
-    if (baseOvr > avgOvr) {
-      tacticBonus = 2;
-    } else if (baseOvr < 60) {
-      tacticBonus = -1;
-    }
-  } else if (tacticInfo?.ovrBonusType === 'home') {
-    tacticBonus = 1.5;
-  } else if (tacticInfo?.ovrBonusType === 'away') {
-    tacticBonus = 1.5;
-  }
-
-  const rawTacticalNetMod = synergyGain + (hasMastermind ? 2 : 0) + coachTraitMod + caretakerPenalty + bounceMod + tenureMod + moraleMod + ultrasMod + leagueMetaMod + tacticBonus - stalePenalty;
-  const tacticalNetMod = Math.round(rawTacticalNetMod * 10) / 10;
-  const effectiveMatchdayOvr = Math.min(100, Math.max(10, Math.round((baseOvr + tacticalNetMod) * 10) / 10));
 
   const tierDisplay =
     tierConfig.tier === 'championship'
@@ -267,6 +230,42 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Season OVR Ledger (Youth Graduates, Transfers, Loans, Coach, Events) */}
+          <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#E6E3DC]" data-testid="season-ovr-breakdown">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="text-[10px] uppercase font-semibold tracking-wider text-[#6B7280] flex items-center gap-1.5">
+                <i className="fas fa-list-check text-sky-700"></i>
+                <span>Season {state.year} OVR Movement Ledger</span>
+              </div>
+              <span className={`text-xs font-bold font-mono tabular-nums ${diff > 0 ? 'text-emerald-700' : diff < 0 ? 'text-rose-700' : 'text-[#6B7280]'}`}>
+                {diff > 0 ? `+${diff}` : diff} Net
+              </span>
+            </div>
+            {seasonOvrEntries.length > 0 ? (
+              <div className="space-y-1.5">
+                {seasonOvrEntries.map((entry, idx) => (
+                  <div
+                    key={`${entry.year}-${idx}-${entry.reason}`}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white border border-[#E6E3DC] text-xs"
+                  >
+                    <span className="text-[#18191F] font-medium truncate">{entry.reason}</span>
+                    <span
+                      className={`font-mono font-bold tabular-nums shrink-0 ${
+                        entry.delta > 0 ? 'text-emerald-700' : 'text-rose-700'
+                      }`}
+                    >
+                      {entry.delta > 0 ? `+${entry.delta}` : entry.delta} OVR
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-[#6B7280] bg-white border border-[#E6E3DC] rounded-xl px-3 py-2.5">
+                No squad OVR changes recorded yet this season. Promote youth prospects or sign transfers to move the counter.
+              </div>
+            )}
           </div>
 
           {/* League Competitiveness Card with Four-Tier Rating Classification */}
@@ -440,13 +439,12 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
                     <i className="fa-solid fa-fire text-amber-600 text-xs"></i>
                     <span>{t('Fortress Curva (Ultras)', 'Festung Fankurve (Ultras)')}</span>
                   </div>
-                  <div className="text-[10px] text-[#6B7280]">{t('Terrace roar & standing section backing', 'Stehplatz-Atmosphäre & Hexenkessel')}</div>
+                  <div className="text-[10px] text-[#6B7280]">Included in Base OVR · Terrace roar & home advantage</div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="text-xl font-bold tabular-nums text-emerald-700">
-                    +1
+                  <div className="text-xs font-bold tabular-nums text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                    +1 In Base OVR
                   </div>
-                  <div className="text-[10px] font-semibold text-[#6B7280] uppercase">OVR</div>
                 </div>
               </div>
             ) : null}
@@ -526,7 +524,9 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
                     {state.tactic} {t('system has been solved by opponents', 'vom Gegner vollständig entschlüsselt')}
                   </div>
                   <div className="text-[10px] text-rose-700 mt-0.5">
-                    {t('Full -4 OVR penalty in matches. Adapt philosophy in Coach Room for 5 DP to clear.', 'Vollständige -4 GES Strafe. Wechsle Philosophie im Trainer-Büro für 5 DP zum Löschen.')}
+                    {stalePenalty === 2
+                      ? 'Cushioned to -2 OVR by Level 5 Academy & Medical. Adapt philosophy in Coach Room for 5 DP to clear.'
+                      : `Full -${stalePenalty} OVR penalty in matches. Adapt philosophy in Coach Room for 5 DP to clear.`}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -561,8 +561,29 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
               </div>
             )}
 
+            {(pressureBoostMod !== 0 || mediaPressurePenalty !== 0) && (
+              <div className="flex items-center justify-between pt-3 border-t border-[#E6E3DC]">
+                <div>
+                  <div className="text-[10px] uppercase font-semibold tracking-wider text-amber-700 mb-0.5">
+                    Media & Board Pressure Impact
+                  </div>
+                  <div className="text-xs font-semibold text-[#18191F]">
+                    {pressureBoostMod !== 0 ? 'Siege Mentality / Press Conference Boost' : 'Unaddressed High Media Heat'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className={`text-xl font-bold tabular-nums ${(pressureBoostMod + mediaPressurePenalty) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {(pressureBoostMod + mediaPressurePenalty) > 0
+                      ? `+${pressureBoostMod + mediaPressurePenalty}`
+                      : pressureBoostMod + mediaPressurePenalty}
+                  </div>
+                  <div className="text-[10px] font-semibold text-[#6B7280] uppercase">OVR</div>
+                </div>
+              </div>
+            )}
+
             {/* Matchday Tactical Net Modifier */}
-            {(hasSynergy || isStale || hasMastermind || coachTraitMod !== 0 || caretakerPenalty !== 0 || bounceMod !== 0 || tenureMod !== 0 || moraleMod !== 0 || ultrasMod !== 0 || leagueMetaMod !== 0 || tacticBonus !== 0) && (
+            {(hasSynergy || isStale || hasMastermind || coachTraitMod !== 0 || caretakerPenalty !== 0 || bounceMod !== 0 || tenureMod !== 0 || moraleMod !== 0 || pressureBoostMod !== 0 || mediaPressurePenalty !== 0 || leagueMetaMod !== 0 || tacticBonus !== 0) && (
               <div className={`p-3 rounded-xl border flex items-center justify-between text-xs mt-1 ${
                 tacticalNetMod > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
                 tacticalNetMod < 0 ? 'bg-rose-50 border-rose-200 text-rose-800' :

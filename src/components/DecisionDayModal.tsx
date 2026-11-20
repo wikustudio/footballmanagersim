@@ -10,6 +10,7 @@ import { TEAMS } from '../mod-data/teams';
 import { ALL_CLUBS as CLUBS } from '../data/clubsData';
 import { getLeagueInfo } from '../data/gameConstants';
 import {
+  DecisionDayType,
   getDecisionDayStakesSummary,
   isDirectHeadToHeadMatch,
   resolveDecisionDayOutcome,
@@ -33,7 +34,7 @@ interface DecisionDayModalProps {
   rivalGd: number;
   opponentName?: string;
   opponentOvr?: number;
-  ddType?: 'title' | 'relegation' | 'promotion_playoff';
+  ddType?: DecisionDayType;
   isBottomTier?: boolean;
   isCrossTierPlayoff?: boolean;
   pointsDeducted?: number;
@@ -64,10 +65,12 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
   userPos = 4,
   standings,
 }) => {
-  const theme = useMemo(() => getCompetitionTheme(ddType, gameState.club.country, ddType), [ddType, gameState.club.country]);
+  const normalizedDdType: DecisionDayType =
+    ddType === 'relegation' || ddType === 'promotion_playoff' ? ddType : 'title';
+  const theme = useMemo(() => getCompetitionTheme(normalizedDdType, gameState.club.country, normalizedDdType), [normalizedDdType, gameState.club.country]);
   
-  const isPlayoff = ddType === 'promotion_playoff';
-  const isRelegation = ddType === 'relegation';
+  const isPlayoff = normalizedDdType === 'promotion_playoff';
+  const isRelegation = normalizedDdType === 'relegation';
   const isTwoLegged = isCrossTierPlayoff || isPlayoff;
 
   // Matchday 34 League Table · Title Duel
@@ -211,7 +214,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
   }
 
   const isDirectHeadToHead = isDirectHeadToHeadMatch(
-    ddType,
+    normalizedDdType,
     isCrossTierPlayoff,
     rivalName,
     oppClub.name
@@ -1057,7 +1060,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     if (!matchResult) return null;
     const isShootout = Boolean(matchResult.score && matchResult.score.includes('pens'));
     return resolveDecisionDayOutcome({
-      ddType,
+      ddType: normalizedDdType,
       isCrossTierPlayoff,
       isBottomTier,
       userPreGamePts: userPts,
@@ -1271,13 +1274,39 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                   </div>
                 </div>
 
-                {/* Sleek 1-Line Stakes Banner inside Matchup Card */}
-                <div className="mt-2 pt-2.5 border-t border-[#E6E3DC] flex items-center justify-center text-center">
+                {/* Pre-Match Table Context & Stakes Banner inside Matchup Card */}
+                <div className="mt-2 pt-2.5 border-t border-[#E6E3DC] flex flex-col items-center justify-center text-center gap-1.5">
+                  <div
+                    data-testid="dd-prematch-standings"
+                    className="text-[11px] font-semibold text-[#4B5563] tabular-nums flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5"
+                  >
+                    {!isTwoLegged ? (
+                      <>
+                        <span className="uppercase tracking-wider text-[10px] font-bold text-[#6B7280]">After MD 33</span>
+                        <span className="text-[#D1CEC7]">·</span>
+                        <span>
+                          <strong className="text-[#18191F]">{userClub.name}</strong> {userPts} pts ({userGd >= 0 ? `+${userGd}` : userGd} GD)
+                        </span>
+                        <span className="text-[#D1CEC7]">vs</span>
+                        <span>
+                          <strong className="text-[#18191F]">{rivalName}</strong> {rivalPts} pts ({rivalGd >= 0 ? `+${rivalGd}` : rivalGd} GD)
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="uppercase tracking-wider text-[10px] font-bold text-[#6B7280]">After 34 Matchdays</span>
+                        <span className="text-[#D1CEC7]">·</span>
+                        <span>
+                          <strong className="text-[#18191F]">{userClub.name}</strong> #{userPos} · {userPts} pts ({userGd >= 0 ? `+${userGd}` : userGd} GD)
+                        </span>
+                      </>
+                    )}
+                  </div>
                   <div className="text-[11px] sm:text-xs font-semibold text-amber-900 flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-xl">
                     <span>{ddType === 'title' ? '🏆' : ddType === 'promotion_playoff' ? '⚡' : '🛡️'}</span>
                     <span>
                       {getDecisionDayStakesSummary({
-                        ddType,
+                        ddType: normalizedDdType,
                         tier: gameState.club.tier,
                         isBottomTier,
                         isCrossTierPlayoff,
@@ -2011,7 +2040,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                   <button
                     onClick={() => {
                       const fallbackOutcome = resolveDecisionDayOutcome({
-                        ddType,
+                        ddType: normalizedDdType,
                         isCrossTierPlayoff,
                         isBottomTier,
                         userPreGamePts: userPts,

@@ -5,6 +5,7 @@ import { assignRival } from './utils/rivalHelpers';
 import { getCompetitionLogo } from './utils/competitionLogos';
 import { generateRandomEvent, resolveDynamicEvent, generateQuarterfinalEvent, generateSemifinalEvent, getCupName } from './data/randomEvents';
 import { generateMidSeasonEvent } from './engine/midSeasonEngine';
+import { resolveMidSeasonClosePlan, resolveMidSeasonCoachMarketPlan } from './engine/midSeasonFlow';
 import { getIncubatorCapacity, promoteProspectToSenior, calculateTrainingCompensationK, advanceIncubatorSeason, evaluateSeniorSquadIntegration } from './engine/incubatorEngine';
 import { recordSeasonAcademySpend } from './engine/subLedgerEngine';
 import { getLoanProgress, advanceLoanSeason } from './engine/creditFacilityEngine';
@@ -26,14 +27,23 @@ import {
   evaluateYouthVictoryClaimGuard,
 } from './engine/actionGuards';
 import {
+  evaluateYouthChampionshipEntry,
+  recordOvrHistoryEntry,
+  shouldLockYouthChampionshipOnClose,
+} from './engine/ovrAndYouthHelpers';
+import {
   buildDeterministicDivisionTable,
+  deterministicHash,
   estimateDebtPointDeduction,
   resolveDivisionClubs,
 } from './engine/standingsEngine';
+import { IPOModal } from './components/IPOModal';
 import {
+  computeMd33StandingsContext,
   evaluateDecisionDayTrigger,
   isPostSeasonPlayoffMode,
   resolveDecisionDayOutcome,
+  shouldPauseInlineSimBeforeMd34,
 } from './engine/decisionDayEngine';
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -145,58 +155,59 @@ import { getBaseModClubs, getSafeDefaultClubs, normalizeAndValidateCustomDb, par
 import { clearLogoCache, prewarmClubsLogos, prewarmClubsLogosAsync } from './utils/logoCache';
 import { TEAMS } from './mod-data/teams';
 import { ScreenTransitionCurtain } from './components/ScreenTransitionCurtain';
+import { shouldRejectDynamicEventForCreditLimit } from './engine/eventDeadlockGuard';
+import { OvrModal } from './components/OvrModal';
+import { GlobalTourModal } from './components/GlobalTourModal';
+import { PrestigeModal } from './components/PrestigeModal';
+import { MarketingModal } from './components/MarketingModal';
+import { StadiumNamingModal } from './components/StadiumNamingModal';
+import { AttendanceAnalyticsModal } from './components/AttendanceAnalyticsModal';
+import { SupercupModal } from './components/SupercupModal';
+import { BankLoanModal } from './components/BankLoanModal';
+import { LeagueTableModal } from './components/LeagueTableModal';
+import { LedgerModal } from './components/LedgerModal';
+import { TransferModal } from './components/TransferModal';
+import { CupRunModal } from './components/CupRunModal';
+import DecisionDayModal from './components/DecisionDayModal';
+import { ManagerProfileModal } from './components/ManagerProfileModal';
+import { MoraleModal } from './components/MoraleModal';
+import { TeamBondingModal } from './components/TeamBondingModal';
+import { FanBondingModal } from './components/FanBondingModal';
+import { CoachMarketModal } from './components/CoachMarketModal';
+import { CoachDossierModal } from './components/CoachDossierModal';
+import { CoachPressReleaseModal } from './components/CoachPressReleaseModal';
+import { ShieldsModal } from './components/ShieldsModal';
+import { ClubProfileModal } from './components/ClubProfileModal';
+import { MidSeasonDilemmaModal } from './components/MidSeasonDilemmaModal';
+import { MidSeasonModal } from './components/MidSeasonModal';
+import { PressureMomentModal } from './components/PressureMomentModal';
+import { WinterCampModal } from './components/WinterCampModal';
+import { PlayerRevealModal } from './components/PlayerRevealModal';
+import { OffSeasonEventModal } from './components/OffSeasonEventModal';
+import { ConfirmResetModal } from './components/ConfirmResetModal';
+import { YouthModal } from './components/YouthModal';
+import { YouthChampionshipModal } from './components/YouthChampionshipModal';
+import { ClubImpactModal } from './components/ClubImpactModal';
+import { JobMarketModal } from './components/JobMarketModal';
+import { FacilityModal } from './components/FacilityModal';
+import { ManagerSkillsModal } from './components/ManagerSkillsModal';
+import { StadiumModal } from './components/StadiumModal';
+import { NewBuildModal } from './components/NewBuildModal';
+import { ClubCustomizationModal } from './components/ClubCustomizationModal';
+import { ClubIntroModal } from './components/ClubIntroModal';
+import { SquadRegistrationModal } from './components/SquadRegistrationModal';
+import { TransferSagaModal } from './components/TransferSagaModal';
+import { InternationalTournamentModal } from './components/InternationalTournamentModal';
+import { ManagerialWorldCupModal } from './components/ManagerialWorldCupModal';
 
-// Lazy-load secondary views & post-boot modals so initial cold-cache boot transfers minimal JS
-const ModModal = React.lazy(() => import('./components/ModModal').then((m) => ({ default: m.ModModal })));
-const OvrModal = React.lazy(() => import('./components/OvrModal').then((m) => ({ default: m.OvrModal })));
-const GlobalTourModal = React.lazy(() => import('./components/GlobalTourModal').then((m) => ({ default: m.GlobalTourModal })));
-const PrestigeModal = React.lazy(() => import('./components/PrestigeModal').then((m) => ({ default: m.PrestigeModal })));
-const MarketingModal = React.lazy(() => import('./components/MarketingModal').then((m) => ({ default: m.MarketingModal })));
-const IPOModal = React.lazy(() => import('./components/IPOModal').then((m) => ({ default: m.IPOModal })));
-const FeedbackModal = React.lazy(() => import('./components/FeedbackModal').then((m) => ({ default: m.FeedbackModal })));
-const StadiumNamingModal = React.lazy(() => import('./components/StadiumNamingModal').then((m) => ({ default: m.StadiumNamingModal })));
-const AttendanceAnalyticsModal = React.lazy(() => import('./components/AttendanceAnalyticsModal').then((m) => ({ default: m.AttendanceAnalyticsModal })));
-const SupercupModal = React.lazy(() => import('./components/SupercupModal').then((m) => ({ default: m.SupercupModal })));
-const BankLoanModal = React.lazy(() => import('./components/BankLoanModal').then((m) => ({ default: m.BankLoanModal })));
-const LeagueTableModal = React.lazy(() => import('./components/LeagueTableModal').then((m) => ({ default: m.LeagueTableModal })));
-const LedgerModal = React.lazy(() => import('./components/LedgerModal').then((m) => ({ default: m.LedgerModal })));
-const TransferModal = React.lazy(() => import('./components/TransferModal').then((m) => ({ default: m.TransferModal })));
-const CupRunModal = React.lazy(() => import('./components/CupRunModal').then((m) => ({ default: m.CupRunModal })));
-const DecisionDayModal = React.lazy(() => import('./components/DecisionDayModal'));
-const ManagerProfileModal = React.lazy(() => import('./components/ManagerProfileModal').then((m) => ({ default: m.ManagerProfileModal })));
-const MoraleModal = React.lazy(() => import('./components/MoraleModal').then((m) => ({ default: m.MoraleModal })));
-const TeamBondingModal = React.lazy(() => import('./components/TeamBondingModal').then((m) => ({ default: m.TeamBondingModal })));
-const FanBondingModal = React.lazy(() => import('./components/FanBondingModal').then((m) => ({ default: m.FanBondingModal })));
-const CoachMarketModal = React.lazy(() => import('./components/CoachMarketModal').then((m) => ({ default: m.CoachMarketModal })));
-const CoachDossierModal = React.lazy(() => import('./components/CoachDossierModal').then((m) => ({ default: m.CoachDossierModal })));
-const CoachPressReleaseModal = React.lazy(() => import('./components/CoachPressReleaseModal').then((m) => ({ default: m.CoachPressReleaseModal })));
-const ShieldsModal = React.lazy(() => import('./components/ShieldsModal').then((m) => ({ default: m.ShieldsModal })));
-const ClubProfileModal = React.lazy(() => import('./components/ClubProfileModal').then((m) => ({ default: m.ClubProfileModal })));
-const MidSeasonDilemmaModal = React.lazy(() => import('./components/MidSeasonDilemmaModal').then((m) => ({ default: m.MidSeasonDilemmaModal })));
-const MidSeasonModal = React.lazy(() => import('./components/MidSeasonModal').then((m) => ({ default: m.MidSeasonModal })));
-const PressureMomentModal = React.lazy(() => import('./components/PressureMomentModal').then((m) => ({ default: m.PressureMomentModal })));
-const WinterCampModal = React.lazy(() => import('./components/WinterCampModal').then((m) => ({ default: m.WinterCampModal })));
-const PlayerRevealModal = React.lazy(() => import('./components/PlayerRevealModal').then((m) => ({ default: m.PlayerRevealModal })));
-const CareerSummary = React.lazy(() => import('./components/CareerSummary').then((m) => ({ default: m.CareerSummary })));
-const AboutPage = React.lazy(() => import('./components/AboutPage').then((m) => ({ default: m.AboutPage })));
-const LeaderboardPage = React.lazy(() => import('./components/LeaderboardPage').then((m) => ({ default: m.LeaderboardPage })));
-const SeasonFinishModal = React.lazy(() => import('./components/SeasonFinishModal').then((m) => ({ default: m.SeasonFinishModal })));
-const OffSeasonEventModal = React.lazy(() => import('./components/OffSeasonEventModal').then((m) => ({ default: m.OffSeasonEventModal })));
-const ConfirmResetModal = React.lazy(() => import('./components/ConfirmResetModal').then((m) => ({ default: m.ConfirmResetModal })));
-const YouthModal = React.lazy(() => import('./components/YouthModal').then((m) => ({ default: m.YouthModal })));
-const YouthChampionshipModal = React.lazy(() => import('./components/YouthChampionshipModal').then((m) => ({ default: m.YouthChampionshipModal })));
-const ClubImpactModal = React.lazy(() => import('./components/ClubImpactModal').then((m) => ({ default: m.ClubImpactModal })));
-const JobMarketModal = React.lazy(() => import('./components/JobMarketModal').then((m) => ({ default: m.JobMarketModal })));
-const FacilityModal = React.lazy(() => import('./components/FacilityModal').then((m) => ({ default: m.FacilityModal })));
-const ManagerSkillsModal = React.lazy(() => import('./components/ManagerSkillsModal').then((m) => ({ default: m.ManagerSkillsModal })));
-const StadiumModal = React.lazy(() => import('./components/StadiumModal').then((m) => ({ default: m.StadiumModal })));
-const NewBuildModal = React.lazy(() => import('./components/NewBuildModal').then((m) => ({ default: m.NewBuildModal })));
-const ClubCustomizationModal = React.lazy(() => import('./components/ClubCustomizationModal').then((m) => ({ default: m.ClubCustomizationModal })));
-const ClubIntroModal = React.lazy(() => import('./components/ClubIntroModal').then((m) => ({ default: m.ClubIntroModal })));
-const SquadRegistrationModal = React.lazy(() => import('./components/SquadRegistrationModal').then((m) => ({ default: m.SquadRegistrationModal })));
-const TransferSagaModal = React.lazy(() => import('./components/TransferSagaModal').then((m) => ({ default: m.TransferSagaModal })));
-const InternationalTournamentModal = React.lazy(() => import('./components/InternationalTournamentModal').then((m) => ({ default: m.InternationalTournamentModal })));
-const ManagerialWorldCupModal = React.lazy(() => import('./components/ManagerialWorldCupModal').then((m) => ({ default: m.ManagerialWorldCupModal })));
+// Statically import all secondary views & end-of-season screens so rewriting web proxies
+// and stale chunk hashes can never resolve a dynamic import to undefined inside React.lazy.
+import { ModModal } from './components/ModModal';
+import { FeedbackModal } from './components/FeedbackModal';
+import { CareerSummary } from './components/CareerSummary';
+import { AboutPage } from './components/AboutPage';
+import { LeaderboardPage } from './components/LeaderboardPage';
+import { SeasonFinishModal } from './components/SeasonFinishModal';
 
 const safeReadLocalStorage = (key: string): string | null => {
   try {
@@ -1647,9 +1658,11 @@ export default function App() {
   const [pressRelease, setPressRelease] = useState<{action: 'hire' | 'fire', coachName: string, coachStyle?: string} | null>(null);
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
   const [showMidSeasonModal, setShowMidSeasonModal] = useState<boolean>(false);
+  const midSeasonCloseConsumedRef = useRef<boolean>(false);
   const [showPressureModal, setShowPressureModal] = useState<boolean>(false);
   const [pressureIsCrisisTrigger, setPressureIsCrisisTrigger] = useState<boolean>(false);
   const [pendingMidEventAfterPressure, setPendingMidEventAfterPressure] = useState<any | null>(null);
+  const pendingMidEventAfterPressureRef = useRef<any | null>(null);
   const [showMidSeasonDilemmaModal, setShowMidSeasonDilemmaModal] = useState<boolean>(false);
   const [activeDilemmaId, setActiveDilemmaId] = useState<string>('striker_tear');
   const simOverlayCompleteResolveRef = useRef<(() => void) | null>(null);
@@ -2284,8 +2297,16 @@ export default function App() {
       }
 
       if (option.ovrChange !== 0) {
+        const preSagaOvr = updated.club.baseOvr;
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, option.ovrChange);
+        updated.club.ovr = updated.club.baseOvr;
         updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+        updated.ovrHistory = recordOvrHistoryEntry(
+          updated.ovrHistory,
+          updated.year,
+          updated.club.baseOvr - preSagaOvr,
+          `Transfer Saga: ${activeTransferSaga.playerName || option.title}`
+        );
       }
 
       if (option.ovrChange > 0) {
@@ -2439,12 +2460,15 @@ export default function App() {
     setInternationalTournament(null);
 
     // Queue off-season transfer saga if rolled and no other event is pending
-    if (gameState && !gameState.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
-      const rivalName = getSameTierSagaRivalName(gameState.club, gameState.currentRival);
-      const saga = generateTransferSaga(gameState.club, rivalName);
+    const latestAfterWc = latestGameStateRef.current || gameState;
+    if (latestAfterWc && !latestAfterWc.isCareerOver && !latestAfterWc.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
+      const rivalName = getSameTierSagaRivalName(latestAfterWc.club, latestAfterWc.currentRival);
+      const saga = generateTransferSaga(latestAfterWc.club, rivalName);
       setTimeout(() => {
+        const snap = latestGameStateRef.current;
+        if (!snap || snap.isCareerOver || snap.pendingForcedEvent || snap.pendingSeasonFinishData) return;
         setGameState(prev => {
-          if (!prev) return prev;
+          if (!prev || prev.isCareerOver) return prev;
           const next = { ...prev, activeTransferSaga: saga };
           latestGameStateRef.current = next;
           return next;
@@ -2463,12 +2487,15 @@ export default function App() {
     });
     setInternationalTournament(null);
     showToast('Declined international offer. Focused 100% on club duties.', 'info');
-    if (gameState && !gameState.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
-      const rivalName = getSameTierSagaRivalName(gameState.club, gameState.currentRival);
-      const saga = generateTransferSaga(gameState.club, rivalName);
+    const latestAfterDecline = latestGameStateRef.current || gameState;
+    if (latestAfterDecline && !latestAfterDecline.isCareerOver && !latestAfterDecline.pendingForcedEvent && !pendingEvent && (eventQueue || []).length === 0 && Math.random() < 0.40) {
+      const rivalName = getSameTierSagaRivalName(latestAfterDecline.club, latestAfterDecline.currentRival);
+      const saga = generateTransferSaga(latestAfterDecline.club, rivalName);
       setTimeout(() => {
+        const snap = latestGameStateRef.current;
+        if (!snap || snap.isCareerOver || snap.pendingForcedEvent || snap.pendingSeasonFinishData) return;
         setGameState(prev => {
-          if (!prev) return prev;
+          if (!prev || prev.isCareerOver) return prev;
           const next = { ...prev, activeTransferSaga: saga };
           latestGameStateRef.current = next;
           return next;
@@ -2607,7 +2634,9 @@ export default function App() {
     syncGameStoreClub(gameState?.club);
   }, [gameState?.club]);
 
-  // Auto-save clubsDb asynchronously
+  const hasActiveGame = Boolean(gameState);
+
+  // Auto-save clubsDb asynchronously without re-writing the entire universe on every minor gameState tick
   useEffect(() => {
     if (clubsDb && clubsDb.length > 0 && isAppReady) {
       if (isModActive) {
@@ -2617,12 +2646,12 @@ export default function App() {
         localStorage.removeItem('fms_real_mod_active');
         removeFromIndexedDB(CLUBS_DB_STORAGE_KEY);
         removeFromIndexedDB('fms_custom_mod_json');
-        if (gameState) {
+        if (hasActiveGame) {
           safeSaveClubsDb(DYNAMIC_UNIVERSE_STORAGE_KEY, clubsDb);
         }
       }
     }
-  }, [clubsDb, isModActive, gameState, isAppReady]);
+  }, [clubsDb, isModActive, hasActiveGame, isAppReady]);
 
   // Synchronize gameState.club & gameState.history with modded club in clubsDb whenever clubsDb updates
   useEffect(() => {
@@ -2937,6 +2966,10 @@ export default function App() {
       immunityShields: 2,
       facilitiesUpgradedThisSeason: 0,
       lastOvr: selectedClub.baseOvr, mode: "standard" as "standard",
+      ovrHistory:
+        params.coach && (initialClubOvr - selectedClub.baseOvr) !== 0
+          ? [{ year: startYear, delta: initialClubOvr - selectedClub.baseOvr, reason: `Appointed Head Coach: ${params.coach.name}` }]
+          : [],
       playedCupOpponents: {},
       livingTiers: {},
       seasonStandingsArchive: {},
@@ -3066,6 +3099,10 @@ export default function App() {
         setClubsDb(getBaseModClubs());
       }
       // Keep custom DB mod active so user can start a new career with their uploaded original data!
+      simOverlayCompleteResolveRef.current = null;
+      inlineSimCompletedRef.current = false;
+      setIsSimulating(false);
+      setShowSimulatingOverlay(false);
       setInlineSim((prev) => ({
         ...prev,
         active: false,
@@ -3108,9 +3145,11 @@ export default function App() {
       setShowCoachMarketModal(false);
       setDossierCoach(null);
       setPressRelease(null);
+      midSeasonCloseConsumedRef.current = false;
       setShowMidSeasonModal(false);
       setShowPressureModal(false);
       setPressureIsCrisisTrigger(false);
+      pendingMidEventAfterPressureRef.current = null;
       setPendingMidEventAfterPressure(null);
       setShowMidSeasonDilemmaModal(false);
       setShowWinterCampModal(false);
@@ -3265,7 +3304,15 @@ export default function App() {
       setGameState(prev => {
         if (!prev || !prev.currentCoach) return prev;
         const updated = { ...prev, club: { ...prev.club } };
+        const preExpireOvr = updated.club.baseOvr;
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+        updated.club.ovr = updated.club.baseOvr;
+        updated.ovrHistory = recordOvrHistoryEntry(
+          updated.ovrHistory,
+          updated.year,
+          updated.club.baseOvr - preExpireOvr,
+          `Coach Contract Expired: ${coachName}`
+        );
         updated.currentCoach = undefined;
         latestGameStateRef.current = updated;
         return updated;
@@ -3744,8 +3791,16 @@ export default function App() {
       updated.transferSpend = (updated.transferSpend || 0) + cost;
       
       // RESTORED: This line was missing! It actually applies the OVR gain.
+      const preRegOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        updated.club.baseOvr - preRegOvr,
+        isFlop ? 'Regular Transfer Flop' : 'Regular Squad Signing'
+      );
       if (moraleChange !== 0) {
         updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + moraleChange));
       }
@@ -3864,8 +3919,16 @@ export default function App() {
       } 
       
       updated.transferSpend = (updated.transferSpend || 0) + cost;
+      const preKeyOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        updated.club.baseOvr - preKeyOvr,
+        isFlop ? 'Star Transfer Flop' : 'Star Player Signing'
+      );
       if (moraleChange !== 0) {
         updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + moraleChange));
       }
@@ -3934,8 +3997,16 @@ export default function App() {
       updated.galacticosThisSeason = (updated.galacticosThisSeason || 0) + 1;
       updated.marqueeSignedThisSeason = true;
       updated.transferSpend = (updated.transferSpend || 0) + cost;
+      const preGalOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        updated.club.baseOvr - preGalOvr,
+        'Galactico Marquee Signing'
+      );
       updated.club.squadSize = (updated.club.squadSize || 24) + 1;
       latestGameStateRef.current = updated;
       return updated;
@@ -3978,8 +4049,16 @@ export default function App() {
       const updated = { ...prev, club: { ...prev.club } };
       updated.loansThisSeason = (updated.loansThisSeason || 0) + 1;
       updated.activeLoanOvrBoost = (updated.activeLoanOvrBoost || 0) + ovrGain;
+      const preLoanOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        updated.club.baseOvr - preLoanOvr,
+        isFlop ? 'Loan Player Flop' : 'Loan Player Integrated'
+      );
       updated.club.squadSize = (updated.club.squadSize || 24) + 1;
       latestGameStateRef.current = updated;
       return updated;
@@ -4537,6 +4616,12 @@ export default function App() {
           budget: integrationResult.sellOnFeeK > 0 ? adjustBudget(prev.budget, integrationResult.sellOnFeeK) : prev.budget,
           transferIncome: (prev.transferIncome || 0) + integrationResult.sellOnFeeK,
           maxOvrCap: Math.max(prev.maxOvrCap, nextOvr),
+          ovrHistory: recordOvrHistoryEntry(
+            prev.ovrHistory,
+            prev.year,
+            nextOvr - prev.club.baseOvr,
+            `Youth Graduate: ${prospect.name}${prospect.position ? ` (${prospect.position})` : ''}`
+          ),
           club: {
             ...prev.club,
             baseOvr: nextOvr,
@@ -4698,6 +4783,12 @@ export default function App() {
         veteranRingerName: legend.name,
         veteranRingerWageK: econ.annualWageBurdenK,
         maxOvrCap: Math.max(prev.maxOvrCap || 0, newOvr),
+        ovrHistory: recordOvrHistoryEntry(
+          prev.ovrHistory,
+          prev.year,
+          newOvr - prev.club.baseOvr,
+          `Veteran Ringer: ${legend.name}`
+        ),
         club: {
           ...prev.club,
           baseOvr: newOvr,
@@ -4751,18 +4842,32 @@ export default function App() {
 
   // --- PILLAR 4: MID-SEASON MANAGERIAL DILEMMA RESOLUTION ---
   const handleResolveMidSeasonDilemma = (choice: 'A' | 'B', dilemma: ManagerialDilemma) => {
-    const opt = choice === 'A' ? dilemma.optionA : dilemma.optionB;
+    const opt = choice === 'A' ? dilemma?.optionA : dilemma?.optionB;
     setShowMidSeasonDilemmaModal(false);
+
+    const safeOvrDelta = Number.isFinite(opt?.ovrDelta) ? opt.ovrDelta : 0;
+    const safeMoraleDelta = Number.isFinite(opt?.moraleDelta) ? opt.moraleDelta : 0;
+    const safeBudgetDeltaK = Number.isFinite(opt?.budgetDeltaK) ? opt.budgetDeltaK : 0;
+    const safeLabelEn = opt?.labelEn || 'Standard Preparation';
+    const safeLabelDe = opt?.labelDe || 'Standard-Vorbereitung';
+    const safeBadgeEn = opt?.badgeEn || 'RESOLVED';
+    const safeBadgeDe = opt?.badgeDe || 'ENTSCHIEDEN';
 
     const prev = latestGameStateRef.current || gameState;
     if (prev) {
-      const newOvr = adjustOvr(prev.club.baseOvr, opt.ovrDelta);
-      const newMorale = Math.max(0, Math.min(100, (prev.club.morale ?? 80) + opt.moraleDelta));
-      const newBudget = adjustBudget(prev.budget, opt.budgetDeltaK);
+      const newOvr = adjustOvr(prev.club.baseOvr, safeOvrDelta);
+      const newMorale = Math.max(0, Math.min(100, (prev.club.morale ?? 80) + safeMoraleDelta));
+      const newBudget = adjustBudget(prev.budget, safeBudgetDeltaK);
       const updatedState: GameState = {
         ...prev,
         budget: newBudget,
         maxOvrCap: Math.max(prev.maxOvrCap || 0, newOvr),
+        ovrHistory: recordOvrHistoryEntry(
+          prev.ovrHistory,
+          prev.year,
+          newOvr - prev.club.baseOvr,
+          `Mid-Season Dilemma: ${safeLabelEn}`
+        ),
         club: {
           ...prev.club,
           baseOvr: newOvr,
@@ -4800,9 +4905,9 @@ export default function App() {
 
     showToast(
       lang === 'de'
-        ? `Entscheidung getroffen: ${opt.labelDe} (${opt.badgeDe})`
-        : `Decision executed: ${opt.labelEn} (${opt.badgeEn})`,
-      opt.ovrDelta >= 0 && opt.moraleDelta >= 0 ? 'success' : 'info'
+        ? `Entscheidung getroffen: ${safeLabelDe} (${safeBadgeDe})`
+        : `Decision executed: ${safeLabelEn} (${safeBadgeEn})`,
+      safeOvrDelta >= 0 && safeMoraleDelta >= 0 ? 'success' : 'info'
     );
 
     if (simOverlayCompleteResolveRef.current) {
@@ -4815,45 +4920,32 @@ export default function App() {
   const handleStartYouthChampionship = () => {
     setGameState((prev) => {
       if (!prev) return prev;
-      return {
+      const next = {
         ...prev,
         youthChampionshipPlayedYear: prev.year,
         lastYouthChampionshipResult: prev.lastYouthChampionshipResult?.won && prev.lastYouthChampionshipResult.year === prev.year
           ? prev.lastYouthChampionshipResult
           : { year: prev.year, won: false, stage: 'participated' }
       };
+      latestGameStateRef.current = next;
+      return next;
     });
   };
 
   const handleOpenYouthChampionship = () => {
     const latest = latestGameStateRef.current || gameState;
     if (!latest) return;
-    if (latest.youthChampionshipPlayedYear === latest.year) {
-      showToast(lang === 'de' ? 'Turnier wurde diese Saison bereits ausgetragen!' : 'Tournament already completed this season!', 'info');
-      return;
-    }
-    if ((latest.seasonPhase || 'start') !== 'start') {
-      showToast(lang === 'de' ? 'U19-Meisterschaft findet nur in der Saisonvorbereitung statt!' : 'U19 Championship only takes place during pre-season prep!', 'info');
+    const entryCheck = evaluateYouthChampionshipEntry(latest);
+    if (!entryCheck.allowed) {
+      showToast(
+        lang === 'de'
+          ? (entryCheck.messageDe || 'Turnier derzeit nicht verfügbar!')
+          : (entryCheck.messageEn || 'Tournament currently unavailable!'),
+        'info'
+      );
       return;
     }
 
-    // Lock immediately upon starting the tournament as requested
-    let opened = false;
-    setGameState((prev) => {
-      if (!prev) return prev;
-      if (prev.youthChampionshipPlayedYear === prev.year || (prev.seasonPhase || 'start') !== 'start') {
-        return prev;
-      }
-      opened = true;
-      const next = {
-        ...prev,
-        youthChampionshipPlayedYear: prev.year,
-        lastYouthChampionshipResult: { year: prev.year, won: false, stage: 'participated' }
-      };
-      latestGameStateRef.current = next;
-      return next;
-    });
-    if (!opened) return;
     returnToYouthModalRef.current = showYouthModal;
     setShowYouthModal(false);
     setShowYouthChampionshipModal(true);
@@ -5075,6 +5167,7 @@ export default function App() {
       const prevCreditLimit = getCreditLimitConst(prev.club.tier, prev.club.country || 'GER');
       if (!evaluateWinterCampGuard(prev, cost, prevCreditLimit).allowed) return prev;
       const updated = { ...prev, club: { ...prev.club } };
+      const preCampOvr = updated.club.baseOvr;
       updated.budget = adjustBudget(updated.budget, -cost);
       updated.winterCampDone = true;
       
@@ -5132,7 +5225,14 @@ export default function App() {
           ? `Elite Commercial Tour completed (+20 Morale, +2 Rep, +1 OVR, +${fanGain.toLocaleString('en-US')} Fans)!`
           : `Elite Commercial Tour completed (+20 Morale, +2 Rep, +${fanGain.toLocaleString('en-US')} Fans).`;
       }
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        updated.club.baseOvr - preCampOvr,
+        type === 'local' ? 'Winter Camp: Tactical Lab' : type === 'spain' ? 'Winter Camp: Marbella' : 'Winter Camp: Commercial Tour'
+      );
       latestGameStateRef.current = updated;
       return updated;
     });
@@ -5200,12 +5300,19 @@ export default function App() {
         budget: integrationResult.sellOnFeeK > 0 ? adjustBudget(prev.budget, integrationResult.sellOnFeeK) : prev.budget,
         transferIncome: (prev.transferIncome || 0) + integrationResult.sellOnFeeK,
         maxOvrCap: Math.max(prev.maxOvrCap || 0, newOvr),
+        ovrHistory: recordOvrHistoryEntry(
+          prev.ovrHistory,
+          prev.year,
+          newOvr - prev.club.baseOvr,
+          `Early Youth Call-Up: ${chosen.name}${chosen.position ? ` (${chosen.position})` : ''}`
+        ),
         boardVision: nextVision || prev.boardVision,
         academySpendHistory: recordSeasonAcademySpend(prev, 1),
         academyCallUpsThisSeason: (prev.academyCallUpsThisSeason || 0) + 1,
         club: {
           ...prev.club,
           baseOvr: newOvr,
+          ovr: newOvr,
           morale: nextMorale,
           squadSize: integrationResult.outcome === 'mismatch'
             ? (prev.club.squadSize || 24)
@@ -6087,9 +6194,18 @@ export default function App() {
       const next = {
         ...prev,
         stadiumPolicy: policy,
+        ovrHistory: recordOvrHistoryEntry(
+          prev.ovrHistory,
+          prev.year,
+          newBaseOvr - prev.club.baseOvr,
+          newBaseOvr > prev.club.baseOvr
+            ? 'Stadium Strategy: Fortress Curva'
+            : 'Left Fortress Curva Strategy'
+        ),
         club: {
           ...prev.club,
           baseOvr: newBaseOvr,
+          ovr: newBaseOvr,
         },
         maxOvrCap: Math.max(prev.maxOvrCap || 0, newBaseOvr),
       };
@@ -6805,6 +6921,8 @@ export default function App() {
       updated.boardVision = assignedBoardVision;
       updated.youthTrophies = 0;
       updated.youthChampionshipPlayedYear = undefined;
+      updated.lastYouthChampionshipResult = undefined;
+      updated.ovrHistory = [];
       updated.performanceSponsorBlockedNextSeason = false;
       if (targetTier === 1) {
         const lastTier1Table = prev.seasonStandingsArchive?.[(updated.year || 2026) - 1]?.[1];
@@ -7058,6 +7176,7 @@ export default function App() {
             if (!forcedEvt.clubs || forcedEvt.clubs.length === 0) {
               forcedEvt.clubs = generateJobOffers(gameState, clubsDb, 2);
             }
+            midSeasonCloseConsumedRef.current = false;
             setShowMidSeasonModal(false);
             setShowWinterCampModal(false);
             setShowCoachMarketModal(false);
@@ -7141,6 +7260,68 @@ export default function App() {
         }
       }
 
+      let pauseBeforeMd34 = false;
+      if (!isStartPhase) {
+        const preSeasonTitleDramaRoll = Math.random();
+        if (precalcPending._meta) {
+          precalcPending._meta.titleDramaRoll = preSeasonTitleDramaRoll;
+        }
+        const preCountry = liveEntryState.club.country || 'GER';
+        const preTier = liveEntryState.club.tier;
+        const preLeague = getLeagueInfo(preTier, preCountry);
+        const preMaxTier = getMaxTier(preCountry, clubsDb);
+        const preApproxPos = precalcPending.pos ?? precalcPending.approxPos ?? 9;
+        const preMd33Outcome = schedule.length >= 33 ? schedule[32] : undefined;
+        const preMd33Peers = resolveDivisionClubs({
+          clubsDb,
+          country: preCountry,
+          tier: preTier,
+          year: liveEntryState.year || 2026,
+          userClub: liveEntryState.club,
+          excludeUserClub: true,
+          isModActive,
+          rivalClub: liveEntryState.currentRival,
+        });
+        const preMd33Table = buildDeterministicDivisionTable({
+          year: liveEntryState.year || 2026,
+          country: preCountry,
+          tier: preTier,
+          playedMatchdays: 33,
+          userClub: liveEntryState.club,
+          userInTier: true,
+          peers: preMd33Peers,
+          pendingSeasonState: precalcPending,
+          latestOutcome: preMd33Outcome,
+          rivalClub: liveEntryState.currentRival,
+          isModActive,
+        });
+        const preMd33Ctx = computeMd33StandingsContext({
+          md33Table: preMd33Table,
+          approxPos: preApproxPos,
+          pointsDeducted: preSimDeduction,
+        });
+        const preIsOverpowered = liveEntryState.club.baseOvr >= preLeague.avgOvr + 7;
+        const preMaxPlayoffPos = ['ENG', 'ESP', 'ITA', 'USA', 'FRA', 'SCO'].includes(preCountry) ? 6 : 3;
+        const preReserveBlocked =
+          isReserveClub(liveEntryState.club.name) &&
+          !canReserveClubPromoteToTier(liveEntryState.club, preTier - 1, clubsDb, preCountry);
+        const preTrigger = evaluateDecisionDayTrigger({
+          approxPos: preApproxPos,
+          pointsDeducted: preSimDeduction,
+          md33TitleGap: preMd33Ctx.md33TitleGap,
+          md33RelGap: preMd33Ctx.md33RelGap,
+          titleDramaRoll: preSeasonTitleDramaRoll,
+          titleDramaChance: preIsOverpowered ? 0.30 : 1.0,
+          hasPromotionPlayoffs: preTier !== 1 && preMaxTier !== 1,
+          isReserveBlockedFromPlayoff: preReserveBlocked,
+          maxPlayoffPos: preMaxPlayoffPos,
+          seasonLeague: preTier,
+          isBottomTier: preTier === preMaxTier,
+          isTier1Only: preMaxTier === 1,
+        });
+        pauseBeforeMd34 = shouldPauseInlineSimBeforeMd34(preTrigger);
+      }
+
       const stateWithPrecalc: GameState = { ...liveEntryState, pendingSeasonState: precalcPending };
       latestGameStateRef.current = stateWithPrecalc;
       setGameState(stateWithPrecalc);
@@ -7150,6 +7331,8 @@ export default function App() {
         : Math.min(Math.max(0, halfwayMd), Math.max(0, schedule.length - 1));
       const targetEndIdx = isStartPhase
         ? Math.min(Math.max(0, halfwayMd - 1), Math.max(0, schedule.length - 1))
+        : pauseBeforeMd34 && schedule.length >= 34
+        ? Math.max(0, schedule.length - 2)
         : Math.max(0, schedule.length - 1);
 
       inlineSimCompletedRef.current = false;
@@ -7486,6 +7669,7 @@ export default function App() {
             state.pressureContext = midPressureEval;
             latestGameStateRef.current = { ...state };
             setGameState({ ...state });
+            midSeasonCloseConsumedRef.current = false;
             setShowMidSeasonModal(true);
         };
         
@@ -7521,6 +7705,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     const isDe = lang === 'de';
     let sackedJobOffer: GameEvent | null = null;
     const currentEuroStatus = state.euroStatus;
+    const seasonStartOvr = state.lastOvr ?? state.club.baseOvr;
     const startOvr = state.club.baseOvr;
     
     // Evaluate Infrastructure Upkeep
@@ -8053,20 +8238,29 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       rivalClub: state.currentRival,
       isModActive,
     });
-    const md33UserRow = md33Table.find((r) => r.isUser);
-    const md33TopRivalRow = md33Table.find((r) => !r.isUser && (approxPos === 1 ? r.pos === 2 : r.pos === 1));
-    const md33RelRivalRow = md33Table.find((r) => !r.isUser && (approxPos === 15 ? r.pos === 16 : r.pos === 15));
-    const md33TitleGap = md33UserRow && md33TopRivalRow ? Math.abs(md33UserRow.pts - md33TopRivalRow.pts) : 99;
-    const md33RelGap = md33UserRow && md33RelRivalRow ? Math.abs(md33UserRow.pts - md33RelRivalRow.pts) : 99;
+    const md33Ctx = computeMd33StandingsContext({
+      md33Table,
+      approxPos,
+      pointsDeducted,
+    });
+    const {
+      md33UserRow,
+      md33TopRivalRow,
+      md33RelRivalRow,
+      effectiveUserMd33Pts,
+      md33TitleGap,
+      md33RelGap,
+    } = md33Ctx;
 
     const maxPlayoffPos = (['ENG', 'ESP', 'ITA', 'USA', 'FRA', 'SCO'].includes(clubCountry)) ? 6 : 3;
     const isReserveBlockedFromPlayoff = isReserveClub(state.club.name) && !canReserveClubPromoteToTier(state.club, seasonLeague - 1, clubsDb, clubCountry);
+    const titleDramaRoll = state.pendingSeasonState?._meta?.titleDramaRoll ?? Math.random();
     const ddTrigger = evaluateDecisionDayTrigger({
       approxPos,
       pointsDeducted,
       md33TitleGap,
       md33RelGap,
-      titleDramaRoll: Math.random(),
+      titleDramaRoll,
       titleDramaChance,
       hasPromotionPlayoffs,
       isReserveBlockedFromPlayoff,
@@ -8142,7 +8336,13 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           finalRivalName = eligible[0]?.name || 'Rival FC';
         } else {
           if (ddType === 'title') {
-            eligible.sort((a, b) => b.baseOvr - a.baseOvr);
+            const seasonFormScore = (clubItem: Club) => {
+              const rawOvr = clubItem.baseOvr || 65;
+              const dampenedOvr = seasonTier === 1 && rawOvr > 86 ? 86 + (rawOvr - 86) * 0.42 : rawOvr;
+              const swing = (deterministicHash(`dd-title-${state.year}-${clubCountry}-${clubItem.id}-${clubItem.name}`) - 0.5) * 14;
+              return dampenedOvr + swing;
+            };
+            eligible.sort((a, b) => seasonFormScore(b) - seasonFormScore(a));
             finalRivalName = eligible[0]?.name || 'Rival FC';
           } else if (ddType === 'promotion_playoff') {
             eligible.sort((a, b) => b.baseOvr - a.baseOvr);
@@ -8172,7 +8372,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 rivalPreGameGd = Math.max(userPreGameGd + 2, Math.round(userPreGameGd * 1.2));
             }
         } else {
-            userPreGamePts = md33Outcome?.runningPts ?? md33UserRow?.pts ?? (ddType === 'title' ? 76 : 30);
+            userPreGamePts = effectiveUserMd33Pts ?? md33Outcome?.runningPts ?? md33UserRow?.pts ?? (ddType === 'title' ? 76 : 30);
             userPreGameGd = md33Outcome?.runningGd ?? (md33UserRow ? parseInt(String(md33UserRow.gd || 0), 10) : (ddType === 'title' ? 42 : -16));
             const rivalSourceRow = ddType === 'title' ? md33TopRivalRow : md33RelRivalRow;
             if (rivalSourceRow) {
@@ -8342,6 +8542,12 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     state.pendingSeasonState = null;
     if (!isDecisionDayFired && syncedPending) {
       approxPos = syncedPending.pos;
+      setInlineSim((prevSim) => {
+        if (!prevSim.schedule || prevSim.schedule.length === 0) return prevSim;
+        const endIdx = prevSim.schedule.length - 1;
+        if (prevSim.currentIdx >= endIdx && prevSim.targetEndIdx >= endIdx) return prevSim;
+        return { ...prevSim, currentIdx: endIdx, targetEndIdx: endIdx };
+      });
     }
 
     // Post-season playoffs (both promotion playoffs and cross-tier 16th-vs-3rd relegation playoffs)
@@ -8424,7 +8630,12 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           runningPos: approxPos,
           runningPosition: approxPos,
         };
-        return { ...prevSim, schedule: nextSched };
+        return {
+          ...prevSim,
+          schedule: nextSched,
+          currentIdx: lastIdx,
+          targetEndIdx: lastIdx,
+        };
       });
     }
 
@@ -9954,6 +10165,16 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     }
 
+    const decayDelta = state.club.baseOvr - startOvr;
+    if (decayDelta !== 0) {
+      state.ovrHistory = recordOvrHistoryEntry(
+        state.ovrHistory,
+        completedSeasonYear,
+        decayDelta,
+        decayReasons.length > 0 ? decayReasons[0] : 'Off-Season Squad Adjustments'
+      );
+    }
+
     if (decayReasons.length > 0) {
       showToast(
         isDe
@@ -10188,7 +10409,14 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           isPoached: isCoachPoached,
           buyoutFeeK: coachBuyoutFeeK,
         };
+        const preResignOvr = state.club.baseOvr;
         state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
+        state.ovrHistory = recordOvrHistoryEntry(
+          state.ovrHistory,
+          completedSeasonYear,
+          state.club.baseOvr - preResignOvr,
+          `Coach Departed: ${departedCoachName}`
+        );
         state.currentCoach = undefined;
         state.coachTenure = 0;
         state.hasNewManagerBounce = false;
@@ -10211,7 +10439,14 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         // Schrödinger’s Coach Fix: Eject expired coach from state now so a reload
         // never leaves a ghost coach with 0 contract years giving free OVR boosts forever!
         expiredCoachToOffer = JSON.parse(JSON.stringify(state.currentCoach));
+        const preExpOvr = state.club.baseOvr;
         state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
+        state.ovrHistory = recordOvrHistoryEntry(
+          state.ovrHistory,
+          completedSeasonYear,
+          state.club.baseOvr - preExpOvr,
+          `Coach Contract Expired: ${state.currentCoach.name}`
+        );
         state.currentCoach = undefined;
       } else if (state.currentCoach) {
         delete (state.currentCoach as any).extendedThisSeason;
@@ -10219,11 +10454,19 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     } else {
       // No coach mechanic: Mass departures & morale collapse
       state.club.morale = Math.max(0, (state.club.morale || 100) - 35);
+      const preNoCoachOvr = state.club.baseOvr;
       state.club.baseOvr = Math.max(1, state.club.baseOvr - 5);
+      state.ovrHistory = recordOvrHistoryEntry(
+        state.ovrHistory,
+        completedSeasonYear,
+        state.club.baseOvr - preNoCoachOvr,
+        'No Head Coach: Key Players Departed'
+      );
       decayReasons.push(isDe 
         ? "Kein Trainer: Die Kabine ist zerfallen und Schlüsselspieler haben den Verein verlassen (-5 GES, -35 Moral)." 
         : "No Coach: The dressing room collapsed and key players forced departures (-5 OVR, -35 Morale).");
     }
+    state.club.ovr = state.club.baseOvr;
     
     if (state.severances) {
       state.severances.forEach(sev => sev.yearsLeft -= 1);
@@ -11401,6 +11644,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       transfersOut: prevSquadSales + retirees,
       newBaseOvr: state.club.baseOvr,
       startOvr,
+      seasonStartOvr,
       decayReasons,
       pointsEarned,
       pointsDeducted: pointsDeducted > 0 ? pointsDeducted : undefined,
@@ -11458,6 +11702,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       state.pendingForcedEvent = bankruptcyDecisionEvent;
     }
 
+    state.club.ovr = state.club.baseOvr;
     state.lastOvr = state.club.baseOvr;
     state.isNewSeasonRender = true;
     state.seasonPhase = 'start';
@@ -11472,6 +11717,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       (state.history?.length || 1) + 1,
       state.year - (state.startYear || completedSeasonYear) + 1
     );
+    if (state.youthChampionshipPlayedYear !== undefined && state.youthChampionshipPlayedYear >= state.year) {
+      state.youthChampionshipPlayedYear = undefined;
+    }
 
     latestGameStateRef.current = state;
     setInlineSim((prevSim) => ({
@@ -11776,6 +12024,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       totals: { ...liveState.totals },
       history: [...(liveState.history || [])]
     };
+    const preEventOvr = liveState.club.baseOvr;
     const tier = updated.club.tier;
 
     if (pendingEvent.type === 'red_bull_collapse') {
@@ -13881,6 +14130,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     } else if (pendingEvent.type === 'rival_bankruptcy') {
       const val = pendingEvent.cost || getLeagueScaledVal(tier, 1500);
+      const costCharity = Math.round(val * 0.4);
       if (choiceIndex === 0) {
         if (!canAffordWithCreditLimit(val)) return;
         updated.budget = adjustBudget(updated.budget, -(val));
@@ -13893,13 +14143,17 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           'success'
         );
       } else {
-        const costCharity = Math.round(val * 0.4);
-        if (!canAffordWithCreditLimit(costCharity)) return;
-        updated.budget = adjustBudget(updated.budget, -(costCharity));
+        // Prevent permanent modal deadlock if both buyout and charity exceed current credit limit
+        const canAffordCharity = canAffordWithCreditLimit(costCharity, true);
+        if (canAffordCharity) {
+          updated.budget = adjustBudget(updated.budget, -(costCharity));
+        }
         updated.reputation = Math.min(100, updated.reputation + 4);
         updated.club.fanBase = adjustFans(updated.club.fanBase, getLeagueScaledFans(tier, 4000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier));
         showToast(
-          lang === 'de' ? `Benefizspiel organisiert! +4 Ansehen, +${getLeagueScaledFans(tier, 4000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier).toLocaleString('de-DE')} Fans.` : `Charity match organized! +4 Rep, +${getLeagueScaledFans(tier, 4000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier).toLocaleString('en-US')} Fans.`,
+          canAffordCharity
+            ? (lang === 'de' ? `Benefizspiel organisiert! +4 Ansehen, +${getLeagueScaledFans(tier, 4000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier).toLocaleString('de-DE')} Fans.` : `Charity match organized! +4 Rep, +${getLeagueScaledFans(tier, 4000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier).toLocaleString('en-US')} Fans.`)
+            : `Supporters Trust funded the charity match due to club debt (+4 Rep, +Fans).`,
           'success'
         );
       }
@@ -14992,7 +15246,26 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       // Fallback to Data-Driven Event Engine for all unhandled events
       const dynamicResult = resolveDynamicEvent(liveState, pendingEvent, choiceIndex, tier);
       if (dynamicResult) {
-        if (dynamicResult.costAttempt > 0 && !canAffordWithCreditLimit(dynamicResult.costAttempt)) return;
+        if (
+          shouldRejectDynamicEventForCreditLimit(
+            pendingEvent,
+            choiceIndex,
+            dynamicResult.costAttempt,
+            (c) => canAffordWithCreditLimit(c)
+          )
+        ) {
+          return;
+        }
+        const dynDelta = dynamicResult.updated.club.baseOvr - preEventOvr;
+        dynamicResult.updated.club.ovr = dynamicResult.updated.club.baseOvr;
+        if (dynDelta !== 0) {
+          dynamicResult.updated.ovrHistory = recordOvrHistoryEntry(
+            dynamicResult.updated.ovrHistory,
+            dynamicResult.updated.year,
+            dynDelta,
+            pendingEvent.title?.en || `Event: ${pendingEvent.type}`
+          );
+        }
         dynamicResult.updated.pendingForcedEvent = undefined;
         latestGameStateRef.current = dynamicResult.updated;
         setGameState(dynamicResult.updated);
@@ -15002,6 +15275,16 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     }
 
+    const eventOvrDelta = updated.club.baseOvr - preEventOvr;
+    updated.club.ovr = updated.club.baseOvr;
+    if (eventOvrDelta !== 0) {
+      updated.ovrHistory = recordOvrHistoryEntry(
+        updated.ovrHistory,
+        updated.year,
+        eventOvrDelta,
+        pendingEvent.title?.en || `Event: ${pendingEvent.type}`
+      );
+    }
     updated.pendingForcedEvent = undefined;
     latestGameStateRef.current = updated;
     setGameState(updated);
@@ -15050,6 +15333,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       <AnimatePresence>
         {playerRevealData && gameState && (
           <PlayerRevealModal
+            key={`PlayerRevealModal-${playerRevealData.name || 'prospect'}-${gameState.year}`}
             ovr={playerRevealData.ovr}
             cost={playerRevealData.cost}
             isStar={playerRevealData.isStar}
@@ -15077,6 +15361,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       <AnimatePresence>
         {showMidSeasonDilemmaModal && gameState && (
           <MidSeasonDilemmaModal
+            key={`MidSeasonDilemmaModal-${activeDilemmaId}-${gameState.year}`}
             isOpen={showMidSeasonDilemmaModal}
             gameState={gameState}
             dilemmaId={activeDilemmaId}
@@ -15086,6 +15371,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       </AnimatePresence>
       <AnimatePresence>
         {decisionDay && gameState && <DecisionDayModal key={`DecisionDayModal-${gameState?.year || Date.now()}`} gameState={gameState} resolve={decisionDay.resolve} rivalName={decisionDay.rivalName} userPts={decisionDay.userPts} userGd={decisionDay.userGd} rivalPts={decisionDay.rivalPts} rivalGd={decisionDay.rivalGd} opponentName={decisionDay.opponentName} opponentOvr={decisionDay.opponentOvr} ddType={decisionDay.ddType} isBottomTier={decisionDay.isBottomTier} isCrossTierPlayoff={decisionDay.isCrossTierPlayoff} pointsDeducted={decisionDay.pointsDeducted} winProb={decisionDay.winProb} clubsDb={clubsDb} isModActive={isModActive} userPos={decisionDay.userPos} standings={(decisionDay as any).standings || (gameState as any).standings || (gameState.seasonStandingsArchive && (gameState.seasonStandingsArchive[gameState.year]?.[gameState.club.tier] || gameState.seasonStandingsArchive[(gameState.year || 2026) - 1]?.[gameState.club.tier])) || []} />}
+      </AnimatePresence>
+      <AnimatePresence>
       {cupRun && gameState && (
         <CupRunModal key={`CupRunModal-${cupRun.id}-${cupRun.startRound || 'semi'}-${gameState.year}`} clubsDb={clubsDb} archRivalName={gameState.currentRival?.name}
           cupRun={cupRun}
@@ -15095,8 +15382,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           onComplete={(result) => { if (cupRun.resolve) cupRun.resolve(result); }}
         />
       )}
+      </AnimatePresence>
+      <AnimatePresence>
       {globalTourSummary && (
         <GlobalTourModal
+          key={`GlobalTourModal-${gameState?.year || 'summary'}`}
           summary={globalTourSummary}
           lang={lang}
           onClose={() => setGlobalTourSummary(null)}
@@ -15416,6 +15706,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       <AnimatePresence>
       {clubIntroData && (
         <ClubIntroModal
+          key={`ClubIntroModal-${clubIntroData.club.id || clubIntroData.club.name}`}
           club={clubIntroData.club}
           coach={clubIntroData.coach}
           targetPos={clubIntroData.targetPos}
@@ -15573,6 +15864,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           onUpdateScoutingDial={handleUpdateScoutingDial}
           clubsDb={clubsDb}
           isModActive={isModActive}
+          onTournamentStart={handleStartYouthChampionship}
           onTournamentVictory={handleYouthTournamentVictory}
           onClose={() => setShowYouthModal(false)}
           onOpenChampionship={handleOpenYouthChampionship}
@@ -15606,16 +15898,18 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           isModActive={isModActive}
           onTournamentStart={handleStartYouthChampionship}
           onTournamentVictory={handleYouthTournamentVictory}
-          onClose={(won) => {
+          onClose={(won, hasStarted) => {
              setShowYouthChampionshipModal(false);
-             if (!won) {
+             if (shouldLockYouthChampionshipOnClose(won, Boolean(hasStarted))) {
                setGameState(prev => {
                  if (!prev) return prev;
-                 return {
+                 const next = {
                    ...prev,
                    youthChampionshipPlayedYear: prev.year,
                    lastYouthChampionshipResult: { year: prev.year, won: false, stage: 'concluded' }
                  };
+                 latestGameStateRef.current = next;
+                 return next;
                });
              }
              if (returnToYouthModalRef.current) {
@@ -15738,8 +16032,16 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               updated.currentCoach = coach;
               updated.coachTenure = 0;
               updated.hasNewManagerBounce = true;
+              const preHireOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, coach.ovrBoost); // Apply new boost
+              updated.club.ovr = updated.club.baseOvr;
               updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+              updated.ovrHistory = recordOvrHistoryEntry(
+                updated.ovrHistory,
+                updated.year,
+                updated.club.baseOvr - preHireOvr,
+                `Appointed Head Coach: ${coach.name}`
+              );
               if (coach.strength === 'Youth Focus' && !coach.isReserveCoach && (updated.club.academyLevel || 1) < 5 && (updated.academyUpgradedThisSeason || 0) === 0) {
                 const nextAcad = Math.min(5, (updated.club.academyLevel || 1) + 1);
                 updated.club.academyLevel = nextAcad;
@@ -15816,7 +16118,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               const updated = { ...prev, club: { ...prev.club }, severances: [...(prev.severances || [])] };
               
               // Remove old coach boost
+              const preFireOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+              updated.club.ovr = updated.club.baseOvr;
+              updated.ovrHistory = recordOvrHistoryEntry(
+                updated.ovrHistory,
+                updated.year,
+                updated.club.baseOvr - preFireOvr,
+                `Dismissed Head Coach: ${updated.currentCoach.name}`
+              );
               const hasMutualConsent = (updated.managerSkills || []).includes('mutual_consent');
               if (!hasMutualConsent && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
                  updated.severances.push({ amount: updated.currentCoach.cost, yearsLeft: updated.currentCoach.contractYearsLeft });
@@ -15881,8 +16191,16 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               updated.currentCoach = coach;
               updated.coachTenure = 0;
               updated.hasNewManagerBounce = true;
+              const preHireDossierOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, coach.ovrBoost);
+              updated.club.ovr = updated.club.baseOvr;
               updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+              updated.ovrHistory = recordOvrHistoryEntry(
+                updated.ovrHistory,
+                updated.year,
+                updated.club.baseOvr - preHireDossierOvr,
+                `Appointed Head Coach: ${coach.name}`
+              );
               if (coach.strength === 'Youth Focus' && !coach.isReserveCoach && (updated.club.academyLevel || 1) < 5 && (updated.academyUpgradedThisSeason || 0) === 0) {
                 const nextAcad = Math.min(5, (updated.club.academyLevel || 1) + 1);
                 updated.club.academyLevel = nextAcad;
@@ -15914,7 +16232,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             setGameState(prev => {
               if (!prev || !prev.currentCoach) return prev;
               const updated = { ...prev, club: { ...prev.club }, severances: [...(prev.severances || [])] };
+              const preFireDossierOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+              updated.club.ovr = updated.club.baseOvr;
+              updated.ovrHistory = recordOvrHistoryEntry(
+                updated.ovrHistory,
+                updated.year,
+                updated.club.baseOvr - preFireDossierOvr,
+                `Dismissed Head Coach: ${updated.currentCoach.name}`
+              );
               const hasMutualConsent = (updated.managerSkills || []).includes('mutual_consent');
               if (!hasMutualConsent && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
                  updated.severances.push({ amount: updated.currentCoach.cost, yearsLeft: updated.currentCoach.contractYearsLeft });
@@ -15991,142 +16317,174 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       )}
       </AnimatePresence>
 
-      <AnimatePresence>
-      {showWinterCampModal && gameState && (
-        <WinterCampModal
-          state={gameState}
-          lang={lang}
-          creditLimit={getCreditLimit()}
-          onClose={() => setShowWinterCampModal(false)}
-          onFireCoach={() => {
-            setShowWinterCampModal(false);
-            setCoachMarketTab(gameState.currentCoach ? 'staff' : 'market');
-            setShowCoachMarketModal(true);
-          }}
-          onPullYouth={() => {
-            setShowWinterCampModal(false);
-            handlePullYouthEarly();
-          }}
-          onSelectCamp={handleSelectWinterCamp}
-        />
-      )}
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {showWinterCampModal && gameState && (
+            <WinterCampModal
+              key={`WinterCampModal-${gameState.year}`}
+              state={gameState}
+              lang={lang}
+              creditLimit={getCreditLimit()}
+              onClose={() => setShowWinterCampModal(false)}
+              onFireCoach={() => {
+                setShowWinterCampModal(false);
+                setCoachMarketTab(gameState.currentCoach ? 'staff' : 'market');
+                setShowCoachMarketModal(true);
+              }}
+              onPullYouth={() => {
+                setShowWinterCampModal(false);
+                handlePullYouthEarly();
+              }}
+              onSelectCamp={handleSelectWinterCamp}
+            />
+          )}
+        </AnimatePresence>
+      </React.Suspense>
 
-      {showMidSeasonModal && gameState && (
-        <MidSeasonModal
-          state={gameState}
-          lang={lang}
-          clubsDb={clubsDb}
-          creditLimit={getCreditLimit()}
-          onSelectCamp={(type, cost) => handleSelectWinterCamp(type, cost)}
-          onOpenCoachMarket={(midEvent) => {
-            setShowMidSeasonModal(false);
-            setGameState(prev => {
-              if (!prev) return prev;
-              const next = { ...prev, midSeasonResignedCoach: undefined };
-              latestGameStateRef.current = next;
-              return next;
-            });
-            if (isValidGameEvent(midEvent)) {
-              enqueueEvent(midEvent);
-            }
-            setCoachMarketTab('market');
-            setShowCoachMarketModal(true);
-          }}
-          onClose={(midEvent) => {
-            setShowMidSeasonModal(false);
-            const snap = latestGameStateRef.current || gameState;
-            const hasPressureFlashpoint = Boolean(
-              snap?.pressureContext?.triggerMoment &&
-              snap.pressureMomentResolvedYear !== snap.year
-            );
-            setGameState(prev => {
-              if (!prev) return prev;
-              const next = { ...prev, midSeasonResignedCoach: undefined };
-              latestGameStateRef.current = next;
-              return next;
-            });
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {showMidSeasonModal && gameState && (
+            <MidSeasonModal
+              key={`MidSeasonModal-${gameState.year}`}
+              state={gameState}
+              lang={lang}
+              clubsDb={clubsDb}
+              creditLimit={getCreditLimit()}
+              onSelectCamp={(type, cost) => handleSelectWinterCamp(type, cost)}
+              onOpenCoachMarket={(midEvent) => {
+                setShowMidSeasonModal(false);
+                const plan = resolveMidSeasonCoachMarketPlan({
+                  alreadyConsumed: midSeasonCloseConsumedRef.current,
+                  midEvent,
+                  isValidEvent: isValidGameEvent,
+                });
+                if (!plan.shouldProcess) return;
+                midSeasonCloseConsumedRef.current = true;
+                setGameState(prev => {
+                  if (!prev) return prev;
+                  const next = { ...prev, midSeasonResignedCoach: undefined };
+                  latestGameStateRef.current = next;
+                  return next;
+                });
+                if (plan.immediateEventToEnqueue) {
+                  enqueueEvent(plan.immediateEventToEnqueue);
+                }
+                setCoachMarketTab('market');
+                setShowCoachMarketModal(true);
+              }}
+              onClose={(midEvent) => {
+                setShowMidSeasonModal(false);
+                const snap = latestGameStateRef.current || gameState;
+                const plan = resolveMidSeasonClosePlan({
+                  alreadyConsumed: midSeasonCloseConsumedRef.current,
+                  state: snap,
+                  midEvent,
+                  isValidEvent: isValidGameEvent,
+                });
+                if (!plan.shouldProcess) return;
+                midSeasonCloseConsumedRef.current = true;
+                setGameState(prev => {
+                  if (!prev) return prev;
+                  const next = { ...prev, midSeasonResignedCoach: undefined };
+                  latestGameStateRef.current = next;
+                  return next;
+                });
 
-            if (hasPressureFlashpoint) {
-              setPendingMidEventAfterPressure(isValidGameEvent(midEvent) ? midEvent : null);
-              setPressureIsCrisisTrigger(true);
-              setShowPressureModal(true);
-            } else if (isValidGameEvent(midEvent)) {
-              enqueueEvent(midEvent);
-            }
-          }}
-        />
-      )}
+                if (plan.openPressureModal) {
+                  pendingMidEventAfterPressureRef.current = plan.pendingMidEventForPressure;
+                  setPendingMidEventAfterPressure(plan.pendingMidEventForPressure);
+                  setPressureIsCrisisTrigger(true);
+                  setShowPressureModal(true);
+                } else if (plan.immediateEventToEnqueue) {
+                  enqueueEvent(plan.immediateEventToEnqueue);
+                }
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </React.Suspense>
 
-      {showPressureModal && gameState && (
-        <PressureMomentModal
-          key={`PressureMomentModal-${gameState.year}`}
-          state={gameState}
-          clubsDb={clubsDb}
-          isModActive={isModActive}
-          isCrisisTrigger={pressureIsCrisisTrigger}
-          creditLimit={getCreditLimit()}
-          onResolveChoice={(choiceId, assessment) => {
-            const snap = latestGameStateRef.current || gameState;
-            if (!snap) return null;
-            const res = applyPressureMomentResolution(snap, choiceId, assessment, clubsDb, isModActive);
-            let nextState = res.updatedState;
-            if (nextState.pendingSeasonState && nextState.seasonPhase === 'mid') {
-              const pFin = calculateClubFinancials({ ...nextState, isManaged: true });
-              nextState = {
-                ...nextState,
-                pendingSeasonState: calculateProbabilisticSeason(nextState, clubsDb, isModActive, {
-                  lockFirstHalfFrom: nextState.pendingSeasonState,
-                  dilemmaChoice: nextState.pendingSeasonState.dilemmaChoice,
-                  predictedPointsDeducted: estimateDebtPointDeduction(
-                    nextState.budget,
-                    nextState.seasonsInDebt || 0,
-                    pFin.net
-                  ),
-                }),
-              };
-              setInlineSim((prevSim) => ({
-                ...prevSim,
-                schedule:
-                  nextState.pendingSeasonState?.matchdaySchedule ||
-                  nextState.pendingSeasonState?.schedule ||
-                  prevSim.schedule,
-              }));
-            }
-            latestGameStateRef.current = nextState;
-            setGameState(nextState);
-            showToast(res.headline, choiceId === 'demand_coach_change' ? 'warning' : 'info');
-            return res;
-          }}
-          onOpenCoachMarket={() => {
-            setShowPressureModal(false);
-            setPressureIsCrisisTrigger(false);
-            if (pendingMidEventAfterPressure && isValidGameEvent(pendingMidEventAfterPressure)) {
-              enqueueEvent(pendingMidEventAfterPressure);
-            }
-            setPendingMidEventAfterPressure(null);
-            setCoachMarketTab('market');
-            setShowCoachMarketModal(true);
-          }}
-          onClose={() => {
-            setShowPressureModal(false);
-            setPressureIsCrisisTrigger(false);
-            if (pendingMidEventAfterPressure && isValidGameEvent(pendingMidEventAfterPressure)) {
-              enqueueEvent(pendingMidEventAfterPressure);
-            }
-            setPendingMidEventAfterPressure(null);
-          }}
-        />
-      )}
-      
-      {showConfirmReset && (
-        <ConfirmResetModal
-          key={`ConfirmResetModal-${gameState?.year || Date.now()}`}
-          lang={lang}
-          onConfirm={confirmResetGame}
-          onCancel={() => setShowConfirmReset(false)}
-        />
-      )}
-      </AnimatePresence>
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {showPressureModal && gameState && (
+            <PressureMomentModal
+              key={`PressureMomentModal-${gameState.year}`}
+              state={gameState}
+              clubsDb={clubsDb}
+              isModActive={isModActive}
+              isCrisisTrigger={pressureIsCrisisTrigger}
+              creditLimit={getCreditLimit()}
+              onResolveChoice={(choiceId, assessment) => {
+                const snap = latestGameStateRef.current || gameState;
+                if (!snap) return null;
+                const res = applyPressureMomentResolution(snap, choiceId, assessment, clubsDb, isModActive);
+                let nextState = res.updatedState;
+                if (nextState.pendingSeasonState && nextState.seasonPhase === 'mid') {
+                  const pFin = calculateClubFinancials({ ...nextState, isManaged: true });
+                  nextState = {
+                    ...nextState,
+                    pendingSeasonState: calculateProbabilisticSeason(nextState, clubsDb, isModActive, {
+                      lockFirstHalfFrom: nextState.pendingSeasonState,
+                      dilemmaChoice: nextState.pendingSeasonState.dilemmaChoice,
+                      predictedPointsDeducted: estimateDebtPointDeduction(
+                        nextState.budget,
+                        nextState.seasonsInDebt || 0,
+                        pFin.net
+                      ),
+                    }),
+                  };
+                  setInlineSim((prevSim) => ({
+                    ...prevSim,
+                    schedule:
+                      nextState.pendingSeasonState?.matchdaySchedule ||
+                      nextState.pendingSeasonState?.schedule ||
+                      prevSim.schedule,
+                  }));
+                }
+                latestGameStateRef.current = nextState;
+                setGameState(nextState);
+                showToast(res.headline, choiceId === 'demand_coach_change' ? 'warning' : 'info');
+                return res;
+              }}
+              onOpenCoachMarket={() => {
+                setShowPressureModal(false);
+                setPressureIsCrisisTrigger(false);
+                const pendingEvt = pendingMidEventAfterPressureRef.current || pendingMidEventAfterPressure;
+                pendingMidEventAfterPressureRef.current = null;
+                setPendingMidEventAfterPressure(null);
+                if (pendingEvt && isValidGameEvent(pendingEvt)) {
+                  enqueueEvent(pendingEvt);
+                }
+                setCoachMarketTab('market');
+                setShowCoachMarketModal(true);
+              }}
+              onClose={() => {
+                setShowPressureModal(false);
+                setPressureIsCrisisTrigger(false);
+                const pendingEvt = pendingMidEventAfterPressureRef.current || pendingMidEventAfterPressure;
+                pendingMidEventAfterPressureRef.current = null;
+                setPendingMidEventAfterPressure(null);
+                if (pendingEvt && isValidGameEvent(pendingEvt)) {
+                  enqueueEvent(pendingEvt);
+                }
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </React.Suspense>
+
+      <React.Suspense fallback={null}>
+        <AnimatePresence>
+          {showConfirmReset && (
+            <ConfirmResetModal
+              key={`ConfirmResetModal-${gameState?.year || 'global'}`}
+              lang={lang}
+              onConfirm={confirmResetGame}
+              onCancel={() => setShowConfirmReset(false)}
+            />
+          )}
+        </AnimatePresence>
+      </React.Suspense>
 
       <AnimatePresence>
       {showCustomizationModal && gameState && (
@@ -16344,7 +16702,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           saga={activeTransferSaga}
           onSelectOption={handleResolveTransferSaga}
           onClose={() => {
-            const stallOpt = activeTransferSaga.options.find(o => o.budgetChange === 0) || activeTransferSaga.options[activeTransferSaga.options.length - 1];
+            const stallOpt = activeTransferSaga.options.find(
+              o => o.budgetChange >= 0 || canAffordWithCreditLimit(Math.abs(o.budgetChange), true)
+            );
             if (stallOpt) {
               handleResolveTransferSaga(stallOpt);
             } else {
