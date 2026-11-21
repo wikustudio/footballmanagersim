@@ -209,9 +209,9 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
   const [trainingFocus, setTrainingFocus] = useState<NationalTrainingFocus>(() => initialSavedState?.trainingFocus || 'high_intensity');
   const [preGameDirective, setPreGameDirective] = useState<PreGameDirective>(() => initialSavedState?.preGameDirective || 'controlled_possession');
 
-  // Group Stage State (Matchday-by-Matchday progression: 1, 2, 3)
+  // Group Stage State (Matchday-by-Matchday progression: 1, 2, 3 — all 3 play live in 3D)
   const [groupResult, setGroupResult] = useState<GroupStageResult | null>(() => initialSavedState?.groupResult || null);
-  const [groupMatchdayRevealed, setGroupMatchdayRevealed] = useState<number>(() => initialSavedState?.groupMatchdayRevealed ?? 1);
+  const [groupMatchdayRevealed, setGroupMatchdayRevealed] = useState<number>(() => initialSavedState?.groupMatchdayRevealed ?? 0);
   const [groupLiveMatchday, setGroupLiveMatchday] = useState<number | null>(null);
   const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState<boolean>(false);
 
@@ -502,7 +502,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       preGameDirective
     );
     setGroupResult(res);
-    setGroupMatchdayRevealed(1);
+    setGroupMatchdayRevealed(0);
+    setGroupLiveMatchday(1);
     setStep('group');
   };
 
@@ -591,7 +592,10 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       appointedCoach,
       synergy,
       trainingFocus,
-      preGameDirective
+      preGameDirective,
+      undefined,
+      undefined,
+      hostNation
     );
     setPendingLiveResult(result);
     setKnockoutLiveEvents([]);
@@ -642,7 +646,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       appointedCoach,
       synergy,
       trainingFocus,
-      preGameDirective
+      preGameDirective,
+      hostNation
     );
     setGrandFinalFirstHalf(firstHalf);
     setFinalHalftimeIntervention(null);
@@ -673,7 +678,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       trainingFocus,
       preGameDirective,
       intervention,
-      grandFinalFirstHalf || undefined
+      grandFinalFirstHalf || undefined,
+      hostNation
     );
 
     setCurrentMatch(result);
@@ -1131,7 +1137,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 <div className="flex items-center justify-between bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl px-4 py-3">
                   <div>
                     <h3 className="font-black text-[#18191F] text-sm sm:text-base">
-                      {groupResult.groupName} · Matchday {groupLiveMatchday ?? groupMatchdayRevealed} of 3
+                      {groupResult.groupName} · Matchday {groupLiveMatchday ?? Math.max(1, groupMatchdayRevealed)} of 3
                     </h3>
                     <p className="text-xs text-[#6B7280]">
                       Top 2 nations advance to the World Cup Quarter-Finals
@@ -1171,16 +1177,18 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                   const oGoals = userIsHome ? userFix.awayScore : userFix.homeScore;
                   const syntheticEvents: WorldCupLiveEvent[] = [];
                   for (let i = 0; i < uGoals; i++) {
+                    const m = Math.max(4, Math.min(88, Math.round(8 + ((i + 1) / (uGoals + 1)) * 78)));
                     syntheticEvents.push({
-                      minute: Math.min(88, 16 + i * 24),
+                      minute: m,
                       text: `${selectedTeam.name} scores in Matchday ${groupLiveMatchday}!`,
                       isGoal: true,
                       forUser: true,
                     });
                   }
                   for (let i = 0; i < oGoals; i++) {
+                    const m = Math.max(6, Math.min(89, Math.round(11 + ((i + 1) / (oGoals + 1)) * 76)));
                     syntheticEvents.push({
-                      minute: Math.min(89, 25 + i * 24),
+                      minute: m,
                       text: `${oppTeam.name} responds in Matchday ${groupLiveMatchday}!`,
                       isGoal: true,
                       forUser: false,

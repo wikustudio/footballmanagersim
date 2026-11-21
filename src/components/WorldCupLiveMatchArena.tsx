@@ -9,6 +9,7 @@ import {
   WorldCupShootoutKick,
 } from '../types';
 import { StadiumBowl3D } from './StadiumBowl3D';
+import { ShootoutChoreographyState } from '../engine/liveSimVisualEngine';
 import {
   WorldCupVenueStage,
   computeWorldCupAttendance,
@@ -436,36 +437,43 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
     };
   }, [opponent.name, opponent.color, opponent.ovr, liveUserGoals, liveOppGoals, attendance]);
 
-  // Current active kick animation coordinates for FIFA Penalty Shootout view
+  // Current shootout scoreboard & kick state for 3D FIFA Penalty Shootout choreography
   const shootoutViewState = useMemo(() => {
     const taken = resolvedShootoutSequence.slice(0, kickIndex);
     const userKicks = taken.filter((k) => k.taker === 'user');
     const oppKicks = taken.filter((k) => k.taker === 'opp');
     const currentKick = kickIndex > 0 ? resolvedShootoutSequence[kickIndex - 1] : null;
-    const targetCorner = currentKick
-      ? currentKick.scored
-        ? currentKick.round % 2 === 0
-          ? { x: 256, y: 60 }
-          : { x: 384, y: 60 }
-        : { x: 320, y: 74 }
-      : { x: 320, y: 184 };
-    const keeperDiveX = currentKick
-      ? currentKick.scored
-        ? currentKick.round % 2 === 0
-          ? 368
-          : 272
-        : 320
-      : 320;
+    const nextKick = resolvedShootoutSequence[kickIndex] ?? currentKick;
+    const activeRound = currentKick?.round ?? nextKick?.round ?? 1;
     return {
       userKicks,
       oppKicks,
       userScore: userKicks.filter((k) => k.scored).length,
       oppScore: oppKicks.filter((k) => k.scored).length,
       currentKick,
-      targetCorner,
-      keeperDiveX,
+      activeRound,
     };
   }, [resolvedShootoutSequence, kickIndex]);
+
+  const shootoutChoreoState = useMemo<ShootoutChoreographyState | null>(() => {
+    if (phase !== 'shootout') return null;
+    const activeKick = shootoutViewState.currentKick;
+    const upcomingKick = resolvedShootoutSequence[kickIndex];
+    const takerSide: 'home' | 'away' = activeKick
+      ? activeKick.taker === 'opp'
+        ? 'away'
+        : 'home'
+      : upcomingKick?.taker === 'opp'
+      ? 'away'
+      : 'home';
+    return {
+      active: true,
+      taker: takerSide,
+      scored: activeKick ? activeKick.scored : null,
+      round: shootoutViewState.activeRound,
+      kickIndex,
+    };
+  }, [phase, shootoutViewState.currentKick, shootoutViewState.activeRound, resolvedShootoutSequence, kickIndex]);
 
   const statusText = useMemo(() => {
     if (phase === 'shootout') return 'PENALTY SHOOTOUT';
@@ -476,8 +484,8 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
     return minute > 90 ? `ET ${minute}'` : `${minute}' LIVE`;
   }, [phase, pauseAtMinute, minute]);
 
-  // Floodlights automatically turn on when a sunlit match enters Extra Time
-  const stadiumTimeOfDay = minute > 90 ? 'night' : venue.timeOfDay;
+  // Floodlights automatically turn on when a sunlit match enters Extra Time or Penalty Shootout
+  const stadiumTimeOfDay = phase === 'shootout' || minute > 90 ? 'night' : venue.timeOfDay;
   const worldCupEditionLabel = year ? `WORLD CUP ${year}` : `WORLD CUP ${hostNation.code}`;
 
   return (
@@ -577,157 +585,95 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
         </div>
       </div>
 
-      {/* Isometric 3D Host-Country Stadium Engine OR Floodlit Penalty Shootout Camera */}
+      {/* Continuous Isometric 3D Host-Country Stadium Engine (Open Play, Extra Time & Penalty Shootout) */}
       <div className="relative w-full bg-[#0B1424] overflow-hidden select-none">
-        {phase === 'shootout' ? (
-          <div className="relative w-full h-[320px] sm:h-[360px] bg-[#0B1424]">
-            <svg
-              viewBox="0 0 640 320"
-              className="w-full h-full block"
-              role="img"
-              aria-label={`Penalty Shootout at ${venue.name}: ${team.name} vs ${opponent.name}`}
-            >
-              <defs>
-                <radialGradient id="wc-spot-glow" cx="50%" cy="20%" r="70%">
-                  <stop offset="0%" stopColor="#fde68a" stopOpacity="0.24" />
-                  <stop offset="100%" stopColor="#0f172a" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-              {/* Stadium Crowd Backdrop & Floodlit Penalty Box */}
-              <rect width="640" height="320" fill="#0f172a" />
-              <text
-                x="320"
-                y="16"
-                textAnchor="middle"
-                fontSize="8.5"
-                fontWeight="800"
-                letterSpacing="2.4"
-                fill="#fbbf24"
-              >
-                {venue.name.toUpperCase()} · {venue.city.toUpperCase()} · PENALTY SHOOTOUT
-              </text>
-              <rect x="20" y="24" width="600" height="278" rx="14" fill="#166534" />
-              <rect x="20" y="24" width="600" height="278" rx="14" fill="url(#wc-spot-glow)" />
-
-              {/* Turf Mow Stripes */}
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <rect
-                  key={i}
-                  x={20 + i * 100}
-                  y="24"
-                  width="50"
-                  height="278"
-                  fill="#15803d"
-                  opacity="0.45"
-                />
-              ))}
-
-              {/* 18-yard Box & Penalty Arc */}
-              <rect x="130" y="48" width="380" height="205" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="2.5" />
-              <rect x="220" y="48" width="200" height="72" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="2" />
-              <path d="M 248 253 A 84 84 0 0 0 392 253" fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="2" />
-
-              {/* Goal Frame & Net */}
-              <rect x="236" y="26" width="168" height="26" fill="#0f172a" fillOpacity="0.45" stroke="#f8fafc" strokeWidth="3.5" />
-              {[252, 272, 292, 312, 332, 352, 372, 392].map((nx) => (
-                <line key={nx} x1={nx} y1="26" x2={nx} y2="52" stroke="#cbd5e1" strokeOpacity="0.35" strokeWidth="1" />
-              ))}
-
-              {/* Penalty Spot */}
-              <circle cx="320" cy="186" r="4.5" fill="#ffffff" fillOpacity="0.85" />
-
-              {/* Goalkeeper */}
-              <g style={{ transition: 'transform 260ms ease-out', transform: `translate(${shootoutViewState.keeperDiveX - 320}px, 0px)` }}>
-                <circle cx="320" cy="60" r="11" fill="#f59e0b" stroke="#ffffff" strokeWidth="2.5" />
-                <text x="320" y="64" textAnchor="middle" fontSize="9" fontWeight="800" fill="#0f172a">
-                  GK
-                </text>
-              </g>
-
-              {/* Shot Trajectory & Animated Ball */}
-              {shootoutViewState.currentKick && (
-                <line
-                  x1="320"
-                  y1="186"
-                  x2={shootoutViewState.targetCorner.x}
-                  y2={shootoutViewState.targetCorner.y}
-                  stroke={shootoutViewState.currentKick.scored ? '#34d399' : '#fb7185'}
-                  strokeWidth="2.5"
-                  strokeDasharray="5 5"
-                />
-              )}
-              <g
-                style={{
-                  transition: 'transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
-                  transform: `translate(${shootoutViewState.targetCorner.x - 320}px, ${shootoutViewState.targetCorner.y - 186}px)`,
-                }}
-              >
-                <circle cx="320" cy="186" r="8" fill="#ffffff" stroke="#0f172a" strokeWidth="2.2" />
-              </g>
-
-              {/* Shooter Badge */}
-              <g>
-                <circle
-                  cx="320"
-                  cy="226"
-                  r="11"
-                  fill={
-                    shootoutViewState.currentKick?.taker === 'opp' ? opponent.color : team.color
-                  }
-                  stroke="#ffffff"
-                  strokeWidth="2.5"
-                />
-                <text x="320" y="230" textAnchor="middle" fontSize="8" fontWeight="900" fill="#ffffff">
-                  {shootoutViewState.currentKick?.taker === 'opp' ? opponent.code : team.code}
-                </text>
-              </g>
-            </svg>
-          </div>
-        ) : (
-          <StadiumBowl3D
-            club={syntheticHomeClub}
-            pitchDesignId={venue.pitchDesignId}
-            stadiumStyle={venue.stadiumStyle}
-            stadiumPolicy={resolvedVenueStage === 'final' ? 'ultras' : 'balanced'}
-            vipHospitalityActive={true}
-            attendance={attendance}
-            capacity={venue.capacity}
-            isLive={phase === 'match'}
-            currentOutcome={liveOutcome}
-            currentMatchday={1}
-            totalMatchdays={6}
-            subTick={Math.floor(minute / 6)}
-            opponentName={opponent.name}
-            opponentColor={opponent.color || '#DC2626'}
-            userGoals={liveUserGoals}
-            oppGoals={liveOppGoals}
-            tacticLabel={tacticLabel}
-            compactMode={true}
-            hideTopHud={true}
-            initialTimeOfDay={stadiumTimeOfDay}
-            forcedMatchPhase={matchTelemetry.stadiumPhase}
-            customTopBoardText={`${worldCupEditionLabel} · ${stageLabel.toUpperCase()}`}
-            customBottomBoardText={`${venue.name} · ${venue.city}`}
-            customHomeBoardText={`${team.name.toUpperCase()} · ${team.code}`}
-            customAwayBoardText={`${opponent.name.toUpperCase()} · ${opponent.code}`}
-            containerClassName="h-[340px] sm:h-[410px] rounded-none border-0 shadow-none"
-          />
-        )}
+        <StadiumBowl3D
+          club={syntheticHomeClub}
+          pitchDesignId={venue.pitchDesignId}
+          stadiumStyle={venue.stadiumStyle}
+          stadiumPolicy={resolvedVenueStage === 'final' || phase === 'shootout' ? 'ultras' : 'balanced'}
+          vipHospitalityActive={true}
+          attendance={attendance}
+          capacity={venue.capacity}
+          isLive={phase === 'match' || phase === 'shootout'}
+          currentOutcome={liveOutcome}
+          currentMatchday={1}
+          totalMatchdays={6}
+          subTick={phase === 'shootout' ? kickIndex : Math.floor(minute / 6)}
+          opponentName={opponent.name}
+          opponentColor={opponent.color || '#DC2626'}
+          userGoals={liveUserGoals}
+          oppGoals={liveOppGoals}
+          tacticLabel={tacticLabel}
+          compactMode={true}
+          hideTopHud={true}
+          initialTimeOfDay={stadiumTimeOfDay}
+          forcedMatchPhase={
+            phase === 'shootout'
+              ? shootoutViewState.currentKick?.scored
+                ? 'goal'
+                : 'setpiece'
+              : matchTelemetry.stadiumPhase
+          }
+          shootoutState={shootoutChoreoState}
+          customTopBoardText={
+            phase === 'shootout'
+              ? `${worldCupEditionLabel} · PENALTY SHOOTOUT · RD ${shootoutViewState.activeRound}`
+              : `${worldCupEditionLabel} · ${stageLabel.toUpperCase()}`
+          }
+          customBottomBoardText={`${venue.name} · ${venue.city}`}
+          customHomeBoardText={`${team.name.toUpperCase()} · ${team.code}`}
+          customAwayBoardText={`${opponent.name.toUpperCase()} · ${opponent.code}`}
+          containerClassName="h-[340px] sm:h-[410px] rounded-none border-0 shadow-none"
+        />
 
         {/* Authentic Host Venue Architectural Tag (Top-Left Floating Overlay) */}
-        {phase !== 'shootout' && (
-          <div className="pointer-events-none absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10">
-            <div className="bg-slate-950/80 backdrop-blur-xs border border-white/15 rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-2">
-              <span className="text-sm leading-none">{hostNation.flag}</span>
-              <div className="leading-tight">
-                <div className="text-[11px] font-extrabold text-white">
-                  {venue.name}
-                </div>
-                <div className="text-[9.5px] font-semibold text-amber-300/95">
-                  {venue.city} · {formatStadiumStyleLabel(venue.stadiumStyle)}
-                </div>
+        <div className="pointer-events-none absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10">
+          <div className="bg-slate-950/80 backdrop-blur-xs border border-white/15 rounded-xl px-2.5 py-1.5 shadow-md flex items-center gap-2">
+            <span className="text-sm leading-none">{hostNation.flag}</span>
+            <div className="leading-tight">
+              <div className="text-[11px] font-extrabold text-white">
+                {venue.name}
+              </div>
+              <div className="text-[9.5px] font-semibold text-amber-300/95">
+                {venue.city} · {formatStadiumStyleLabel(venue.stadiumStyle)}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Live 3D Shootout Kick Callout Banner */}
+        {phase === 'shootout' && (
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-4 z-20">
+            {shootoutViewState.currentKick ? (
+              <div
+                data-testid="wc-shootout-kick-banner"
+                className={`px-4 py-1.5 rounded-xl border shadow-lg flex items-center gap-2 text-xs font-black uppercase tracking-wider ${
+                  shootoutViewState.currentKick.scored
+                    ? shootoutViewState.currentKick.taker === 'user'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-200'
+                      : 'bg-rose-600 text-white border-rose-300'
+                    : 'bg-slate-900/95 text-amber-300 border-amber-400/50'
+                }`}
+              >
+                <span>
+                  {shootoutViewState.currentKick.taker === 'user' ? team.flag : opponent.flag}
+                </span>
+                <span>
+                  RD {shootoutViewState.currentKick.round} ·{' '}
+                  {shootoutViewState.currentKick.taker === 'user' ? team.code : opponent.code}{' '}
+                  {shootoutViewState.currentKick.scored ? 'SCORES!' : 'SAVED / MISSED!'} (
+                  {shootoutViewState.userScore}–{shootoutViewState.oppScore})
+                </span>
+              </div>
+            ) : (
+              <div
+                data-testid="wc-shootout-kick-banner"
+                className="px-4 py-1.5 rounded-xl border border-amber-400/50 bg-slate-950/90 text-amber-300 shadow-lg text-xs font-black uppercase tracking-wider"
+              >
+                PENALTY SHOOTOUT · STEPPING UP TO THE SPOT
+              </div>
+            )}
           </div>
         )}
 

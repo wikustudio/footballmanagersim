@@ -386,6 +386,118 @@ export const calculateDirectorSynergy = (
   }
 };
 
+// Knuth Poisson sampler for authentic football goal distributions (clamped 0..7)
+export const samplePoissonGoals = (lambda: number, rng: () => number = Math.random): number => {
+  const safeLambda = Math.max(0.05, Math.min(4.2, Number.isFinite(lambda) ? lambda : 1.0));
+  const limit = Math.exp(-safeLambda);
+  let k = 0;
+  let p = 1.0;
+  do {
+    k++;
+    p *= Math.max(1e-12, rng());
+  } while (p > limit && k < 8);
+  return Math.max(0, Math.min(7, k - 1));
+};
+
+// Computes realistic full-match (90 min) expected goals (xG) for World Cup fixtures.
+// Keeps synergy.ovrModifier (+5/+2/0/-2) meaningful while accounting for AI national team camps
+// so matches stay competitive, monotonic with OVR, and faithful to World Cup scoring (~2.5-2.7 goals/match).
+export const computeWorldCupExpectedGoals = (params: {
+  teamOvr: number;
+  oppOvr: number;
+  synergyModifier?: number;
+  squadDirection?: NationalSquadDirection;
+  investment?: NationalFederationInvestment;
+  trainingFocus?: NationalTrainingFocus;
+  preGameDirective?: PreGameDirective;
+  isUserHost?: boolean;
+  isOppHost?: boolean;
+}): { teamXg: number; oppXg: number; effectiveDiff: number } => {
+  // AI national teams also have tournament camps; synergy gives a real relative edge (~45% of raw modifier)
+  let effTeam = params.teamOvr + (params.synergyModifier || 0) * 0.45;
+  let effOpp = params.oppOvr;
+
+  if (params.squadDirection === 'golden_generation') {
+    effTeam += 0.7;
+  } else if (params.squadDirection === 'veteran_stalwarts') {
+    effTeam += 0.6;
+  } else if (params.squadDirection === 'defensive_fortress') {
+    effOpp -= 0.7;
+  }
+
+  if (params.investment === 'tactical_analytics') {
+    effOpp -= 0.7;
+  } else if (params.investment === 'youth_scouting' && params.squadDirection === 'youth_pipeline') {
+    effTeam += 0.7;
+  }
+
+  if (params.trainingFocus === 'high_intensity') {
+    effTeam += 0.6;
+  } else if (params.trainingFocus === 'tactical_masterclass') {
+    if (effOpp > effTeam) effOpp -= 0.8;
+    else effTeam += 0.4;
+  } else if (params.trainingFocus === 'stamina_recovery') {
+    effTeam += 0.4;
+  }
+
+  if (params.isUserHost) effTeam += 1.2;
+  if (params.isOppHost) effOpp += 1.2;
+
+  effTeam = Math.min(100, effTeam);
+  effOpp = Math.min(100, effOpp);
+
+  const effectiveDiff = effTeam - effOpp;
+
+  // Base 1.24 xG per side at parity -> ~2.48 avg goals/match, 36.5% W / 27% D / 36.5% L
+  let teamXg = 1.24 * Math.exp(effectiveDiff * 0.058);
+  let oppXg = 1.24 * Math.exp(-effectiveDiff * 0.058);
+
+  // Squad identity shaping (real defensive/attacking character)
+  if (params.squadDirection === 'defensive_fortress') {
+    teamXg *= 0.94;
+    oppXg *= 0.88;
+  } else if (params.squadDirection === 'youth_pipeline') {
+    teamXg *= 1.06;
+    oppXg *= 1.04;
+  }
+
+  // Pre-game directives with genuine football trade-offs
+  if (params.preGameDirective === 'high_press') {
+    teamXg *= 1.14;
+    oppXg *= effectiveDiff >= 0 ? 1.05 : 1.16;
+  } else if (params.preGameDirective === 'controlled_possession') {
+    teamXg *= 0.96;
+    oppXg *= 0.88;
+  } else if (params.preGameDirective === 'low_block_counter') {
+    if (effectiveDiff < 0) {
+      // Underdog blueprint: soak pressure and counter cleanly
+      oppXg *= 0.78;
+      teamXg *= 1.12;
+    } else {
+      // Too passive when you are the superior team
+      teamXg *= 0.88;
+      oppXg *= 0.90;
+    }
+  } else if (params.preGameDirective === 'direct_wing_play') {
+    teamXg *= 1.12;
+    oppXg *= 1.08;
+  }
+
+  // Modest dead-ball / fitness bump (replaces flat 22%+12% guaranteed late goals)
+  if (params.trainingFocus === 'set_piece_specialist') {
+    teamXg += 0.12;
+  }
+  if (params.investment === 'high_performance_camp') {
+    teamXg += 0.08;
+  }
+
+  return {
+    teamXg: Math.max(0.32, Math.min(3.30, teamXg)),
+    oppXg: Math.max(0.32, Math.min(3.30, oppXg)),
+    effectiveDiff,
+  };
+};
+
 // Simulates the 4-team Group Stage (6 total matches = 3 Matchdays of 2 matches each)
 export const simulateGroupStage = (
   userTeam: NationalTeam,
@@ -449,69 +561,46 @@ export const simulateGroupStage = (
   }> = [];
 
   const simulateFixture = (t1: NationalTeam, t2: NationalTeam) => {
-    let ovr1 = t1.ovr;
-    let ovr2 = t2.ovr;
+    let g1: number;
+    let g2: number;
 
     if (t1.code === userTeam.code) {
-      ovr1 += synergy.ovrModifier;
-      if (trainingFocus === 'high_intensity') ovr1 += 1;
-      if (trainingFocus === 'tactical_masterclass') ovr1 += 1;
-    }
-    if (t2.code === userTeam.code) {
-      ovr2 += synergy.ovrModifier;
-      if (trainingFocus === 'high_intensity') ovr2 += 1;
-      if (trainingFocus === 'tactical_masterclass') ovr2 += 1;
-    }
-
-    if (t1.code === host.code) ovr1 += 1;
-    if (t2.code === host.code) ovr2 += 1;
-
-    const diff = ovr1 - ovr2;
-    let g1 = Math.max(0, Math.floor(Math.random() * 2) + (diff > 0 && Math.random() < 0.42 ? 1 : 0) + (diff > 4 && Math.random() < 0.20 ? 1 : 0));
-    let g2 = Math.max(0, Math.floor(Math.random() * 2) + (diff < 0 && Math.random() < 0.42 ? 1 : 0) + (diff < -4 && Math.random() < 0.20 ? 1 : 0));
-
-    if (t1.code === userTeam.code) {
-      if (preGameDirective === 'high_press') {
-        if (ovr1 >= ovr2 && Math.random() < 0.25) g1 += 1;
-        else if (ovr2 > ovr1 && Math.random() < 0.20) g2 += 1;
-      } else if (preGameDirective === 'low_block_counter') {
-        if (ovr2 > ovr1) {
-          if (g2 > 0 && Math.random() < 0.32) g2 -= 1;
-          if (Math.random() < 0.25) g1 += 1;
-        } else if (g1 > 1 && Math.random() < 0.25) {
-          g1 -= 1;
-        }
-      } else if (preGameDirective === 'controlled_possession') {
-        if (g2 > 0 && Math.random() < 0.28) g2 -= 1;
-        if (g1 > 2 && Math.random() < 0.25) g1 -= 1;
-      } else if (preGameDirective === 'direct_wing_play') {
-        if (Math.random() < 0.25) g1 += 1;
-        if (Math.random() < 0.15 && g2 === 0) g2 += 1;
-      }
+      const { teamXg, oppXg } = computeWorldCupExpectedGoals({
+        teamOvr: t1.ovr,
+        oppOvr: t2.ovr,
+        synergyModifier: synergy.ovrModifier,
+        squadDirection: direction,
+        investment,
+        trainingFocus,
+        preGameDirective,
+        isUserHost: t1.code === host.code,
+        isOppHost: t2.code === host.code,
+      });
+      g1 = samplePoissonGoals(teamXg);
+      g2 = samplePoissonGoals(oppXg);
     } else if (t2.code === userTeam.code) {
-      if (preGameDirective === 'high_press') {
-        if (ovr2 >= ovr1 && Math.random() < 0.25) g2 += 1;
-        else if (ovr1 > ovr2 && Math.random() < 0.20) g1 += 1;
-      } else if (preGameDirective === 'low_block_counter') {
-        if (ovr1 > ovr2) {
-          if (g1 > 0 && Math.random() < 0.32) g1 -= 1;
-          if (Math.random() < 0.25) g2 += 1;
-        } else if (g2 > 1 && Math.random() < 0.25) {
-          g2 -= 1;
-        }
-      } else if (preGameDirective === 'controlled_possession') {
-        if (g1 > 0 && Math.random() < 0.28) g1 -= 1;
-        if (g2 > 2 && Math.random() < 0.25) g2 -= 1;
-      } else if (preGameDirective === 'direct_wing_play') {
-        if (Math.random() < 0.25) g2 += 1;
-        if (Math.random() < 0.15 && g1 === 0) g1 += 1;
-      }
-    }
-
-    if (t1.code === userTeam.code && synergy.level === 'flawless' && g1 < g2 && Math.random() < 0.15) {
-      g1 += 1;
-    } else if (t2.code === userTeam.code && synergy.level === 'flawless' && g2 < g1 && Math.random() < 0.15) {
-      g2 += 1;
+      const { teamXg, oppXg } = computeWorldCupExpectedGoals({
+        teamOvr: t2.ovr,
+        oppOvr: t1.ovr,
+        synergyModifier: synergy.ovrModifier,
+        squadDirection: direction,
+        investment,
+        trainingFocus,
+        preGameDirective,
+        isUserHost: t2.code === host.code,
+        isOppHost: t1.code === host.code,
+      });
+      g2 = samplePoissonGoals(teamXg);
+      g1 = samplePoissonGoals(oppXg);
+    } else {
+      const { teamXg, oppXg } = computeWorldCupExpectedGoals({
+        teamOvr: t1.ovr,
+        oppOvr: t2.ovr,
+        isUserHost: t1.code === host.code,
+        isOppHost: t2.code === host.code,
+      });
+      g1 = samplePoissonGoals(teamXg);
+      g2 = samplePoissonGoals(oppXg);
     }
 
     const row1 = tableMap.get(t1.code)!;
@@ -520,10 +609,10 @@ export const simulateGroupStage = (
     row1.p += 1;
     row2.p += 1;
     row1.gf += g1;
-    row1.ga += g2;
-    row1.gd += (g1 - g2);
     row2.gf += g2;
+    row1.ga += g2;
     row2.ga += g1;
+    row1.gd += (g1 - g2);
     row2.gd += (g2 - g1);
 
     if (g1 > g2) {
@@ -575,6 +664,7 @@ export const simulateGroupStage = (
 };
 
 // Simulates the First Half (minutes 1–45) of an International Match (for Grand Final Halftime Mandate)
+// Uses 45% of full-match xG so H1 + H2 sums cleanly to an authentic 90-minute World Cup Final!
 export const simulateInternationalFirstHalf = (
   team: NationalTeam,
   opp: NationalTeam,
@@ -583,68 +673,23 @@ export const simulateInternationalFirstHalf = (
   coach: NationalCoachProfile,
   synergy: DirectorSynergyResult,
   trainingFocus?: NationalTrainingFocus,
-  preGameDirective?: PreGameDirective
+  preGameDirective?: PreGameDirective,
+  hostNation?: HostNation
 ): InternationalFirstHalfState => {
-  let effectiveTeamOvr = team.ovr + synergy.ovrModifier;
-  let effectiveOppOvr = opp.ovr;
+  const { teamXg, oppXg } = computeWorldCupExpectedGoals({
+    teamOvr: team.ovr,
+    oppOvr: opp.ovr,
+    synergyModifier: synergy.ovrModifier,
+    squadDirection,
+    investment,
+    trainingFocus,
+    preGameDirective,
+    isUserHost: !!hostNation && team.code === hostNation.code,
+    isOppHost: !!hostNation && opp.code === hostNation.code,
+  });
 
-  if (squadDirection === 'golden_generation') {
-    effectiveTeamOvr += 1;
-  } else if (squadDirection === 'youth_pipeline') {
-    const variance = Math.floor(Math.random() * 3) - 1;
-    effectiveTeamOvr += variance;
-  } else if (squadDirection === 'veteran_stalwarts') {
-    effectiveTeamOvr += 1;
-  } else if (squadDirection === 'defensive_fortress') {
-    effectiveOppOvr -= 1;
-  }
-
-  if (investment === 'tactical_analytics') {
-    effectiveOppOvr -= 1;
-  } else if (investment === 'youth_scouting' && squadDirection === 'youth_pipeline') {
-    effectiveTeamOvr += 1;
-  }
-
-  if (trainingFocus === 'high_intensity') {
-    effectiveTeamOvr += 1;
-  } else if (trainingFocus === 'tactical_masterclass') {
-    if (effectiveOppOvr > effectiveTeamOvr) effectiveOppOvr -= 1;
-  } else if (trainingFocus === 'stamina_recovery') {
-    effectiveTeamOvr += 1;
-  }
-
-  // PATCH: Enforce absolute 100 OVR ceiling for international tournaments
-  effectiveTeamOvr = Math.min(100, effectiveTeamOvr);
-  effectiveOppOvr = Math.min(100, effectiveOppOvr);
-
-  const diff = effectiveTeamOvr - effectiveOppOvr;
-
-  let teamGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff > 0 && Math.random() < 0.40 ? 1 : 0));
-  let oppGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff < 0 && Math.random() < 0.40 ? 1 : 0));
-
-  if (preGameDirective === 'high_press') {
-    if (diff >= 0) {
-      if (teamGoals === 0 && Math.random() < 0.25) teamGoals += 1;
-    } else if (Math.random() < 0.20) {
-      oppGoals += 1;
-    }
-  } else if (preGameDirective === 'controlled_possession') {
-    if (oppGoals > 0 && Math.random() < 0.25) oppGoals -= 1;
-  } else if (preGameDirective === 'low_block_counter') {
-    if (effectiveOppOvr > effectiveTeamOvr) {
-      if (oppGoals > 0 && Math.random() < 0.30) oppGoals -= 1;
-      if (teamGoals === 0 && Math.random() < 0.24) teamGoals += 1;
-    } else if (teamGoals > 1 && Math.random() < 0.25) {
-      teamGoals -= 1;
-    }
-  } else if (preGameDirective === 'direct_wing_play') {
-    if (teamGoals === 0 && Math.random() < 0.25) teamGoals += 1;
-    if (Math.random() < 0.15 && oppGoals === 0) oppGoals += 1;
-  }
-
-  if (squadDirection === 'defensive_fortress' && oppGoals > 0 && Math.random() < 0.25) {
-    oppGoals -= 1;
-  }
+  const teamGoals = samplePoissonGoals(teamXg * 0.45);
+  const oppGoals = samplePoissonGoals(oppXg * 0.45);
 
   const minuteEvents: Array<{ minute: number; text: string; isGoal?: boolean; forUser?: boolean }> = [];
 
@@ -695,11 +740,13 @@ export const simulateInternationalFirstHalf = (
 };
 
 // Authentic FIFA penalty shootout simulator (Best-of-5 with early mathematical elimination check + sudden death)
+// Real FIFA World Cup conversion averages ~74%; preparation gives a realistic 69%-79% kick window (~58-65% shootout win rate, never 92% auto-win).
 export const simulateFifaShootout = (
   t1Advantage: number = 0
 ): { t1Pens: number; t2Pens: number; t1Wins: boolean; sequence: WorldCupShootoutKick[] } => {
-  const p1Prob = Math.max(0.60, Math.min(0.88, 0.75 + t1Advantage * 0.02));
-  const p2Prob = Math.max(0.60, Math.min(0.88, 0.75 - t1Advantage * 0.02));
+  const clampedShift = Math.max(-0.05, Math.min(0.05, t1Advantage * 0.008));
+  const p1Prob = 0.74 + clampedShift;
+  const p2Prob = 0.74 - clampedShift;
 
   let s1 = 0;
   let s2 = 0;
@@ -748,10 +795,17 @@ export const simulateFifaShootout = (
   }
 
   // Decisive tiebreak fallback if still tied after 12 rounds
-  s1++;
-  sequence.push({ round: 13, taker: 'user', scored: true });
-  sequence.push({ round: 13, taker: 'opp', scored: false });
-  return { t1Pens: s1, t2Pens: s2, t1Wins: true, sequence };
+  const userWinsSd = Math.random() < 0.5 + clampedShift;
+  if (userWinsSd) {
+    s1++;
+    sequence.push({ round: 13, taker: 'user', scored: true });
+    sequence.push({ round: 13, taker: 'opp', scored: false });
+    return { t1Pens: s1, t2Pens: s2, t1Wins: true, sequence };
+  }
+  s2++;
+  sequence.push({ round: 13, taker: 'user', scored: false });
+  sequence.push({ round: 13, taker: 'opp', scored: true });
+  return { t1Pens: s1, t2Pens: s2, t1Wins: false, sequence };
 };
 
 export const simulateInternationalMatch = (
@@ -765,41 +819,31 @@ export const simulateInternationalMatch = (
   trainingFocus?: NationalTrainingFocus,
   preGameDirective?: PreGameDirective,
   halftimeIntervention?: 'steady' | 'all_out_attack' | 'park_the_bus',
-  firstHalfState?: InternationalFirstHalfState
+  firstHalfState?: InternationalFirstHalfState,
+  hostNation?: HostNation
 ): InternationalMatchResult => {
-  let effectiveTeamOvr = team.ovr + synergy.ovrModifier;
-  let effectiveOppOvr = opp.ovr;
+  const { teamXg, oppXg, effectiveDiff } = computeWorldCupExpectedGoals({
+    teamOvr: team.ovr,
+    oppOvr: opp.ovr,
+    synergyModifier: synergy.ovrModifier,
+    squadDirection,
+    investment,
+    trainingFocus,
+    preGameDirective,
+    isUserHost: !!hostNation && team.code === hostNation.code,
+    isOppHost: !!hostNation && opp.code === hostNation.code,
+  });
 
-  if (squadDirection === 'golden_generation') {
-    effectiveTeamOvr += 1;
-  } else if (squadDirection === 'youth_pipeline') {
-    const variance = Math.floor(Math.random() * 3) - 1;
-    effectiveTeamOvr += variance;
-  } else if (squadDirection === 'veteran_stalwarts') {
-    effectiveTeamOvr += 1;
-  } else if (squadDirection === 'defensive_fortress') {
-    effectiveOppOvr -= 1;
+  // Halftime intervention applies realistic 2nd-half risk/reward trade-offs
+  let shTeamMult = 1.0;
+  let shOppMult = 1.0;
+  if (halftimeIntervention === 'all_out_attack') {
+    shTeamMult = 1.32;
+    shOppMult = 1.24;
+  } else if (halftimeIntervention === 'park_the_bus') {
+    shTeamMult = 0.72;
+    shOppMult = 0.70;
   }
-
-  if (investment === 'tactical_analytics') {
-    effectiveOppOvr -= 1;
-  } else if (investment === 'youth_scouting' && squadDirection === 'youth_pipeline') {
-    effectiveTeamOvr += 1;
-  }
-
-  if (trainingFocus === 'high_intensity') {
-    effectiveTeamOvr += 1;
-  } else if (trainingFocus === 'tactical_masterclass') {
-    if (effectiveOppOvr > effectiveTeamOvr) effectiveOppOvr -= 1;
-  } else if (trainingFocus === 'stamina_recovery') {
-    effectiveTeamOvr += 1;
-  }
-
-  // PATCH: Enforce absolute 100 OVR ceiling for international tournaments
-  effectiveTeamOvr = Math.min(100, effectiveTeamOvr);
-  effectiveOppOvr = Math.min(100, effectiveOppOvr);
-
-  const diff = effectiveTeamOvr - effectiveOppOvr;
 
   let teamGoals: number;
   let oppGoals: number;
@@ -807,27 +851,12 @@ export const simulateInternationalMatch = (
 
   if (firstHalfState) {
     // When first half was already played and displayed at Halftime (e.g. Grand Final)
+    // Sample 2nd half (55% of full-match xG) so H1 + H2 equals authentic 90-min scoring!
     teamGoals = firstHalfState.teamGoals;
     oppGoals = firstHalfState.oppGoals;
 
-    let shTeamGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff > 0 && Math.random() < 0.45 ? 1 : 0));
-    let shOppGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff < 0 && Math.random() < 0.45 ? 1 : 0));
-
-    // Director Halftime Intervention impact in 2nd half
-    if (halftimeIntervention === 'all_out_attack') {
-      if (Math.random() < 0.40) shTeamGoals += 1;
-      if (Math.random() < 0.30) shOppGoals += 1;
-    } else if (halftimeIntervention === 'park_the_bus') {
-      if (shOppGoals > 0 && Math.random() < 0.40) shOppGoals -= 1;
-    }
-
-    if (trainingFocus === 'set_piece_specialist' && (teamGoals + shTeamGoals) <= (oppGoals + shOppGoals) && Math.random() < 0.22) {
-      shTeamGoals += 1;
-    }
-
-    if (investment === 'high_performance_camp' && (teamGoals + shTeamGoals) <= (oppGoals + shOppGoals) && Math.random() < synergy.clutchGoalChance) {
-      shTeamGoals += 1;
-    }
+    const shTeamGoals = samplePoissonGoals(teamXg * 0.55 * shTeamMult);
+    const shOppGoals = samplePoissonGoals(oppXg * 0.55 * shOppMult);
 
     teamGoals += shTeamGoals;
     oppGoals += shOppGoals;
@@ -871,49 +900,13 @@ export const simulateInternationalMatch = (
       ...secondHalfEvents
     ];
   } else {
-    // Full single-simulation match (e.g. Quarter-Final, Semi-Final)
-    teamGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff > 0 && Math.random() < 0.42 ? 1 : 0) + (diff > 4 && Math.random() < 0.20 ? 1 : 0));
-    oppGoals = Math.max(0, Math.floor(Math.random() * 2) + (diff < 0 && Math.random() < 0.42 ? 1 : 0) + (diff < -4 && Math.random() < 0.20 ? 1 : 0));
+    // Full single-simulation match (Quarter-Final, Semi-Final, or direct Grand Final)
+    // Apply halftime intervention cleanly to the 2nd-half share (55%)
+    const effectiveMatchTeamXg = teamXg * (0.45 + 0.55 * shTeamMult);
+    const effectiveMatchOppXg = oppXg * (0.45 + 0.55 * shOppMult);
 
-    if (preGameDirective === 'high_press') {
-      if (diff >= 0) {
-        if (Math.random() < 0.25) teamGoals += 1;
-      } else if (Math.random() < 0.20) {
-        oppGoals += 1;
-      }
-    } else if (preGameDirective === 'controlled_possession') {
-      if (oppGoals > 0 && Math.random() < 0.28) oppGoals -= 1;
-      if (teamGoals > 2 && Math.random() < 0.25) teamGoals -= 1;
-    } else if (preGameDirective === 'low_block_counter') {
-      if (effectiveOppOvr > effectiveTeamOvr) {
-        if (oppGoals > 0 && Math.random() < 0.32) oppGoals -= 1;
-        if (Math.random() < 0.25) teamGoals += 1;
-      } else {
-        if (teamGoals > 1 && Math.random() < 0.25) teamGoals -= 1;
-      }
-    } else if (preGameDirective === 'direct_wing_play') {
-      if (Math.random() < 0.25) teamGoals += 1;
-      if (Math.random() < 0.15 && oppGoals === 0) oppGoals += 1;
-    }
-
-    if (halftimeIntervention === 'all_out_attack') {
-      if (Math.random() < 0.40) teamGoals += 1;
-      if (Math.random() < 0.30) oppGoals += 1;
-    } else if (halftimeIntervention === 'park_the_bus') {
-      if (oppGoals > 0 && Math.random() < 0.40) oppGoals -= 1;
-    }
-
-    if (trainingFocus === 'set_piece_specialist' && teamGoals <= oppGoals && Math.random() < 0.22) {
-      teamGoals += 1;
-    }
-
-    if (investment === 'high_performance_camp' && teamGoals <= oppGoals && Math.random() < synergy.clutchGoalChance) {
-      teamGoals += 1;
-    }
-
-    if (squadDirection === 'defensive_fortress' && oppGoals > 0 && Math.random() < 0.25) {
-      oppGoals -= 1;
-    }
+    teamGoals = samplePoissonGoals(effectiveMatchTeamXg);
+    oppGoals = samplePoissonGoals(effectiveMatchOppXg);
 
     if (teamGoals > 0) {
       const mins: number[] = [];
@@ -970,40 +963,41 @@ export const simulateInternationalMatch = (
       text: `Full-time whistle (90'). Deadlock at ${teamGoals}-${oppGoals}! Heading into Extra Time!`
     });
 
-    // Secondary goal-generation loop for minutes 91-120 with realistic lower goal probabilities
-    let etTeamGoals = 0;
-    let etOppGoals = 0;
-
-    const staminaBoost = trainingFocus === 'stamina_recovery' ? 0.10 : 0;
-    const etTeamProb = 0.18 + (diff > 0 ? 0.08 : 0) + staminaBoost;
-    const etOppProb = 0.18 + (diff < 0 ? 0.08 : 0);
-
-    if (Math.random() < etTeamProb) etTeamGoals += 1;
-    if (Math.random() < etOppProb) etOppGoals += 1;
-
-    // High performance camp clutch goal probability in ET
-    if (investment === 'high_performance_camp' && etTeamGoals <= etOppGoals && Math.random() < (synergy.clutchGoalChance * 0.5)) {
-      etTeamGoals += 1;
-    }
+    // Extra time is 30 mins of tired legs (~26% of 90-min scoring intensity)
+    const staminaMult = trainingFocus === 'stamina_recovery' ? 1.15 : 1.0;
+    const etTeamGoals = Math.min(2, samplePoissonGoals(teamXg * 0.26 * staminaMult));
+    const etOppGoals = Math.min(2, samplePoissonGoals(oppXg * 0.26));
 
     if (etTeamGoals > 0) {
-      const etMin = Math.floor(Math.random() * 28) + 92;
-      minuteEvents.push({
-        minute: etMin,
-        text: `EXTRA TIME GOAL! ${team.name} strike in the ${etMin}th minute! Unbelievable drama!`,
-        isGoal: true,
-        forUser: true
+      const etMins: number[] = [];
+      while (etMins.length < etTeamGoals) {
+        const etMin = Math.floor(Math.random() * 28) + 92;
+        if (!etMins.includes(etMin)) etMins.push(etMin);
+      }
+      etMins.sort((a, b) => a - b).forEach(etMin => {
+        minuteEvents.push({
+          minute: etMin,
+          text: `EXTRA TIME GOAL! ${team.name} strike in the ${etMin}th minute! Unbelievable drama!`,
+          isGoal: true,
+          forUser: true
+        });
       });
       teamGoals += etTeamGoals;
     }
 
     if (etOppGoals > 0) {
-      const etMin = Math.floor(Math.random() * 28) + 92;
-      minuteEvents.push({
-        minute: etMin,
-        text: `EXTRA TIME GOAL! ${opp.name} score in extra time (${etMin}')!`,
-        isGoal: true,
-        forUser: false
+      const etMins: number[] = [];
+      while (etMins.length < etOppGoals) {
+        const etMin = Math.floor(Math.random() * 28) + 92;
+        if (!etMins.includes(etMin) && !minuteEvents.some(e => e.minute === etMin)) etMins.push(etMin);
+      }
+      etMins.sort((a, b) => a - b).forEach(etMin => {
+        minuteEvents.push({
+          minute: etMin,
+          text: `EXTRA TIME GOAL! ${opp.name} score in extra time (${etMin}')!`,
+          isGoal: true,
+          forUser: false
+        });
       });
       oppGoals += etOppGoals;
     }
@@ -1016,13 +1010,13 @@ export const simulateInternationalMatch = (
       // Still tied after 120 minutes of grueling action -> Penalty Shootout!
       pens = true;
       let penBonus = synergy.penaltyBonus;
-      if (investment === 'mental_penalty_protocol') penBonus += 0.25;
-      if (trainingFocus === 'set_piece_specialist') penBonus += 0.20;
-      if (trainingFocus === 'stamina_recovery') penBonus += 0.15;
-      if (halftimeIntervention === 'park_the_bus') penBonus += 0.15;
+      if (investment === 'mental_penalty_protocol') penBonus += 0.20;
+      if (trainingFocus === 'set_piece_specialist') penBonus += 0.14;
+      if (trainingFocus === 'stamina_recovery') penBonus += 0.08;
+      if (halftimeIntervention === 'park_the_bus') penBonus += 0.06;
 
-      // Authentic FIFA penalty shootout simulator (Best-of-5 with early elimination + sudden death)
-      const t1Advantage = Math.round(diff * 0.5 + penBonus * 10);
+      // Calibrated advantage keeps shootouts dramatic (~50%..65% for the prepared side)
+      const t1Advantage = Math.max(-5, Math.min(5, Math.round(effectiveDiff * 0.25 + penBonus * 7)));
       const shootout = simulateFifaShootout(t1Advantage);
       teamPenGoals = shootout.t1Pens;
       oppPenGoals = shootout.t2Pens;

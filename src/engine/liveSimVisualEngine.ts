@@ -24,6 +24,11 @@ import {
   resolveDivisionClubs,
 } from './standingsEngine';
 import { resolveCuratedTier1StadiumStyle } from './tier1StadiumDesigns';
+import {
+  computeCupTieOdds,
+  computeMatchdayReadinessModifier,
+  getTacticalStyleOffset,
+} from './matchOddsEngine';
 
 export type { LiveStandingsRow };
 
@@ -1268,10 +1273,18 @@ const FORMATION_TEMPLATES: Record<
   },
 };
 
+export interface ShootoutChoreographyState {
+  active: boolean;
+  taker: 'home' | 'away';
+  scored: boolean | null;
+  round: number;
+  kickIndex: number;
+}
+
 /**
  * Pure choreography engine computing 11v11 tactical formations, diverse on-pitch play sequences
  * (Rondo triangles, Wing overlaps, Diagonal switches, Through-balls, High-press traps,
- * Corner & Free-kick routines, Driven/Curled shots, and Calm crowd + player celebrations).
+ * Corner & Free-kick routines, Driven/Curled shots, Penalty Shootouts, and Calm crowd + player celebrations).
  */
 export const computeLiveMatchChoreography = (params: {
   tactic?: string;
@@ -1279,6 +1292,7 @@ export const computeLiveMatchChoreography = (params: {
   tick: number;
   isLive?: boolean;
   outcome?: MatchdayOutcome;
+  shootout?: ShootoutChoreographyState | null;
 }): LiveMatchChoreography => {
   const tacticKey = normalizeTacticalSystem(params.tactic);
   const tpl = FORMATION_TEMPLATES[tacticKey];
@@ -1295,6 +1309,153 @@ export const computeLiveMatchChoreography = (params: {
     params.outcome && params.outcome.userGoals === 0 && params.outcome.oppGoals > 0 ? 'away' : 'home';
 
   const effectivePhase: MatchPhase = params.phase === 'idle' ? 'buildup' : params.phase;
+
+  // Dedicated 3D Penalty Shootout choreography inside the live stadium bowl
+  if (params.shootout?.active) {
+    const so = params.shootout;
+    const isHomeTaker = so.taker === 'home';
+    const cornerSign = (so.round + so.kickIndex) % 2 === 0 ? -1 : 1;
+    const targetV = cornerSign * 14;
+    const keeperDiveV = so.scored === null ? 0 : so.scored ? -cornerSign * 12 : targetV;
+
+    // Outfield players line up shoulder-to-shoulder across the halfway line (authentic FIFA shootout formation)
+    const homePlayers: PitchPlayerNode[] = tpl.home.map((p, idx) => {
+      if (p.role === 'GK') {
+        if (!isHomeTaker) {
+          return {
+            u: 196,
+            v: keeperDiveV,
+            z: so.scored === null ? 0 : 1.4,
+            gk: true,
+            role: 'GK',
+            pose: so.scored === null ? 'normal' : 'diving',
+            hasSpotlight: so.scored === false,
+          };
+        }
+        return { u: 126, v: -56, z: 0, gk: true, role: 'GK', pose: 'normal' };
+      }
+      if (isHomeTaker && idx === 10) {
+        return {
+          u: 160,
+          v: 0,
+          z: so.scored ? 0.8 : 0.3,
+          role: 'FWD',
+          pose: so.scored ? 'arms_up' : so.scored === false ? 'normal' : 'shooting',
+          hasSpotlight: true,
+          celebratingWithCrowd: so.scored === true,
+        };
+      }
+      const lineIdx = idx - 1;
+      return {
+        u: -10 + (lineIdx % 2) * 4,
+        v: -62 + lineIdx * 13.5,
+        z: 0,
+        role: p.role,
+        pose: so.scored === true && isHomeTaker ? 'arms_up' : 'normal',
+      };
+    });
+
+    const awayPlayers: PitchPlayerNode[] = tpl.away.map((p, idx) => {
+      if (p.role === 'GK') {
+        if (isHomeTaker) {
+          return {
+            u: 196,
+            v: keeperDiveV,
+            z: so.scored === null ? 0 : 1.4,
+            gk: true,
+            role: 'GK',
+            pose: so.scored === null ? 'normal' : 'diving',
+            hasSpotlight: so.scored === false,
+          };
+        }
+        return { u: 126, v: 56, z: 0, gk: true, role: 'GK', pose: 'normal' };
+      }
+      if (!isHomeTaker && idx === 10) {
+        return {
+          u: 160,
+          v: 0,
+          z: so.scored ? 0.8 : 0.3,
+          role: 'FWD',
+          pose: so.scored ? 'arms_up' : so.scored === false ? 'normal' : 'shooting',
+          hasSpotlight: true,
+          celebratingWithCrowd: so.scored === true,
+        };
+      }
+      const lineIdx = idx - 1;
+      return {
+        u: 10 - (lineIdx % 2) * 4,
+        v: -62 + lineIdx * 13.5,
+        z: 0,
+        role: p.role,
+        pose: so.scored === true && !isHomeTaker ? 'arms_up' : 'normal',
+      };
+    });
+
+    const ball =
+      so.scored === null
+        ? { u: 163, v: 0, z: 0.6, inNet: false }
+        : so.scored
+        ? { u: 201, v: targetV, z: 3.6, inNet: true }
+        : { u: 193, v: targetV, z: 2.2, inNet: false };
+
+    const shotTrajectory: ShotTrajectoryArc | null =
+      so.scored === null
+        ? null
+        : {
+            fromU: 160,
+            fromV: 0,
+            fromZ: 0.7,
+            ctrlU: 180,
+            ctrlV: targetV * 0.55,
+            ctrlZ: so.scored ? 5.2 : 3.4,
+            toU: so.scored ? 201 : 194,
+            toV: targetV,
+            toZ: so.scored ? 4.4 : 2.6,
+            speedKmh: so.scored ? 109 : 96,
+            xg: 0.76,
+            isGoal: so.scored,
+            label: so.scored ? 'PENALTY SCORED!' : 'SAVED!',
+          };
+
+    const duelRing: PitchDuelRing =
+      so.scored === false
+        ? { u: 194, v: targetV, kind: 'save', label: 'GK Shootout Save' }
+        : { u: 178, v: 0, kind: 'penalty', label: `Round ${so.round} · Spot Kick` };
+
+    return {
+      tacticKey,
+      formationCode: tpl.formationCode,
+      phase: so.scored ? 'goal' : 'setpiece',
+      phaseLabel: `Penalty Shootout · Round ${so.round}`,
+      playPattern: 'FIFA Penalty Shootout',
+      headlineCallout:
+        so.scored === null
+          ? `Round ${so.round} · Taker steps up to the 12-yard spot`
+          : so.scored
+          ? `Round ${so.round} · Clinical finish from the spot!`
+          : `Round ${so.round} · Goalkeeper denies the spot kick!`,
+      scoringSide: isHomeTaker ? 'home' : 'away',
+      homePlayers,
+      awayPlayers,
+      ball,
+      shotTrajectory,
+      tacticalLinks: [],
+      duelRing,
+      crowdCelebration: so.scored
+        ? {
+            level: 'goal_eruption',
+            armsUpRatio: 0.76,
+            scarfUpRatio: 0.6,
+            focusEnd: isHomeTaker ? 'home' : 'away',
+          }
+        : {
+            level: 'excited',
+            armsUpRatio: 0.56,
+            scarfUpRatio: 0.45,
+            focusEnd: 'both',
+          },
+    };
+  }
 
   // Cohesive team-block longitudinal shift so lines move together realistically
   const phaseShift =
@@ -2792,21 +2953,51 @@ export const checkSupercupEligibility = (
   };
 };
 
+export const computeSupercupWinOdds = (
+  state: GameState,
+  eligibility: SupercupEligibility,
+  stance: 'high_press' | 'balanced' | 'counter'
+): { winProbPct: number; effectiveDiff: number; readinessMod: number } => {
+  const userBase = state.club.baseOvr || 75;
+  const oppBase = eligibility.opponent.baseOvr || 75;
+  const rawDiff = userBase - oppBase;
+  const stanceChoice =
+    stance === 'high_press'
+      ? 'Gegenpressing'
+      : stance === 'counter'
+      ? 'Counter-Attack'
+      : 'Tiki-Taka';
+  const styleOffset = getTacticalStyleOffset(stanceChoice, state.tactic, state.currentCoach?.style);
+  const readiness = computeMatchdayReadinessModifier({
+    morale: state.club.morale,
+    hasCoach: Boolean(state.currentCoach),
+    hasNewManagerBounce: Boolean(state.hasNewManagerBounce),
+    isUnderdog: rawDiff <= -3,
+    hiddenAttributes: state.currentCoach?.hiddenAttributes,
+  });
+  const underdogCounterBoost = stance === 'counter' && rawDiff <= -2 ? 1.2 : 0;
+  const effectiveDiff = rawDiff + styleOffset * 0.65 + readiness.totalOvrMod + underdogCounterBoost;
+  const odds = computeCupTieOdds(effectiveDiff);
+  return {
+    winProbPct: odds.advancePct,
+    effectiveDiff,
+    readinessMod: readiness.totalOvrMod,
+  };
+};
+
 export const resolveSupercupMatch = (
   state: GameState,
   eligibility: SupercupEligibility,
   stance: 'high_press' | 'balanced' | 'counter'
 ): SupercupResult => {
-  const stanceBonus = stance === 'high_press' ? 1.5 : stance === 'counter' ? 0.8 : 1.0;
-  const userEff = (state.club.baseOvr || 75) + ((state.club.morale || 80) - 75) * 0.08 + stanceBonus;
-  const oppEff = eligibility.opponent.baseOvr || 75;
-  const diff = userEff - oppEff;
+  const { effectiveDiff } = computeSupercupWinOdds(state, eligibility, stance);
 
   const h1 = deterministicHash(`sc-${state.year}-${state.club.id}-${stance}-u`);
   const h2 = deterministicHash(`sc-${state.year}-${state.club.id}-${stance}-o`);
+  const tempoBoost = stance === 'high_press' ? 0.35 : stance === 'counter' ? -0.22 : 0.05;
 
-  let ourScore = Math.max(0, Math.min(5, Math.round(1.35 + diff * 0.08 + h1 * 1.9)));
-  let oppScore = Math.max(0, Math.min(4, Math.round(1.15 - diff * 0.06 + h2 * 1.7)));
+  const ourScore = Math.max(0, Math.min(5, Math.round(1.25 + tempoBoost + effectiveDiff * 0.075 + h1 * 1.85)));
+  const oppScore = Math.max(0, Math.min(5, Math.round(1.20 + tempoBoost * 0.7 - effectiveDiff * 0.065 + h2 * 1.75)));
 
   let won = ourScore > oppScore;
   let decidedOnPens = false;
@@ -2816,9 +3007,22 @@ export const resolveSupercupMatch = (
   if (ourScore === oppScore) {
     decidedOnPens = true;
     const penRoll = deterministicHash(`sc-pen-${state.year}-${state.club.id}-${stance}`);
-    won = penRoll + diff * 0.02 >= 0.45;
-    ourPenScore = won ? 5 : 3;
-    oppPenScore = won ? 4 : 4;
+    const penWinThreshold = Math.max(0.32, Math.min(0.68, 0.50 + effectiveDiff * 0.014));
+    won = penRoll < penWinThreshold;
+    const penPairs: Array<[number, number]> = [
+      [5, 4],
+      [4, 3],
+      [5, 3],
+      [4, 2],
+      [6, 5],
+      [7, 6],
+    ];
+    const pairIdx = Math.floor(
+      deterministicHash(`sc-pen-score-${state.year}-${state.club.id}-${stance}`) * penPairs.length
+    ) % penPairs.length;
+    const [wPen, lPen] = penPairs[pairIdx];
+    ourPenScore = won ? wPen : lPen;
+    oppPenScore = won ? lPen : wPen;
   }
 
   return {

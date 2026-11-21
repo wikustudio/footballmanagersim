@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameState, SupercupResult } from '../types';
-import { SupercupEligibility, resolveSupercupMatch } from '../engine/liveSimVisualEngine';
+import { SupercupEligibility, computeSupercupWinOdds, resolveSupercupMatch } from '../engine/liveSimVisualEngine';
 import { formatMoney, formatNum } from '../data/gameConstants';
 import { ClubLogo } from './ClubLogo';
 import { BroadcastBadge } from './BroadcastBadge';
@@ -54,6 +54,8 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
   }, [isOpen, result]);
 
   if (!isOpen || !eligibility) return null;
+
+  const supercupOdds = computeSupercupWinOdds(gameState, eligibility, stance);
 
   const handleKickoff = () => {
     if (hasKickedOffRef.current || result) return;
@@ -147,7 +149,12 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
                   VS
                 </div>
               )}
-              <div className="text-[10px] font-semibold text-[#6B7280] mt-1.5 tabular-nums">
+              {!result && (
+                <div className="text-[10px] font-bold text-emerald-700 mt-1 tabular-nums">
+                  Win Odds: {supercupOdds.winProbPct}%
+                </div>
+              )}
+              <div className="text-[10px] font-semibold text-[#6B7280] mt-1 tabular-nums">
                 Prize Pool: {formatMoney(eligibility.prizeK)}
               </div>
             </div>
@@ -238,7 +245,7 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
                 onClick={handleComplete}
                 className="w-full py-3 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-extrabold transition cursor-pointer"
               >
-                Collect Silverware & Start Season →
+                {result.won ? 'Collect Silverware & Start Season →' : 'Continue to Season Kickoff →'}
               </button>
             </div>
           )}

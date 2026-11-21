@@ -52,6 +52,7 @@ import {
   resolveSeasonSnapshotView,
   resolveStandingsForSeasonSnapshot,
 } from '../utils/seasonSnapshotHelper';
+import { evaluateTrophyHunterMilestones } from '../engine/dynastyMilestonesEngine';
 
 export interface InlineSimState {
   active: boolean;
@@ -376,6 +377,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
   const baseExpandCost = actionCosts.stadium || stadiumOptions[0]?.cost || 2500;
   const progressPct = Math.round((playedMatchdays / Math.max(1, totalMds)) * 100);
   const totalTrophiesCount = state.totals?.trophies || 0;
+  const legacyMilestoneSummary = useMemo(() => evaluateTrophyHunterMilestones(state), [state]);
   const roadmapTotal = state.boardVision?.objectives?.length || 4;
   const roadmapDone = (state.boardVision?.objectives || []).filter(
     (o) => o.isCompleted || o.currentValue >= o.targetValue
@@ -2652,6 +2654,16 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                 </div>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onOpenManagerProfile}
+              className="w-full mt-2.5 px-3 py-2 rounded-xl bg-[#FAF9F6] hover:bg-[#F2EFE9] border border-[#E6E3DC] flex items-center justify-between text-xs transition cursor-pointer"
+            >
+              <span className="font-semibold text-[#4B5563]">Legacy Milestones</span>
+              <span className="font-extrabold text-amber-800 tabular-nums">
+                {legacyMilestoneSummary.unlockedCount} / {legacyMilestoneSummary.totalCount} →
+              </span>
+            </button>
           </div>
           <button
             type="button"

@@ -125,6 +125,12 @@ import {
   getStadiumArchitectureRemodelCostK,
   isStadiumStyleOwned,
 } from './engine/campusAndBowlGeometry';
+import {
+  computeCupQfQualificationProb,
+  computeMatchdayReadinessModifier,
+  computeThreeWayOdds,
+} from './engine/matchOddsEngine';
+import { computeEndgameRivalArmsRace } from './engine/dynastyMilestonesEngine';
 import { ModalType, TrophyModal } from './components/TrophyModal';
 import { ToastContainer, ToastItem } from './components/ToastContainer';
 import { syncGameStoreClub } from './store/useGameStore';
@@ -7538,27 +7544,22 @@ export default function App() {
         }
 
         if (!isReserve && qualifiesCL) {
-            let clQfChance = Math.max(0.15, (adjOvr - 75) / 25);
-             // European Cup OVR 85+ -> 95%
-            if (isContinentalLegend) clQfChance += 0.25;
-            if (Math.random() < Math.min(0.95, clQfChance)) {
+            const clQfChance = computeCupQfQualificationProb('cl', adjOvr, { isSpecialist: isContinentalLegend });
+            if (Math.random() < clQfChance) {
                 activeQFCups.push('cl');
             } else {
                 state.cupProgress['cl'] = 'eliminated_early';
             }
         } else if (!isReserve && qualifiesEL) {
-            let elQfChance = Math.max(0.18, (adjOvr - 70) / 25);
-             // Cup Winners Cup OVR 70+ -> 95%
-            if (isContinentalLegend) elQfChance += 0.25;
-            if (Math.random() < Math.min(0.95, elQfChance)) {
+            const elQfChance = computeCupQfQualificationProb('el', adjOvr, { isSpecialist: isContinentalLegend });
+            if (Math.random() < elQfChance) {
                 activeQFCups.push('el');
             } else {
                 state.cupProgress['el'] = 'eliminated_early';
             }
         } else if (!isReserve && qualifiesECL) {
-            let eclQfChance = Math.max(0.20, (adjOvr - 65) / 25);
-            if (isContinentalLegend) eclQfChance += 0.25;
-            if (Math.random() < Math.min(0.95, eclQfChance)) {
+            const eclQfChance = computeCupQfQualificationProb('ecl', adjOvr, { isSpecialist: isContinentalLegend });
+            if (Math.random() < eclQfChance) {
                 activeQFCups.push('ecl');
             } else {
                 state.cupProgress['ecl'] = 'eliminated_early';
@@ -7568,11 +7569,11 @@ export default function App() {
         // Domestic
         const playsNationalCup = !isReserve && (tier <= 3 || state.regionalCupWinner);
         if (playsNationalCup) {
-            let dfbQfChance = Math.max(0.18, (effectiveOvr - 65) / 35);
-             // FDBG Pokal OVR 75+ -> 95%
-            if (tier > 3 && state.regionalCupWinner) dfbQfChance = 0.05;
-            if (isCupSpecialist) dfbQfChance += 0.30;
-            if (Math.random() < Math.min(0.95, dfbQfChance)) {
+            const dfbQfChance = computeCupQfQualificationProb('dfb', effectiveOvr, {
+                isSpecialist: isCupSpecialist,
+                isTier4RegionalWildcard: tier > 3 && !!state.regionalCupWinner,
+            });
+            if (Math.random() < dfbQfChance) {
                 activeQFCups.push('dfb');
             } else {
                 state.cupProgress['dfb'] = 'eliminated_early';
@@ -7580,10 +7581,8 @@ export default function App() {
         }
         const playsRegCup = !isReserve && ((state.club.country || 'GER') === 'TUR' ? tier === 3 : tier >= 4);
         if (playsRegCup) {
-            let regQfChance = Math.max(0.35, (effectiveOvr - 50) / 40);
-             // Regional Cup OVR >40 -> 95%
-            if (isCupSpecialist) regQfChance += 0.30;
-            if (Math.random() < Math.min(0.95, regQfChance)) {
+            const regQfChance = computeCupQfQualificationProb('reg', effectiveOvr, { isSpecialist: isCupSpecialist });
+            if (Math.random() < regQfChance) {
                 activeQFCups.push('reg');
             } else {
                 state.cupProgress['reg'] = 'eliminated_early';
@@ -7592,9 +7591,8 @@ export default function App() {
 
         // Secondary Cup (ENG tier 1-4)
         if (!isReserve && (state.club.country || 'GER') === 'ENG' && tier <= 4) {
-            let eflQfChance = Math.max(0.15, (effectiveOvr - 65) / 35);
-            if (isCupSpecialist) eflQfChance += 0.25;
-            if (Math.random() < Math.min(0.95, eflQfChance)) {
+            const eflQfChance = computeCupQfQualificationProb('efl', effectiveOvr, { isSpecialist: isCupSpecialist });
+            if (Math.random() < eflQfChance) {
                 activeQFCups.push('efl');
             } else {
                 state.cupProgress['efl'] = 'eliminated_early';
@@ -8478,12 +8476,18 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
         matchOpponent.baseOvr = Math.min(99, Math.max(10, matchOpponent.baseOvr));
         
-        // Calculate and expose the baseline win probability for UI transparency
-        const ovrDelta = state.club.baseOvr - matchOpponent.baseOvr;
-        let winProb = Math.max(5, Math.min(95, 50 + (ovrDelta * 2.5)));
-        if (ddType === 'relegation' && state.currentCoach?.strength === 'Relegation Specialist') {
-            winProb = Math.min(95, winProb + 15); // Flat 15% win prob boost for survival
-        }
+        // Calculate and expose the honest 3-way baseline win probability for UI transparency
+        const ddReadiness = computeMatchdayReadinessModifier({
+            morale: state.club.morale,
+            hasCoach: Boolean(state.currentCoach),
+            hasNewManagerBounce: Boolean(state.hasNewManagerBounce),
+            isUnderdog: state.club.baseOvr < matchOpponent.baseOvr,
+            hiddenAttributes: state.currentCoach?.hiddenAttributes,
+        });
+        const ovrDelta = state.club.baseOvr + ddReadiness.totalOvrMod - matchOpponent.baseOvr;
+        const relegationSpecialistBonus =
+            ddType === 'relegation' && state.currentCoach?.strength === 'Relegation Specialist' ? 10 : 0;
+        const winProb = computeThreeWayOdds(ovrDelta, relegationSpecialistBonus).winPct;
 
         ddOpponentName = matchOpponent.name;
         setDecisionDay({ resolve, rivalName: finalRivalName, userPts: userPreGamePts, userGd: userPreGameGd, rivalPts: rivalPreGamePts, rivalGd: rivalPreGameGd, opponentName: matchOpponent.name, opponentOvr: Math.min(99, matchOpponent.baseOvr), ddType, isBottomTier, isCrossTierPlayoff, pointsDeducted, winProb, userPos: approxPos });
@@ -11212,6 +11216,26 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     const yearsSinceChallenger = completedSeasonYear - lastChallengerYear;
     const isInitialThreePeat = state.consecutiveTitles === 3 && !state.superVillainRivalId;
     const isCooldownElapsed = state.consecutiveTitles >= 3 && yearsSinceChallenger >= 3 && Math.random() < 0.65;
+
+    // Endgame Dynasty Arms Race: when user builds a 92+ OVR Tier 1 juggernaut winning consecutive titles,
+    // top 2 domestic challengers invest to stay within striking distance without nerfing the player's squad.
+    if (seasonLeague === 1 && state.club.baseOvr >= 92 && (state.consecutiveTitles || 0) >= 2) {
+      const sameCountryTier1 = newClubsDb.filter(
+        c => c.tier === 1 && (c.country || 'GER') === (state.club.country || 'GER')
+      );
+      const armsRaceUpdates = computeEndgameRivalArmsRace(
+        state.club.id,
+        state.club.baseOvr,
+        state.consecutiveTitles || 0,
+        sameCountryTier1
+      );
+      for (const upd of armsRaceUpdates) {
+        const target = newClubsDb.find(c => c.id === upd.clubId);
+        if (target) {
+          target.baseOvr = upd.newOvr;
+        }
+      }
+    }
 
     if (seasonLeague === 1 && (isInitialThreePeat || isCooldownElapsed)) {
       const rivals = newClubsDb.filter(c => c.id !== state.club.id && c.tier === 1 && c.country === (state.club.country || 'GER'));

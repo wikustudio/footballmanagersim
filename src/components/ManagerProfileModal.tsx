@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { GameState } from '../types';
 import { calculateClubReputation, getManagerStandingTier, getManagerStandingShortTitle } from '../data/gameConstants';
 import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
+import { evaluateTrophyHunterMilestones } from '../engine/dynastyMilestonesEngine';
 
 interface ManagerProfileModalProps {
   state: GameState;
@@ -29,6 +30,7 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
   const totalTrophies = state.totals?.trophies ?? (state.trophies?.length || 0);
   const seasonsManaged = state.history?.length || 0;
   const worldCupWins = state.worldCupTrophies || state.internationalTrophies || 0;
+  const trophyHunterSummary = useMemo(() => evaluateTrophyHunterMilestones(state), [state]);
 
   // Commercial leverage calculation
   const sponsorBonusPct = Math.round((rep / 100) * 35);
@@ -525,6 +527,59 @@ export const ManagerProfileModal: React.FC<ManagerProfileModalProps> = ({
                   +{sponsorBonusPct}% {isDe ? 'Bonus' : 'Sponsor Value'}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Trophy Hunter Legacy Milestones */}
+          <div className="bg-[#FAF9F6] rounded-2xl p-3 sm:p-4 border border-[#E6E3DC]">
+            <div className="flex items-center justify-between mb-2.5 gap-2">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#6B7280]">
+                Trophy Hunter Legacy Milestones
+              </div>
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg tabular-nums">
+                {trophyHunterSummary.unlockedCount} / {trophyHunterSummary.totalCount} Unlocked
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {trophyHunterSummary.milestones.map(m => (
+                <div
+                  key={m.id}
+                  className={`rounded-xl p-2.5 border flex items-start gap-2.5 transition ${
+                    m.unlocked
+                      ? m.tier === 'platinum'
+                        ? 'bg-amber-50/70 border-amber-300'
+                        : 'bg-emerald-50/60 border-emerald-200'
+                      : 'bg-white border-[#E6E3DC] opacity-80'
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs ${
+                      m.unlocked
+                        ? m.tier === 'platinum'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-[#F6F5F1] text-[#6B7280] border border-[#E6E3DC]'
+                    }`}
+                  >
+                    <i className={`fa-solid ${m.icon}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-[#18191F] truncate">{m.title}</span>
+                      <span
+                        className={`text-[10px] font-bold tabular-nums shrink-0 ${
+                          m.unlocked ? 'text-emerald-700' : 'text-[#6B7280]'
+                        }`}
+                      >
+                        {m.unlocked ? '✓ ' : ''}
+                        {m.progressLabel}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#6B7280] leading-snug mt-0.5">{m.description}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

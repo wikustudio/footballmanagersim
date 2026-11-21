@@ -15,6 +15,15 @@ import {
   isDirectHeadToHeadMatch,
   resolveDecisionDayOutcome,
 } from '../engine/decisionDayEngine';
+import {
+  getTacticalAdvantage,
+  getTacticalStyleOffset,
+  computeThreeWayOdds,
+  computeSetPieceThreeWayOdds,
+  computeMatchdayReadinessModifier,
+  generateRealisticMatchScoreline,
+  ThreeWayOdds,
+} from '../engine/matchOddsEngine';
 
 interface DecisionDayModalProps {
   resolve: (result: {
@@ -95,6 +104,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
   
   const intervalRef = useRef<any>(null);
   const timeoutRef = useRef<any>(null);
+  const pendingFinishRef = useRef<(() => void) | null>(null);
   const isResolvedRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const matchScrollRef = useRef<HTMLDivElement | null>(null);
@@ -456,103 +466,37 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     }
   }, [opponentOvr, playerOvr]);
 
-  const executeMatch = (myEffectiveOvr: number, flatWinProb: number | null, directiveText: string, specialDesc: string) => {
+  const executeMatch = (
+    myEffectiveOvr: number,
+    explicitOdds: ThreeWayOdds | null,
+    directiveText: string,
+    specialDesc: string
+  ) => {
     setAppliedDirective(directiveText);
 
-    const baseDrawProb = 0.26;
-    let rawWinShare = 0.50;
-    if (flatWinProb !== null) {
-      rawWinShare = Math.max(0.05, Math.min(0.95, flatWinProb));
-    } else {
-      const ovrDelta = myEffectiveOvr - localOpponentOvr;
-      rawWinShare = Math.max(0.05, Math.min(0.95, 0.50 + (ovrDelta * 0.025)));
-    }
-
-    // 3-Way Probabilities: 26% base draw chance, non-draw share (74%) partitioned by relative strength
-    const drawProb = baseDrawProb;
-    const winProb = rawWinShare * (1 - drawProb);
-    const lossProb = (1 - rawWinShare) * (1 - drawProb);
+    const ovrDelta = myEffectiveOvr - localOpponentOvr;
+    const odds =
+      explicitOdds ||
+      computeThreeWayOdds(ovrDelta, isRelegationSpecialistBoost ? 10 : 0);
 
     const matchOutcomeRoll = Math.random();
     let outcome: 'win' | 'draw' | 'loss';
-    if (matchOutcomeRoll < winProb) {
+    if (matchOutcomeRoll < odds.win) {
       outcome = 'win';
-    } else if (matchOutcomeRoll < winProb + drawProb) {
+    } else if (matchOutcomeRoll < odds.win + odds.draw) {
       outcome = 'draw';
     } else {
       outcome = 'loss';
     }
 
     const isWin = outcome === 'win';
-    let finalScoreMe = 0;
-    let finalScoreOpp = 0;
-    const r = Math.random();
-
-    if (outcome === 'win') {
-      if (r < 0.20) {
-        // 1. Gritty Defensive Grinds (20%): 1-0, 2-0
-        const grittyWins = [[1, 0], [1, 0], [2, 0]];
-        const pick = grittyWins[Math.floor(Math.random() * grittyWins.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.52) {
-        // 2. Balanced Clashes (32%): 2-1, 3-1, 3-0
-        const balancedWins = [[2, 1], [2, 1], [3, 1], [3, 1], [3, 0]];
-        const pick = balancedWins[Math.floor(Math.random() * balancedWins.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.74) {
-        // 3. High-Scoring Entertainers (22%): 3-2, 4-2, 4-1
-        const highScoringWins = [[3, 2], [3, 2], [4, 2], [4, 1]];
-        const pick = highScoringWins[Math.floor(Math.random() * highScoringWins.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.88) {
-        // 4. Wild Thrillers (14%): 4-3, 5-2, 5-3, 5-4
-        const wildWins = [[4, 3], [5, 2], [5, 3], [5, 4]];
-        const pick = wildWins[Math.floor(Math.random() * wildWins.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else {
-        // 5. Statement Blowouts & Routs (12%): 4-0, 5-0, 5-1, 6-0, 6-1, 6-2, 7-0, 7-1
-        const blowouts = [[4, 0], [5, 0], [5, 1], [6, 0], [6, 1], [6, 2], [7, 0], [7, 1]];
-        const pick = blowouts[Math.floor(Math.random() * blowouts.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      }
-    } else if (outcome === 'draw') {
-      // Authentic Draw scorelines (26% base occurrence): 0-0, 1-1, 2-2, 3-3, 4-4
-      const draws = [[0, 0], [1, 1], [1, 1], [2, 2], [2, 2], [3, 3], [4, 4]];
-      const pick = draws[Math.floor(Math.random() * draws.length)];
-      finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-    } else {
-      // Realistic Defeats
-      if (r < 0.23) {
-        // 1. Gritty Defensive Losses (23%): 0-1, 0-2
-        const grittyLosses = [[0, 1], [0, 1], [0, 2]];
-        const pick = grittyLosses[Math.floor(Math.random() * grittyLosses.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.57) {
-        // 2. Balanced Losses (34%): 1-2, 1-3, 0-3
-        const balancedLosses = [[1, 2], [1, 2], [1, 3], [1, 3], [0, 3]];
-        const pick = balancedLosses[Math.floor(Math.random() * balancedLosses.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.80) {
-        // 3. High-Scoring Losses (23%): 2-3, 2-4, 1-4
-        const highScoringLosses = [[2, 3], [2, 3], [2, 4], [1, 4]];
-        const pick = highScoringLosses[Math.floor(Math.random() * highScoringLosses.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else if (r < 0.93) {
-        // 4. Wild Thrillers (13%): 3-4, 2-5, 3-5, 4-5
-        const wildLosses = [[3, 4], [2, 5], [3, 5], [4, 5]];
-        const pick = wildLosses[Math.floor(Math.random() * wildLosses.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      } else {
-        // 5. Heavy Blowouts (7%): 0-4, 0-5, 1-5, 0-6, 1-6, 2-6, 0-7, 1-7
-        const blowouts = [[0, 4], [0, 5], [1, 5], [0, 6], [1, 6], [2, 6], [0, 7], [1, 7]];
-        const pick = blowouts[Math.floor(Math.random() * blowouts.length)];
-        finalScoreMe = pick[0]; finalScoreOpp = pick[1];
-      }
-    }
+    const scoreline = generateRealisticMatchScoreline(outcome, ovrDelta);
+    const finalScoreMe = scoreline.me;
+    const finalScoreOpp = scoreline.opp;
 
     const isDraw = finalScoreMe === finalScoreOpp;
-    const isComeback = isWin && finalScoreOpp > 0 && Math.random() > 0.5;
-    const oppComeback = !isWin && !isDraw && finalScoreMe > 0 && Math.random() > 0.5;
+    const isComeback = isWin && finalScoreOpp > 0 && Math.random() > 0.58;
+    const oppComeback = !isWin && !isDraw && finalScoreMe > 0 && Math.random() > 0.58;
 
     const eventTimeline: { min: number, isMe: boolean, text: string }[] = [];
 
@@ -607,6 +551,106 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     let currentMe = 0;
     let currentOpp = 0;
 
+    const finalizeCurrentLeg = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      intervalRef.current = null;
+      timeoutRef.current = null;
+      pendingFinishRef.current = null;
+      setMatchMinute(90);
+      setLiveScore({ me: finalScoreMe, opp: finalScoreOpp });
+
+      if (isTwoLegged && currentLeg === 1) {
+        const scoreStr = `${finalScoreMe}-${finalScoreOpp}`;
+        setLeg1Result({
+          me: finalScoreMe,
+          opp: finalScoreOpp,
+          score: scoreStr,
+          tactic: directiveText || 'Directive'
+        });
+        setStage('leg1_summary');
+        return;
+      }
+
+      let wonActual = finalScoreMe > finalScoreOpp;
+      let drawActual = finalScoreMe === finalScoreOpp;
+      let scoreStr = `${finalScoreMe}-${finalScoreOpp}`;
+      let finalDesc = desc;
+
+      if (isTwoLegged && currentLeg === 2) {
+        setLeg2Result({
+          me: finalScoreMe,
+          opp: finalScoreOpp,
+          score: scoreStr,
+          tactic: directiveText || 'Directive'
+        });
+
+        const totalMe = (leg1Result?.me || 0) + finalScoreMe;
+        const totalOpp = (leg1Result?.opp || 0) + finalScoreOpp;
+
+        if (totalMe === totalOpp) {
+          // Level on aggregate after 180 minutes -> Penalty Shootout!
+          const penAdv = Math.max(-0.08, Math.min(0.08, (matchdayPlayerOvr - localOpponentOvr) * 0.005));
+          const wonPens = Math.random() < (0.5 + penAdv);
+          const stdPairs = [[5, 4], [5, 3], [4, 3], [4, 2], [3, 2]];
+          const chosenPair = stdPairs[Math.floor(Math.random() * stdPairs.length)];
+          const mePen = wonPens ? chosenPair[0] : chosenPair[1];
+          const oppPen = wonPens ? chosenPair[1] : chosenPair[0];
+          const pens = { mePen, oppPen, won: wonPens };
+          wonActual = wonPens;
+          drawActual = false;
+          setPenaltyResult(pens);
+          scoreStr = `${totalMe}-${totalOpp} (${mePen}-${oppPen} pens)`;
+          finalDesc = wonPens
+            ? `Tied ${totalMe}-${totalOpp} on aggregate! Your squad held their nerve to win ${mePen}-${oppPen} in the penalty shootout!`
+            : `Heartbreak! Tied ${totalMe}-${totalOpp} on aggregate, but fell ${mePen}-${oppPen} in the penalty shootout.`;
+        } else {
+          wonActual = totalMe > totalOpp;
+          drawActual = false;
+          scoreStr = `${totalMe}-${totalOpp} agg.`;
+          finalDesc = wonActual
+            ? `Two-legged playoff triumph! ${totalMe}-${totalOpp} aggregate victory!`
+            : `Playoff heartbreak. Defeated ${totalMe}-${totalOpp} on aggregate.`;
+        }
+      }
+
+      setMatchResult({
+        won: wonActual,
+        draw: drawActual,
+        isComeback,
+        oppComeback,
+        score: scoreStr,
+        description: finalDesc
+      });
+      setStage('result');
+
+      if (wonActual) {
+        const duration = 4 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 40, spread: 360, ticks: 80, zIndex: 110 };
+        confetti({
+          particleCount: 200,
+          spread: 120,
+          origin: { y: 0.6 },
+          colors: [theme.accentHex, '#ffffff', '#38BDF8'],
+          zIndex: 110
+        });
+        const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(function () {
+          const timeLeft = animationEnd - Date.now();
+          if (timeLeft <= 0) {
+            return clearInterval(intervalRef.current);
+          }
+          const particleCount = 70 * (timeLeft / duration);
+          confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+          confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+      }
+    };
+
+    pendingFinishRef.current = finalizeCurrentLeg;
+
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       currentMin += 1;
@@ -643,231 +687,67 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       if (currentMin >= 90) {
         if (intervalRef.current) clearInterval(intervalRef.current);
         intervalRef.current = null;
-        
         if (navigator.vibrate) navigator.vibrate([50, 50, 100]);
-
-        if (isTwoLegged && currentLeg === 1) {
-          timeoutRef.current = setTimeout(() => {
-            const scoreStr = `${finalScoreMe}-${finalScoreOpp}`;
-            setLeg1Result({
-              me: finalScoreMe,
-              opp: finalScoreOpp,
-              score: scoreStr,
-              tactic: directiveText || 'Directive'
-            });
-            setStage('leg1_summary');
-          }, 750);
-          return;
-        }
-
         timeoutRef.current = setTimeout(() => {
-          let wonActual = finalScoreMe > finalScoreOpp;
-          let drawActual = finalScoreMe === finalScoreOpp;
-          let scoreStr = `${finalScoreMe}-${finalScoreOpp}`;
-          let finalDesc = desc;
-
-          if (isTwoLegged && currentLeg === 2) {
-            setLeg2Result({
-              me: finalScoreMe,
-              opp: finalScoreOpp,
-              score: scoreStr,
-              tactic: directiveText || 'Directive'
-            });
-
-            const totalMe = (leg1Result?.me || 0) + finalScoreMe;
-            const totalOpp = (leg1Result?.opp || 0) + finalScoreOpp;
-
-            if (totalMe === totalOpp) {
-              // Level on aggregate after 180 minutes -> Penalty Shootout!
-              const penAdv = (playerOvr - localOpponentOvr) * 0.02;
-              const wonPens = Math.random() < (0.5 + penAdv);
-              const mePen = wonPens ? 5 : (Math.random() > 0.5 ? 4 : 3);
-              const oppPen = wonPens ? (Math.random() > 0.5 ? 4 : 3) : 5;
-              const pens = { mePen, oppPen, won: wonPens };
-              wonActual = wonPens;
-              drawActual = false;
-              setPenaltyResult(pens);
-              scoreStr = `${totalMe}-${totalOpp} (${mePen}-${oppPen} pens)`;
-              finalDesc = wonPens
-                ? `Tied ${totalMe}-${totalOpp} on aggregate! Your squad held their nerve to win ${mePen}-${oppPen} in the penalty shootout!`
-                : `Heartbreak! Tied ${totalMe}-${totalOpp} on aggregate, but fell ${mePen}-${oppPen} in the penalty shootout.`;
-            } else {
-              wonActual = totalMe > totalOpp;
-              drawActual = false;
-              scoreStr = `${totalMe}-${totalOpp} agg.`;
-              finalDesc = wonActual
-                ? `Two-legged playoff triumph! ${totalMe}-${totalOpp} aggregate victory!`
-                : `Playoff heartbreak. Defeated ${totalMe}-${totalOpp} on aggregate.`;
-            }
-          }
-          
-          setMatchResult({
-            won: wonActual,
-            draw: drawActual,
-            isComeback,
-            oppComeback,
-            score: scoreStr,
-            description: finalDesc
-          });
-          setStage('result');
-
-          if (wonActual) {
-            const duration = 4 * 1000;
-            const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 40, spread: 360, ticks: 80, zIndex: 110 };
-            confetti({
-              particleCount: 200,
-              spread: 120,
-              origin: { y: 0.6 },
-              colors: [theme.accentHex, '#ffffff', '#38BDF8'],
-              zIndex: 110
-            });
-            const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            intervalRef.current = setInterval(function () {
-              const timeLeft = animationEnd - Date.now();
-              if (timeLeft <= 0) {
-                return clearInterval(intervalRef.current);
-              }
-              const particleCount = 70 * (timeLeft / duration);
-              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-              confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-            }, 250);
-          }
+          finalizeCurrentLeg();
         }, 750);
       }
     }, 45);
   };
 
-  const normalizeTacticKey = (style?: string): string => {
-    if (!style) return 'Total Football';
-    const s = style.trim().toLowerCase();
-    if (s === 'catenaccio' || s === 'park the bus' || s === 'defensive') return 'Park the Bus';
-    if (s === 'tiki-taka' || s === 'possession') return 'Tiki-Taka';
-    if (s === 'gegenpressing' || s === 'gegenpress' || s === 'pressing') return 'Gegenpressing';
-    if (s === 'direct counter' || s === 'counter' || s === 'counter-attack' || s === 'wing play') return 'Direct Counter';
-    if (s === 'total football' || s === 'attacking' || s === 'balanced') return 'Total Football';
-    return style;
-  };
-
-  const getTacticalAdvantage = (myTac: string, oppTac: string) => {
-    const p = normalizeTacticKey(myTac);
-    const o = normalizeTacticKey(oppTac);
-    if (p === 'Tiki-Taka' && o === 'Park the Bus') return 1;
-    if (p === 'Tiki-Taka' && o === 'Gegenpressing') return -1;
-    if (p === 'Park the Bus' && o === 'Direct Counter') return 1;
-    if (p === 'Park the Bus' && o === 'Tiki-Taka') return -1;
-    if (p === 'Direct Counter' && o === 'Gegenpressing') return 1;
-    if (p === 'Direct Counter' && o === 'Park the Bus') return -1;
-    if (p === 'Gegenpressing' && o === 'Tiki-Taka') return 1;
-    if (p === 'Gegenpressing' && o === 'Direct Counter') return -1;
-    return 0;
-  };
-
-  const getSingleAlignmentOvr = (chosenStyle: string, refStyle?: string): number => {
-    if (!refStyle) return 0;
-    const c = normalizeTacticKey(chosenStyle);
-    const r = normalizeTacticKey(refStyle);
-    if (c === r) return 5; // Perfect match (+5 OVR)
-
-    const isOppositePair =
-      (c === 'Gegenpressing' && r === 'Park the Bus') ||
-      (c === 'Park the Bus' && r === 'Gegenpressing') ||
-      (c === 'Tiki-Taka' && r === 'Direct Counter') ||
-      (c === 'Direct Counter' && r === 'Tiki-Taka');
-    if (isOppositePair) return -7; // Direct tactical opposite (-7 OVR)
-
-    const isSevereClash =
-      (c === 'Tiki-Taka' && r === 'Park the Bus') ||
-      (c === 'Park the Bus' && r === 'Tiki-Taka') ||
-      (c === 'Total Football' && r === 'Park the Bus') ||
-      (c === 'Park the Bus' && r === 'Total Football');
-    if (isSevereClash) return -6; // High-line/possession vs deep low block (-6 OVR)
-
-    if (c === 'Total Football' || r === 'Total Football') return -2;
-    return -3.5; // Non-aligned philosophy mismatch
-  };
-
-  const getTacticalStyleOffset = (choice: string) => {
-    const normalizedChoice = normalizeTacticKey(choice);
-    const clubAlign = getSingleAlignmentOvr(normalizedChoice, gameState.tactic);
-    const coachAlign = getSingleAlignmentOvr(normalizedChoice, gameState.currentCoach?.style);
-    const synergyBonus =
-      clubAlign > 0 && coachAlign > 0
-        ? 2
-        : clubAlign <= -6 && coachAlign <= -6
-        ? -2
-        : 0;
-    const tieBreaker =
-      normalizedChoice === 'Total Football'
-        ? 0.8
-        : normalizedChoice === 'Gegenpressing'
-        ? 0.4
-        : normalizedChoice === 'Tiki-Taka'
-        ? -0.4
-        : normalizedChoice === 'Direct Counter'
-        ? -0.8
-        : -1.2;
-    return clubAlign + coachAlign + synergyBonus + tieBreaker;
+  const handleSkipBroadcast = () => {
+    const finish = pendingFinishRef.current;
+    if (finish) {
+      pendingFinishRef.current = null;
+      finish();
+    }
   };
 
   const isRelegationSpecialistBoost = ddType === 'relegation' && gameState.currentCoach?.strength === 'Relegation Specialist';
 
-  const calcProb = (ovrMod: number) => {
-    const base = 50 + ((playerOvr + ovrMod - localOpponentOvr) * 2.5) + (isRelegationSpecialistBoost ? 15 : 0);
-    return Math.round(Math.max(5, Math.min(95, base)));
-  };
+  const readiness = useMemo(
+    () =>
+      computeMatchdayReadinessModifier({
+        morale: gameState.club.morale,
+        hasCoach: Boolean(gameState.currentCoach),
+        hasNewManagerBounce: Boolean(gameState.hasNewManagerBounce),
+        isUnderdog: playerOvr < localOpponentOvr,
+        hiddenAttributes: gameState.currentCoach?.hiddenAttributes,
+      }),
+    [
+      gameState.club.morale,
+      gameState.currentCoach,
+      gameState.hasNewManagerBounce,
+      playerOvr,
+      localOpponentOvr,
+    ]
+  );
 
-  const computeRawRpsWinProb = (choice: string) => {
-    let eff = playerOvr + getTacticalStyleOffset(choice);
+  const matchdayPlayerOvr = Math.min(100, Math.max(10, playerOvr + readiness.totalOvrMod));
+
+  const getStyleOffset = (choice: string) =>
+    getTacticalStyleOffset(choice, gameState.tactic, gameState.currentCoach?.style);
+
+  const calcThreeWay = (ovrMod: number): ThreeWayOdds =>
+    computeThreeWayOdds(
+      matchdayPlayerOvr + ovrMod - localOpponentOvr,
+      isRelegationSpecialistBoost ? 10 : 0
+    );
+
+  const getRpsOdds = (choice: string): ThreeWayOdds => {
     const adv = getTacticalAdvantage(choice, oppTacticInfo.en);
-    if (adv === 1) eff += 8;
-    if (adv === -1) eff -= 8;
-    return calcProb(eff - playerOvr);
+    const mod = getStyleOffset(choice) + adv * 6.0;
+    return calcThreeWay(mod);
   };
 
-  const rpsProbMap = (() => {
-    const usedRps = new Set<number>();
-    const choices = ['Total Football', 'Gegenpressing', 'Tiki-Taka', 'Direct Counter', 'Park the Bus'];
-    const map: Record<string, number> = {};
-    choices.forEach((ch, idx) => {
-      const raw = computeRawRpsWinProb(ch);
-      let candidate = Math.max(5, Math.min(95, raw));
-      if (!usedRps.has(candidate)) {
-        usedRps.add(candidate);
-        map[ch] = candidate;
-        return;
-      }
-      const step = idx % 2 === 0 ? -1 : 1;
-      for (let i = 1; i <= 12; i++) {
-        const next = Math.max(5, Math.min(95, candidate + step * i));
-        if (!usedRps.has(next)) {
-          usedRps.add(next);
-          map[ch] = next;
-          return;
-        }
-        const alt = Math.max(5, Math.min(95, candidate - step * i));
-        if (!usedRps.has(alt)) {
-          usedRps.add(alt);
-          map[ch] = alt;
-          return;
-        }
-      }
-      map[ch] = candidate;
-    });
-    return map;
-  })();
-
-  const getRpsWinProb = (choice: string) => {
-    const normalized = choice === 'Catenaccio' ? 'Park the Bus' : choice;
-    return rpsProbMap[normalized] ?? computeRawRpsWinProb(choice);
-  };
+  const formatThreeWayLabel = (odds: ThreeWayOdds) =>
+    `${odds.winPct}% Win · ${odds.drawPct}% Draw`;
 
   const getRpsColor = (choice: string) => {
     if (!canSeeOdds) return 'text-[#6B7280]';
-    const prob = getRpsWinProb(choice);
-    if (prob >= 60) return 'text-emerald-700';
-    if (prob <= 40) return 'text-rose-700';
+    const prob = getRpsOdds(choice).winPct;
+    if (prob >= 48) return 'text-emerald-700';
+    if (prob <= 28) return 'text-rose-700';
     return 'text-sky-700';
   };
 
@@ -889,105 +769,80 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
   const handleTacticalDuelChoice = (choice: string) => {
     setDecisionChoice(99);
-    const styleOffset = getTacticalStyleOffset(choice);
-    let myEffectiveOvr = playerOvr + styleOffset;
+    const styleOffset = getStyleOffset(choice);
     const adv = getTacticalAdvantage(choice, oppTacticInfo.en);
+    const myEffectiveOvr = matchdayPlayerOvr + styleOffset + adv * 6.0;
     let specialDesc = '';
 
-    if (adv === 1 && styleOffset >= 4) {
-      myEffectiveOvr += 8;
+    if (adv === 1 && styleOffset >= 2) {
       specialDesc = `Tactical Masterclass! Your squad & coach executed ${choice} flawlessly and dismantled their ${oppTacticInfo.en}!`;
-    } else if (adv === 1 && styleOffset <= -5) {
-      myEffectiveOvr += 8;
-      specialDesc = `Your ${choice} countered their ${oppTacticInfo.en}, though the unfamiliar tactical identity limited your squad's fluency.`;
+    } else if (adv === 1 && styleOffset <= -2) {
+      specialDesc = `Bold Tactical Counter! Your ${choice} neutralized their ${oppTacticInfo.en} despite an unfamiliar system!`;
     } else if (adv === 1) {
-      myEffectiveOvr += 8;
       specialDesc = `Tactical Masterclass! Your ${choice} dismantled their ${oppTacticInfo.en}!`;
-    } else if (adv === -1 && styleOffset <= -5) {
-      myEffectiveOvr -= 8;
+    } else if (adv === -1 && styleOffset <= -2) {
       specialDesc = `Total Tactical Collapse! Ordering ${choice} clashed with your club & coach philosophy and walked right into their ${oppTacticInfo.en}!`;
     } else if (adv === -1) {
-      myEffectiveOvr -= 8;
       specialDesc = `Tactical Disaster! Their ${oppTacticInfo.en} countered your ${choice}!`;
-    } else if (styleOffset <= -6) {
+    } else if (styleOffset <= -3) {
       specialDesc = `System Mismatch! Your squad & coach looked disjointed playing ${choice} against their ${oppTacticInfo.en}.`;
-    } else if (styleOffset >= 6) {
+    } else if (styleOffset >= 3) {
       specialDesc = `Fluid Identity! Your squad & coach were in complete harmony executing ${choice}.`;
     } else {
       specialDesc = `A gritty, evenly matched tactical battle.`;
     }
 
-    executeMatch(myEffectiveOvr, getRpsWinProb(choice) / 100, `Directive: ${choice}`, specialDesc);
+    executeMatch(myEffectiveOvr, null, `Directive: ${choice}`, specialDesc);
   };
 
   const getDynamicMods = (pOvr: number, oOvr: number, oName: string, oppTac: string) => {
     const diff = pOvr - oOvr;
-    const seed = (oName.charCodeAt(0) + pOvr) % 4;
+    const seed = (oName.charCodeAt(0) + pOvr) % 3;
 
-    const routineFit = getTacticalStyleOffset(gameState.tactic) + getTacticalAdvantage(gameState.tactic, oppTac) * 6;
-    const kloppFit = getTacticalStyleOffset('Gegenpressing') + getTacticalAdvantage('Gegenpressing', oppTac) * 6;
-    const pepFit = getTacticalStyleOffset('Tiki-Taka') + getTacticalAdvantage('Tiki-Taka', oppTac) * 6;
+    const routineFit = getStyleOffset(gameState.tactic) + getTacticalAdvantage(gameState.tactic, oppTac) * 4.5;
+    const kloppFit = getStyleOffset('Gegenpressing') + getTacticalAdvantage('Gegenpressing', oppTac) * 4.5;
+    const pepFit = getStyleOffset('Tiki-Taka') + getTacticalAdvantage('Tiki-Taka', oppTac) * 4.5;
     const mourinhoFit =
-      Math.max(getTacticalStyleOffset('Park the Bus'), getTacticalStyleOffset('Direct Counter')) +
-      getTacticalAdvantage('Park the Bus', oppTac) * 6;
+      Math.max(getStyleOffset('Park the Bus'), getStyleOffset('Direct Counter')) +
+      getTacticalAdvantage('Park the Bus', oppTac) * 4.5;
 
-    let safeGood = Math.round(routineFit + 2 + (seed % 2));
-    let safeBad = Math.round(routineFit - 2 - (seed % 2));
-    let emoGood = Math.round(kloppFit + 4 + seed);
-    let emoBad = Math.round(kloppFit - 5 - seed);
-    let tacGood = Math.round(pepFit + 6 + seed);
-    let tacBad = Math.round(pepFit - 6 - seed);
-    let rattleGood = Math.round(mourinhoFit + 3 + (seed % 3));
-    let rattleBad = Math.round(mourinhoFit - 4 - (seed % 3));
+    let safeGood = Number((routineFit + 1.5 + seed * 0.3).toFixed(1));
+    let safeBad = Number((routineFit - 2.0 - seed * 0.3).toFixed(1));
+    let emoGood = Number((kloppFit + 4.0 + seed * 0.5).toFixed(1));
+    let emoBad = Number((kloppFit - 4.0 - seed * 0.5).toFixed(1));
+    let tacGood = Number((pepFit + 6.0 + seed * 0.5).toFixed(1));
+    let tacBad = Number((pepFit - 4.5 - seed * 0.5).toFixed(1));
+    let rattleGood = Number((mourinhoFit + 2.5 + seed * 0.4).toFixed(1));
+    let rattleBad = Number((mourinhoFit - 3.0 - seed * 0.4).toFixed(1));
 
-    if (diff < -4) { emoGood += 2; emoBad += 1; tacGood += 3; tacBad += 1; }
-    else if (diff > 4) { emoGood -= 1; emoBad -= 2; tacGood -= 2; tacBad -= 2; }
+    if (diff < -4) { emoGood += 1.5; tacGood += 2.0; }
     return { safeGood, safeBad, emoGood, emoBad, tacGood, tacBad, rattleGood, rattleBad };
   };
 
-  const mods = getDynamicMods(playerOvr, localOpponentOvr, opponentName || 'Rival', oppTacticInfo.en);
+  const mods = getDynamicMods(matchdayPlayerOvr, localOpponentOvr, opponentName || 'Rival', oppTacticInfo.en);
 
-  const getNetProb = (probGood: number, goodMod: number, badMod: number) => {
-    return Math.round((probGood * calcProb(goodMod)) + ((1 - probGood) * calcProb(badMod)));
+  const blendThreeWay = (probGood: number, goodMod: number, badMod: number): ThreeWayOdds => {
+    const g = calcThreeWay(goodMod);
+    const b = calcThreeWay(badMod);
+    const win = probGood * g.win + (1 - probGood) * b.win;
+    const draw = probGood * g.draw + (1 - probGood) * b.draw;
+    const loss = Math.max(0, 1 - win - draw);
+    const winPct = Math.round(win * 100);
+    const drawPct = Math.round(draw * 100);
+    return { win, draw, loss, winPct, drawPct, lossPct: Math.max(0, 100 - winPct - drawPct) };
   };
-  const rawSafe = getNetProb(0.75, mods.safeGood, mods.safeBad);
-  const rawEmo = getNetProb(0.55, mods.emoGood, mods.emoBad);
-  const rawTac = getNetProb(0.35, mods.tacGood, mods.tacBad);
-  const rawRattle = getNetProb(0.62, mods.rattleGood, mods.rattleBad);
 
-  // Ensure standard directives display distinct probabilities even when OVR gap is large
-  const usedProbs = new Set<number>();
-  const ensureDistinctProb = (val: number, fallbackDelta: number) => {
-    let candidate = Math.max(5, Math.min(95, val));
-    if (!usedProbs.has(candidate)) {
-      usedProbs.add(candidate);
-      return candidate;
-    }
-    const step = fallbackDelta >= 0 ? 1 : -1;
-    for (let i = 1; i <= 12; i++) {
-      const next = Math.max(5, Math.min(95, candidate + step * i));
-      if (!usedProbs.has(next)) {
-        usedProbs.add(next);
-        return next;
-      }
-      const alt = Math.max(5, Math.min(95, candidate - step * i));
-      if (!usedProbs.has(alt)) {
-        usedProbs.add(alt);
-        return alt;
-      }
-    }
-    return candidate;
-  };
-  const netSafe = ensureDistinctProb(rawSafe, 2);
-  const netEmo = ensureDistinctProb(rawEmo, -2);
-  const netTac = ensureDistinctProb(rawTac, -4);
-  const netRattle = ensureDistinctProb(rawRattle, 1);
+  const netSafeOdds = blendThreeWay(0.75, mods.safeGood, mods.safeBad);
+  const netEmoOdds = blendThreeWay(0.55, mods.emoGood, mods.emoBad);
+  const netTacOdds = blendThreeWay(0.38, mods.tacGood, mods.tacBad);
+  const netRattleOdds = blendThreeWay(0.62, mods.rattleGood, mods.rattleBad);
+  const setPieceOdds = computeSetPieceThreeWayOdds(matchdayPlayerOvr - localOpponentOvr);
 
   const handleChoice = (choiceIndex: number) => {
     setDecisionChoice(choiceIndex);
-    let myEffectiveOvr = playerOvr;
+    let myEffectiveOvr = matchdayPlayerOvr;
     let resultDesc = '';
-    let flatWinProb: number | null = null;
+    let explicitOdds: ThreeWayOdds | null = null;
     let dirName = '';
 
     const rand = Math.random();
@@ -1002,7 +857,6 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 1: // Trust the Routine
         dirName = 'Directive: Trust the Routine';
-        flatWinProb = netSafe / 100;
         if (rand < 0.75) {
           myEffectiveOvr += mods.safeGood;
           resultDesc = `The squad stayed composed and executed their club identity (${mods.safeGood >= 0 ? '+' : ''}${mods.safeGood} OVR).`;
@@ -1014,7 +868,6 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 2: // Emotional Speech
         dirName = 'Directive: High-Intensity Speech';
-        flatWinProb = netEmo / 100;
         if (rand < 0.55) {
           myEffectiveOvr += mods.emoGood;
           resultDesc = `Relentless pressing energy (${mods.emoGood >= 0 ? '+' : ''}${mods.emoGood} OVR).`;
@@ -1026,8 +879,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 3: // Tactical Shift
         dirName = 'Directive: Last-Minute Tactical Shift';
-        flatWinProb = netTac / 100;
-        if (rand < 0.35) {
+        if (rand < 0.38) {
           myEffectiveOvr += mods.tacGood;
           resultDesc = `Positional masterstroke confounded the opponent (${mods.tacGood >= 0 ? '+' : ''}${mods.tacGood} OVR).`;
         } else {
@@ -1038,7 +890,6 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 4: // Mind Games
         dirName = 'Directive: Press Mind Games';
-        flatWinProb = netRattle / 100;
         if (rand < 0.62) {
           myEffectiveOvr += mods.rattleGood;
           resultDesc = `Pragmatic siege mentality rattled the opposition (${mods.rattleGood >= 0 ? '+' : ''}${mods.rattleGood} OVR).`;
@@ -1050,12 +901,12 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
 
       case 5: // Set-pieces
         dirName = 'Directive: Set-Piece Chaos Focus';
-        flatWinProb = 0.3333;
+        explicitOdds = setPieceOdds;
         resultDesc = 'Dedicated preparation on dead-ball deliveries all week.';
         break;
     }
 
-    executeMatch(myEffectiveOvr, flatWinProb, dirName, resultDesc);
+    executeMatch(myEffectiveOvr, explicitOdds, dirName, resultDesc);
   };
 
   // Single source of truth for resolving Decision Day outcomes (shared with App.tsx)
@@ -1342,7 +1193,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       <i className="fa-solid fa-compass text-sky-600 text-[11px]" />
                       <span>Philosophy: <strong className="text-[#18191F] font-semibold">{gameState.tactic || 'Total Football'}</strong></span>
                       <span className="text-[#D1CEC7]">·</span>
-                      <span>Coach: <strong className="text-sky-700 font-semibold">{gameState.currentCoach?.style || 'Balanced'}</strong></span>
+                      <span>Coach: <strong className="text-sky-700 font-semibold">{gameState.currentCoach?.style || 'Interim'}</strong></span>
                     </span>
                     {hasTacticalGeniusPerk ? (
                       <span className="font-semibold text-[#18191F]">
@@ -1366,6 +1217,21 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                       </span>
                     )}
                   </div>
+                  {readiness.breakdown.length > 0 && (
+                    <div className="pt-1.5 border-t border-[#E6E3DC]/80 flex flex-wrap items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
+                      <span className="text-[#6B7280] font-medium">
+                        Matchday Readiness:{' '}
+                        <strong className={readiness.totalOvrMod >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
+                          {readiness.totalOvrMod >= 0 ? `+${readiness.totalOvrMod}` : readiness.totalOvrMod} OVR
+                        </strong>
+                      </span>
+                      <span className="text-[#4B5563] tabular-nums">
+                        {readiness.breakdown
+                          .map(b => `${b.label} (${b.delta > 0 ? '+' : ''}${b.delta})`)
+                          .join(' · ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tactical Selections */}
@@ -1383,7 +1249,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Tiki-Taka · Vulnerable to Counter</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Gegenpressing')}`}>
-                          {canSeeOdds ? `${getRpsWinProb('Gegenpressing')}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(getRpsOdds('Gegenpressing')) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1398,7 +1264,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Gegenpress · Vulnerable to Catenaccio</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Direct Counter')}`}>
-                          {canSeeOdds ? `${getRpsWinProb('Direct Counter')}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(getRpsOdds('Direct Counter')) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1413,7 +1279,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Direct Counter · Vulnerable to Tiki-Taka</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Catenaccio')}`}>
-                          {canSeeOdds ? `${getRpsWinProb('Catenaccio')}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(getRpsOdds('Catenaccio')) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1428,7 +1294,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Beats Catenaccio · Vulnerable to Gegenpress</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Tiki-Taka')}`}>
-                          {canSeeOdds ? `${getRpsWinProb('Tiki-Taka')}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(getRpsOdds('Tiki-Taka')) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1443,7 +1309,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Fluid positional play · Dependent on philosophy &amp; coach</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${getRpsColor('Total Football')}`}>
-                          {canSeeOdds ? `${getRpsWinProb('Total Football')}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(getRpsOdds('Total Football')) : '???% Odds'}
                         </div>
                       </button>
                     </>
@@ -1458,7 +1324,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Rely on your established club philosophy &amp; coach synergy</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-emerald-700' : 'text-[#6B7280]'}`}>
-                          {canSeeOdds ? `${netSafe}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(netSafeOdds) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1471,7 +1337,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Maximum pressing intensity · Clashes with Low Block philosophy</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-amber-700' : 'text-[#6B7280]'}`}>
-                          {canSeeOdds ? `${netEmo}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(netEmoOdds) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1484,7 +1350,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Intricate possession overload · Clashes with Direct Counter &amp; Low Block</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-amber-700' : 'text-[#6B7280]'}`}>
-                          {canSeeOdds ? `${netTac}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(netTacOdds) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1497,7 +1363,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-[#6B7280] mt-0.5">Pragmatic defensive siege · Clashes with Gegenpressing &amp; Tiki-Taka</div>
                         </div>
                         <div className={`text-xs tabular-nums font-semibold px-2.5 py-1 rounded-xl bg-white border border-[#E6E3DC] shrink-0 ${canSeeOdds ? 'text-sky-700' : 'text-[#6B7280]'}`}>
-                          {canSeeOdds ? `${netRattle}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(netRattleOdds) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1510,7 +1376,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-emerald-700 mt-0.5">Risk everything on dead-ball efficiency</div>
                         </div>
                         <div className="text-xs tabular-nums font-semibold text-emerald-800 px-2.5 py-1 rounded-xl bg-white border border-emerald-200 shrink-0">
-                          {canSeeOdds ? '33% Fixed Prob' : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(setPieceOdds) : '???% Odds'}
                         </div>
                       </button>
 
@@ -1527,7 +1393,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                           <div className="text-[11px] text-amber-800 mt-0.5">+12 OVR decisive tactical blueprint</div>
                         </div>
                         <div className="text-xs tabular-nums font-semibold text-amber-900 px-2.5 py-1 rounded-xl bg-white border border-amber-200 whitespace-nowrap shrink-0">
-                          {canSeeOdds ? `${calcProb(12)}% Win Prob` : '???% Odds'}
+                          {canSeeOdds ? formatThreeWayLabel(calcThreeWay(12)) : '???% Odds'}
                         </div>
                       </button>
                     </>
@@ -1625,16 +1491,26 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                 </div>
 
                 {/* Simulating 90 Minutes Suspense Banner */}
-                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs">
+                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs gap-2">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping shrink-0" />
                     <span className="font-bold uppercase tracking-wider text-amber-900 text-[10px] sm:text-xs">
                       Simulating 90 Minutes...
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-[#4B5563] tabular-nums">
-                    {Math.round((matchMinute / 90) * 100)}%
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-[#4B5563] tabular-nums">
+                      {Math.round((matchMinute / 90) * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSkipBroadcast}
+                      className="px-2 py-0.5 rounded-lg bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                    >
+                      <i className="fa-solid fa-forward text-[9px]" />
+                      <span>Skip</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Match Progress Bar */}

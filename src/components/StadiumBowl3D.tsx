@@ -12,6 +12,7 @@ import {
 import {
   MatchTimeOfDay,
   PitchPlayerNode,
+  ShootoutChoreographyState,
   SupercupEligibility,
   computeLiveMatchChoreography,
   computeMatchTimeOfDay,
@@ -88,6 +89,7 @@ interface StadiumBowl3DProps {
   hideTopHud?: boolean;
   initialTimeOfDay?: MatchTimeOfDay | 'auto';
   forcedMatchPhase?: MatchPhase | null;
+  shootoutState?: ShootoutChoreographyState | null;
   customTopBoardText?: string;
   customBottomBoardText?: string;
   customHomeBoardText?: string;
@@ -147,6 +149,7 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
   hideTopHud = false,
   initialTimeOfDay = 'auto',
   forcedMatchPhase = null,
+  shootoutState = null,
   customTopBoardText,
   customBottomBoardText,
   customHomeBoardText,
@@ -227,7 +230,7 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
     [forcedMatchPhase, currentOutcome, effectiveTick, isLive]
   );
 
-  // Tactic-Aware 3D Match Choreography (Continuous 11v11 Player & Ball Fluid Movement)
+  // Tactic-Aware 3D Match Choreography (Continuous 11v11 Player & Ball Fluid Movement + 3D Shootouts)
   const choreo = useMemo(
     () =>
       computeLiveMatchChoreography({
@@ -236,8 +239,9 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
         tick: effectiveTick,
         isLive,
         outcome: currentOutcome,
+        shootout: shootoutState,
       }),
-    [tacticLabel, matchPhase, effectiveTick, isLive, currentOutcome]
+    [tacticLabel, matchPhase, effectiveTick, isLive, currentOutcome, shootoutState]
   );
 
   // Resolve architectural style (Club Heritage Auto or explicit user override) & scale from 1,000 -> 150,000 seats
@@ -2290,23 +2294,39 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
 
             {standGeom.hasFloodlightPylons &&
               [
-                { u: -(standGeom.outerU - 8), v: -(standGeom.outerV - 8), zTop: standGeom.tierHeight + 24 },
-                { u: standGeom.outerU - 8, v: -(standGeom.outerV - 8), zTop: rightTierHeight + 22 },
-                { u: -(standGeom.outerU - 8), v: standGeom.outerV - 8, zTop: fgTierHeight + 20 },
-                { u: standGeom.outerU - 8, v: standGeom.outerV - 8, zTop: fgTierHeight + 20 },
+                { u: -(standGeom.outerU - 8), v: -(standGeom.outerV - 8), zTop: standGeom.tierHeight + 26 },
+                { u: standGeom.outerU - 8, v: -(standGeom.outerV - 8), zTop: rightTierHeight + 24 },
+                { u: -(standGeom.outerU - 8), v: standGeom.outerV - 8, zTop: fgTierHeight + 22 },
+                { u: standGeom.outerU - 8, v: standGeom.outerV - 8, zTop: fgTierHeight + 22 },
               ].map((p, idx) => {
                 const base = project(p.u, p.v, 0);
                 const top = project(p.u, p.v, p.zTop);
                 return (
-                  <g key={`pylon-${idx}`}>
-                    <line x1={base.x} y1={base.y} x2={top.x} y2={top.y} stroke="#CBD5E1" strokeWidth="1.8" />
-                    <circle
-                      cx={top.x}
-                      cy={top.y}
-                      r={isDaytime ? '3.8' : '4.6'}
-                      fill={isDaytime ? '#F1F5F9' : '#FEF08A'}
-                      opacity="0.95"
+                  <g key={`pylon-${idx}`} data-testid="stadium-floodlight-pylon">
+                    <line x1={base.x} y1={base.y} x2={top.x} y2={top.y} stroke="#CBD5E1" strokeWidth="2.1" />
+                    <line x1={base.x + 2.4} y1={base.y} x2={top.x + 1.2} y2={top.y} stroke="#94A3B8" strokeWidth="1.0" opacity="0.7" />
+                    {!isDaytime && (
+                      <circle cx={top.x} cy={top.y} r="14" fill="#FEF08A" opacity="0.16" />
+                    )}
+                    <rect
+                      x={top.x - 6.5}
+                      y={top.y - 3.2}
+                      width="13"
+                      height="5.4"
+                      rx="1.4"
+                      fill="#1E293B"
+                      stroke="#CBD5E1"
+                      strokeWidth="0.75"
                     />
+                    {[-4, -1.3, 1.3, 4].map((dx) => (
+                      <circle
+                        key={`lamp-${dx}`}
+                        cx={top.x + dx}
+                        cy={top.y - 0.5}
+                        r="1.15"
+                        fill={isDaytime ? '#E2E8F0' : '#FEF9C3'}
+                      />
+                    ))}
                   </g>
                 );
               })}
@@ -2912,23 +2932,83 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
                   const p1 = project(uRib, -(standBaseV + standGeom.standDepth + 2), standGeom.tierHeight + 13);
                   const p2 = project(uRib, -(standBaseV + standGeom.standDepth * 0.36), standGeom.tierHeight + 9);
                   return (
-                    <line
-                      key={`rib-t-${frac}`}
-                      x1={p1.x}
-                      y1={p1.y}
-                      x2={p2.x}
-                      y2={p2.y}
-                      stroke="#F1F5F9"
-                      strokeWidth="1.7"
-                    />
+                    <g key={`rib-t-${frac}`}>
+                      <line
+                        x1={p1.x}
+                        y1={p1.y}
+                        x2={p2.x}
+                        y2={p2.y}
+                        stroke="#F1F5F9"
+                        strokeWidth="1.7"
+                      />
+                      {!isDaytime && (
+                        <>
+                          <circle cx={p2.x} cy={p2.y} r="5.5" fill="#FEF9C3" opacity="0.22" />
+                          <circle cx={p2.x} cy={p2.y} r="1.9" fill="#FFFBEB" opacity="0.96" />
+                        </>
+                      )}
+                    </g>
                   );
                 })}
               </g>
             )}
+
           </g>
 
           {/* 3. TOP & BEHIND-GOAL SPECTATORS */}
           {memoizedUpperAndEndCrowd}
+
+          {/* In-Stadium LED Video Scoreboard (Jumbotron) on Upper Rim for >= 5,000 Seat Venues */}
+          {capacity >= 5000 && camera !== 'topdown' && (() => {
+            const jU = straightHalfU + (standGeom.isRoundedBowl ? bowlInnerR * 0.72 : standGeom.standDepth * 0.68);
+            const jV = -(straightHalfV + (standGeom.isRoundedBowl ? bowlInnerR * 0.72 : standGeom.standDepth * 0.68));
+            const jZ = standGeom.tierHeight + (standGeom.hasRoofCanopy ? 18 : 15);
+            const jc = project(jU, jV, jZ);
+            const jBase = project(jU, jV, Math.max(4, jZ - 12));
+            return (
+              <g data-testid="stadium-jumbotron" pointerEvents="none">
+                <line x1={jBase.x - 10} y1={jBase.y} x2={jc.x - 10} y2={jc.y + 8} stroke="#64748B" strokeWidth="1.8" />
+                <line x1={jBase.x + 10} y1={jBase.y} x2={jc.x + 10} y2={jc.y + 8} stroke="#64748B" strokeWidth="1.8" />
+                <rect
+                  x={jc.x - 24}
+                  y={jc.y - 10}
+                  width="48"
+                  height="20"
+                  rx="3"
+                  fill="#090D16"
+                  stroke={isDaytime ? '#94A3B8' : '#FDE047'}
+                  strokeOpacity={isDaytime ? '0.85' : '0.68'}
+                  strokeWidth="1.2"
+                />
+                <rect x={jc.x - 22} y={jc.y - 8} width="3" height="16" rx="1" fill={palette.primary} />
+                <rect x={jc.x + 19} y={jc.y - 8} width="3" height="16" rx="1" fill={effectiveOppColor} />
+                <text
+                  x={jc.x}
+                  y={jc.y - 1.5}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="#FFFFFF"
+                  fontSize="8.2"
+                  fontWeight="900"
+                  fontFamily="ui-monospace, SFMono-Regular, monospace"
+                >
+                  {emptyBowl ? 'READY' : `${userGoals} - ${oppGoals}`}
+                </text>
+                <text
+                  x={jc.x}
+                  y={jc.y + 6.2}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill={isLive ? '#34D399' : '#94A3B8'}
+                  fontSize="4.2"
+                  fontWeight="800"
+                  letterSpacing="0.8"
+                >
+                  {emptyBowl ? 'STADIUM' : isLive ? 'LIVE' : 'MATCHDAY'}
+                </text>
+              </g>
+            );
+          })()}
 
           {/* 4. OPTIONAL OLYMPIC RUNNING TRACK OVAL + PITCH APRON & 105×68m GRASS FIELD */}
           {standGeom.hasRunningTrack && (
@@ -3086,6 +3166,112 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
           <polygon points={polyUV(142, P_U, -82, 82, 0)} fill="none" stroke={design.lineColor} strokeWidth="1.65" />
           <polygon points={polyUV(184, P_U, -38, 38, 0)} fill="none" stroke={design.lineColor} strokeWidth="1.55" />
           <polyline points={rightArcPoints} fill="none" stroke={design.lineColor} strokeWidth="1.55" />
+
+          {/* 12-Yard Penalty Spots */}
+          <g data-testid="pitch-penalty-spots">
+            {[-160, 160].map((spotU) => {
+              const sp = project(spotU, 0, 0);
+              return (
+                <circle
+                  key={`pen-spot-${spotU}`}
+                  cx={sp.x}
+                  cy={sp.y}
+                  r={camera === 'topdown' ? 2.4 : 2.1}
+                  fill={design.lineColor}
+                />
+              );
+            })}
+          </g>
+
+          {/* 4 Chalk Corner Quadrant Arcs */}
+          <g data-testid="pitch-corner-arcs">
+            {[
+              { u: -P_U, v: -P_V, su: 1, sv: 1 },
+              { u: -P_U, v: P_V, su: 1, sv: -1 },
+              { u: P_U, v: -P_V, su: -1, sv: 1 },
+              { u: P_U, v: P_V, su: -1, sv: -1 },
+            ].map((ca, idx) => {
+              const arcPts: Pt2[] = [];
+              const rCorner = 9.5;
+              for (let s = 0; s <= 5; s++) {
+                const a = (s / 5) * (Math.PI / 2);
+                arcPts.push(project(ca.u + ca.su * Math.cos(a) * rCorner, ca.v + ca.sv * Math.sin(a) * rCorner, 0));
+              }
+              return (
+                <polyline
+                  key={`corner-arc-${idx}`}
+                  points={ptsStr(arcPts)}
+                  fill="none"
+                  stroke={design.lineColor}
+                  strokeWidth="1.35"
+                />
+              );
+            })}
+          </g>
+
+          {/* Home & Away Technical Dugouts + Center-Line Player Tunnel */}
+          <g data-testid="stadium-dugouts-tunnel">
+            {/* Recessed Center-Line Player Tunnel Portal */}
+            <polygon
+              points={polyUV(-9, 9, -(A_V + 7), -(A_V + 1.2), 5.8, 5.8, 0.2, 0.2)}
+              fill="#020617"
+              stroke="#64748B"
+              strokeWidth="0.9"
+            />
+            <polygon
+              points={polyUV(-11, 11, -(A_V + 1.2), -(P_V + 4.5), 0.2)}
+              fill="#334155"
+              opacity="0.72"
+            />
+            {/* Home Technical Dugout (Left of Halfway) & Away Technical Dugout (Right of Halfway) */}
+            {[
+              { u1: -50, u2: -18, accent: palette.primary, id: 'home-dugout' },
+              { u1: 18, u2: 50, accent: effectiveOppColor, id: 'away-dugout' },
+            ].map((dg) => (
+              <g key={dg.id} data-testid={dg.id}>
+                {/* Technical Area Chalk Box */}
+                <polygon
+                  points={polyUV(dg.u1 - 3, dg.u2 + 3, -(P_V + 9.5), -(P_V + 2.2), 0.1)}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.42)"
+                  strokeWidth="0.8"
+                  strokeDasharray="2.5 2"
+                />
+                {/* Dugout Back & Bench Base */}
+                <polygon
+                  points={polyUV(dg.u1, dg.u2, -(A_V + 0.2), -(P_V + 6.5), 4.6, 4.6, 0.5, 0.5)}
+                  fill="#0F172A"
+                  fillOpacity="0.88"
+                  stroke={dg.accent}
+                  strokeWidth="0.95"
+                />
+                {/* Translucent Curved Shelter Canopy */}
+                <polygon
+                  points={polyUV(dg.u1, dg.u2, -(A_V + 0.4), -(P_V + 5.8), 5.6, 5.6, 4.4, 4.4)}
+                  fill="rgba(226, 232, 240, 0.32)"
+                  stroke="rgba(255,255,255,0.68)"
+                  strokeWidth="0.7"
+                />
+                {/* Seated Substitutes & Technical Staff (Visible on Matchdays) */}
+                {!emptyBowl &&
+                  [-0.65, -0.22, 0.22, 0.65].map((f, sIdx) => {
+                    const su = (dg.u1 + dg.u2) / 2 + ((dg.u2 - dg.u1) * 0.42) * f;
+                    const sp = project(su, -(P_V + 8.0), 1.8);
+                    return (
+                      <circle
+                        key={`sub-${sIdx}`}
+                        cx={sp.x}
+                        cy={sp.y}
+                        r="1.55"
+                        fill={dg.accent}
+                        stroke="#F8FAFC"
+                        strokeWidth="0.55"
+                      />
+                    );
+                  })}
+              </g>
+            ))}
+          </g>
 
           {/* Corner Flags */}
           {[
@@ -3596,6 +3782,55 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
               {renderFlag(64, -(standBaseV + standGeom.standDepth * 0.35), standGeom.tierHeight * 0.45, bannerTheme.secondary, bannerTheme.primary, 9)}
               {renderFlag(-92, standBaseV + standGeom.standDepth * 0.36, fgTierHeight * 0.5, bannerTheme.primary, bannerTheme.secondary, 10)}
               {renderFlag(48, standBaseV + standGeom.standDepth * 0.36, fgTierHeight * 0.5, bannerTheme.secondary, bannerTheme.primary, 11)}
+            </g>
+          )}
+
+          {/* Night Match Atmosphere: Subtle Floodlight Volumetric Beams & Crowd Camera Flashes */}
+          {!isDaytime && isMatchdayActive && (
+            <g pointerEvents="none">
+              <g data-testid="stadium-floodlight-beams" opacity="0.08">
+                {[
+                  { fromU: -standGeom.outerU, fromV: -standGeom.outerV, z: standGeom.tierHeight + 22, toU: -70, toV: -10 },
+                  { fromU: standGeom.outerU, fromV: -standGeom.outerV, z: rightTierHeight + 22, toU: 70, toV: -10 },
+                ].map((beam, bIdx) => {
+                  const pSrc = project(beam.fromU, beam.fromV, beam.z);
+                  const pDstA = project(beam.toU - 55, beam.toV + 38, 0);
+                  const pDstB = project(beam.toU + 55, beam.toV - 38, 0);
+                  return (
+                    <polygon
+                      key={`fbeam-${bIdx}`}
+                      points={`${pSrc.x.toFixed(1)},${pSrc.y.toFixed(1)} ${pDstA.x.toFixed(1)},${pDstA.y.toFixed(1)} ${pDstB.x.toFixed(1)},${pDstB.y.toFixed(1)}`}
+                      fill="#FEF9C3"
+                    />
+                  );
+                })}
+              </g>
+              {occPct >= 30 && (
+                <g data-testid="crowd-night-flashes">
+                  {[
+                    { u: -118, v: -(standBaseV + standGeom.standDepth * 0.45), z: standGeom.tierHeight * 0.55 },
+                    { u: -42, v: -(standBaseV + standGeom.standDepth * 0.62), z: standGeom.tierHeight * 0.72 },
+                    { u: 34, v: -(standBaseV + standGeom.standDepth * 0.38), z: standGeom.tierHeight * 0.48 },
+                    { u: 112, v: -(standBaseV + standGeom.standDepth * 0.58), z: standGeom.tierHeight * 0.66 },
+                    { u: -(standBaseU + standGeom.standDepth * 0.48), v: -46, z: standGeom.tierHeight * 0.56 },
+                    { u: -(standBaseU + standGeom.standDepth * 0.56), v: 28, z: standGeom.tierHeight * 0.62 },
+                    { u: standBaseU + standGeom.standDepth * 0.46, v: -24, z: rightTierHeight * 0.54 },
+                    { u: standBaseU + standGeom.standDepth * 0.54, v: 42, z: rightTierHeight * 0.6 },
+                    { u: -84, v: standBaseV + standGeom.standDepth * 0.48, z: fgTierHeight * 0.55 },
+                    { u: 18, v: standBaseV + standGeom.standDepth * 0.56, z: fgTierHeight * 0.62 },
+                    { u: 96, v: standBaseV + standGeom.standDepth * 0.42, z: fgTierHeight * 0.48 },
+                  ].map((fl, fIdx) => {
+                    const pt = project(fl.u, fl.v, fl.z);
+                    const activePulse = (effectiveTick + fIdx * 3) % 5 === 0 || matchPhase === 'goal';
+                    return (
+                      <g key={`flash-${fIdx}`} opacity={activePulse ? 0.92 : 0.25}>
+                        <circle cx={pt.x} cy={pt.y} r={activePulse ? '3.4' : '1.4'} fill="#FEF9C3" opacity="0.35" />
+                        <circle cx={pt.x} cy={pt.y} r={activePulse ? '1.35' : '0.85'} fill="#FFFFFF" />
+                      </g>
+                    );
+                  })}
+                </g>
+              )}
             </g>
           )}
 

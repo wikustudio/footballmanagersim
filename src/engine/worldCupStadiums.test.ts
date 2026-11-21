@@ -131,7 +131,7 @@ test('inferWorldCupVenueStage and mapWorldCupDirectiveToTactic resolve accuratel
   assert.equal(mapWorldCupDirectiveToTactic('high_press', 'park_the_bus'), 'Park the Bus');
 });
 
-test('WorldCupLiveMatchArena renders host-country stadiums using StadiumBowl3D engine', () => {
+test('WorldCupLiveMatchArena renders host-country stadiums using StadiumBowl3D engine across open play and penalty shootouts', () => {
   const arenaPath = path.resolve(process.cwd(), 'src/components/WorldCupLiveMatchArena.tsx');
   const src = fs.readFileSync(arenaPath, 'utf8');
 
@@ -141,6 +141,66 @@ test('WorldCupLiveMatchArena renders host-country stadiums using StadiumBowl3D e
   assert.ok(src.includes('capacity={venue.capacity}'));
   assert.ok(src.includes('attendance={attendance}'));
   assert.ok(src.includes('hideTopHud={true}'));
-  assert.ok(src.includes('forcedMatchPhase={matchTelemetry.stadiumPhase}'));
+  assert.ok(src.includes('matchTelemetry.stadiumPhase'));
+  assert.ok(src.includes('shootoutState={shootoutChoreoState}'));
   assert.ok(src.includes('customBottomBoardText={`${venue.name} · ${venue.city}`}'));
+  // Ensure legacy 2D SVG penalty box fallback was completely removed
+  assert.ok(!src.includes('wc-spot-glow'), 'Shootout must render inside StadiumBowl3D, not legacy 2D SVG');
 });
+
+test('InternationalTournamentModal launches Group Matchday 1 live in the 3D stadium engine', () => {
+  const modalPath = path.resolve(process.cwd(), 'src/components/InternationalTournamentModal.tsx');
+  const src = fs.readFileSync(modalPath, 'utf8');
+
+  assert.ok(
+    src.includes('setGroupMatchdayRevealed(0);\n    setGroupLiveMatchday(1);'),
+    'handleLaunchGroupStage must start Group Matchday 1 live in 3D instead of skipping to Matchday 2'
+  );
+  assert.ok(
+    src.includes('initialSavedState?.groupMatchdayRevealed ?? 0'),
+    'Fresh World Cup group stage should initialize groupMatchdayRevealed to 0'
+  );
+});
+
+test('computeLiveMatchChoreography generates authentic 3D penalty shootout formation, shot arc, and GK saves', async () => {
+  const { computeLiveMatchChoreography } = await import('./liveSimVisualEngine');
+
+  const setup = computeLiveMatchChoreography({
+    tactic: 'Tiki-Taka',
+    phase: 'setpiece',
+    tick: 1,
+    isLive: true,
+    shootout: { active: true, taker: 'home', scored: null, round: 1, kickIndex: 0 },
+  });
+  assert.equal(setup.duelRing?.kind, 'penalty');
+  assert.equal(setup.shotTrajectory, null);
+  assert.equal(setup.homePlayers[10].u, 160);
+  assert.equal(setup.awayPlayers[0].u, 196);
+  // Waiting outfield players line up along the halfway line
+  assert.ok(Math.abs(setup.homePlayers[2].u) <= 15);
+  assert.ok(Math.abs(setup.awayPlayers[2].u) <= 15);
+
+  const scored = computeLiveMatchChoreography({
+    tactic: 'Tiki-Taka',
+    phase: 'goal',
+    tick: 2,
+    isLive: true,
+    shootout: { active: true, taker: 'home', scored: true, round: 1, kickIndex: 1 },
+  });
+  assert.equal(scored.ball.inNet, true);
+  assert.equal(scored.shotTrajectory?.isGoal, true);
+  assert.equal(scored.crowdCelebration.level, 'goal_eruption');
+
+  const saved = computeLiveMatchChoreography({
+    tactic: 'Tiki-Taka',
+    phase: 'setpiece',
+    tick: 3,
+    isLive: true,
+    shootout: { active: true, taker: 'away', scored: false, round: 2, kickIndex: 4 },
+  });
+  assert.equal(saved.ball.inNet, false);
+  assert.equal(saved.duelRing?.kind, 'save');
+  assert.equal(saved.shotTrajectory?.isGoal, false);
+  assert.equal(saved.homePlayers[0].pose, 'diving');
+});
+
