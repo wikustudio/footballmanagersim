@@ -2510,6 +2510,8 @@ export interface SupercupEligibility {
   cupName: string;
   opponent: Club;
   prizeK: number;
+  userQualificationLabel?: string;
+  opponentQualificationLabel?: string;
 }
 
 const SUPERCUP_NAMES: Record<string, string> = {
@@ -2526,6 +2528,174 @@ const SUPERCUP_NAMES: Record<string, string> = {
   ARG: 'Supercopa Argentina',
 };
 
+const NON_PRIMARY_DOMESTIC_CUP_REGEX =
+  /libertadores|sudamericana|champions|euro cup|europa|conference|concacaf|leagues|afc|global|world|landespokal|efl trophy|english league cup|regional|supercup|supercopa|supercoppa|community shield|trophée des champions|supertaça|johan cruyff|süper kupa|charity shield/i;
+
+const normalizeClubKey = (name?: string): string => (name || '').trim().toLowerCase();
+
+const isSameClubRef = (
+  club: Club,
+  refId?: number | string,
+  refName?: string
+): boolean => {
+  if (refId != null && club.id != null && Number(refId) === Number(club.id)) return true;
+  if (refName && normalizeClubKey(refName) === normalizeClubKey(club.name)) return true;
+  return false;
+};
+
+const resolveSupercupCandidate = (
+  clubsDb: Club[],
+  country: string,
+  userClub: Club,
+  ref: {
+    id?: number | string;
+    name?: string;
+    color?: string;
+    logo?: string;
+    fallbackLogo?: string;
+    ovr?: number;
+  }
+): Club | null => {
+  if (isSameClubRef(userClub, ref.id, ref.name)) return null;
+  if (ref.name && isReserveClub(ref.name)) return null;
+
+  const validCountryClubs = (clubsDb || []).filter(
+    (c) =>
+      (c.country || 'GER') === country &&
+      !c.isReserve &&
+      !isReserveClub(c.name) &&
+      !isSameClubRef(userClub, c.id, c.name)
+  );
+
+  if (ref.id != null) {
+    const byId = validCountryClubs.find((c) => Number(c.id) === Number(ref.id));
+    if (byId) return byId;
+  }
+  if (ref.name) {
+    const targetName = normalizeClubKey(ref.name);
+    const byName = validCountryClubs.find((c) => normalizeClubKey(c.name) === targetName);
+    if (byName) return byName;
+  }
+
+  if (ref.name && ref.name.trim()) {
+    return {
+      id: typeof ref.id === 'number' && Number.isFinite(ref.id) ? ref.id : 99991,
+      name: ref.name.trim(),
+      tier: 1,
+      baseOvr: typeof ref.ovr === 'number' && Number.isFinite(ref.ovr)
+        ? Math.max(60, Math.round(ref.ovr))
+        : Math.max(72, (userClub.baseOvr || 75) - 1),
+      color: ref.color || '#334155',
+      logo: ref.logo,
+      fallbackLogo: ref.fallbackLogo,
+      stadium: 45000,
+      country,
+    };
+  }
+  return null;
+};
+
+const findTier1TableSupercupCandidate = (
+  state: GameState,
+  clubsDb: Club[],
+  country: string,
+  lastYear: number,
+  targetPos: 1 | 2
+): Club | null => {
+  // 1. Exact finalized Tier 1 standings snapshot from completed season
+  const archivedTier1 = state.seasonStandingsArchive?.[lastYear]?.[1];
+  if (Array.isArray(archivedTier1) && archivedTier1.length > 0) {
+    const sorted = [...archivedTier1].sort((a, b) => (a.pos || 99) - (b.pos || 99));
+    if (targetPos === 1) {
+      const topRow = sorted.find((r) => r.pos === 1) || sorted[0];
+      if (topRow) {
+        const resolved = resolveSupercupCandidate(clubsDb, country, state.club, {
+          id: topRow.id,
+          name: topRow.name,
+          color: topRow.color,
+          logo: topRow.logo,
+        });
+        if (resolved) return resolved;
+      }
+    } else {
+      const exactSecond = sorted.find((r) => r.pos === 2);
+      const runnerUpRow =
+        (exactSecond && !isSameClubRef(state.club, exactSecond.id, exactSecond.name)
+          ? exactSecond
+          : sorted.find((r) => !isSameClubRef(state.club, r.id, r.name))) || null;
+      if (runnerUpRow) {
+        const resolved = resolveSupercupCandidate(clubsDb, country, state.club, {
+          id: runnerUpRow.id,
+          name: runnerUpRow.name,
+          color: runnerUpRow.color,
+          logo: runnerUpRow.logo,
+        });
+        if (resolved) return resolved;
+      }
+    }
+  }
+
+  // 2. Universe movements recorded for that country & year (Tier 1 title_won)
+  if (targetPos === 1 && Array.isArray(state.universeMovements)) {
+    const champMove = state.universeMovements.find(
+      (m) =>
+        Number(m.year) === lastYear &&
+        (m.country || 'GER') === country &&
+        Number(m.fromTier) === 1 &&
+        (m.type === 'title_won' || (m.type === 'promotion' && m.pos === 1)) &&
+        !isSameClubRef(state.club, m.clubId, m.clubName)
+    );
+    if (champMove) {
+      const resolved = resolveSupercupCandidate(clubsDb, country, state.club, {
+        id: champMove.clubId,
+        name: champMove.clubName,
+        color: champMove.clubColor,
+        logo: champMove.clubLogo,
+      });
+      if (resolved) return resolved;
+    }
+  }
+
+  // 3. Club leagueHistory entries recorded for that year & tier 1 position
+  const histMatch = (clubsDb || []).find(
+    (c) =>
+      (c.country || 'GER') === country &&
+      !c.isReserve &&
+      !isReserveClub(c.name) &&
+      !isSameClubRef(state.club, c.id, c.name) &&
+      Array.isArray(c.leagueHistory) &&
+      c.leagueHistory.some((h) => h.year === lastYear && h.tier === 1 && h.position === targetPos)
+  );
+  if (histMatch) return histMatch;
+
+  return null;
+};
+
+const findDomesticCupWinnerSupercupCandidate = (
+  state: GameState,
+  clubsDb: Club[],
+  country: string,
+  lastYear: number
+): Club | null => {
+  if (!Array.isArray(state.universeMovements)) return null;
+  const cupMove = state.universeMovements.find(
+    (m) =>
+      Number(m.year) === lastYear &&
+      (m.country || 'GER') === country &&
+      m.type === 'cup_champion' &&
+      !NON_PRIMARY_DOMESTIC_CUP_REGEX.test(m.fromLeagueName || '') &&
+      !isSameClubRef(state.club, m.clubId, m.clubName) &&
+      !isReserveClub(m.clubName)
+  );
+  if (!cupMove) return null;
+  return resolveSupercupCandidate(clubsDb, country, state.club, {
+    id: cupMove.clubId,
+    name: cupMove.clubName,
+    color: cupMove.clubColor,
+    logo: cupMove.clubLogo,
+  });
+};
+
 export const checkSupercupEligibility = (
   state: GameState,
   clubsDb: Club[]
@@ -2535,22 +2705,71 @@ export const checkSupercupEligibility = (
   const lastHist = state.history && state.history.length > 0 ? state.history[state.history.length - 1] : null;
   if (!lastHist) return null;
 
-  const wonQualifyingTrophy = Boolean(
-    lastHist.trophiesThisYear?.bl ||
-      lastHist.trophiesThisYear?.dfb ||
-      (state.club.tier === 1 && lastHist.pos === 1)
+  // Do not carry Supercup eligibility over if the manager switched to a different club
+  if (
+    lastHist.clubId != null &&
+    state.club.id != null &&
+    Number(lastHist.clubId) !== Number(state.club.id)
+  ) {
+    return null;
+  }
+
+  const lastTier = typeof lastHist.tier === 'number' ? lastHist.tier : state.club.tier;
+  const userWonLeague = Boolean(
+    lastHist.trophiesThisYear?.bl || (lastTier === 1 && lastHist.pos === 1)
   );
-  if (!wonQualifyingTrophy) return null;
+  const userWonCup = Boolean(lastHist.trophiesThisYear?.dfb);
+  if (!userWonLeague && !userWonCup) return null;
 
   const country = state.club.country || 'GER';
   const isRes = Boolean(state.club.isReserve) || isReserveClub(state.club.name);
   if (isRes) return null;
 
+  const lastYear = typeof lastHist.year === 'number' ? lastHist.year : state.year - 1;
   const divPeers = (clubsDb || [])
-    .filter((c) => (c.country || 'GER') === country && c.tier === 1 && c.id !== state.club.id)
+    .filter(
+      (c) =>
+        (c.country || 'GER') === country &&
+        c.tier === 1 &&
+        !c.isReserve &&
+        !isReserveClub(c.name) &&
+        !isSameClubRef(state.club, c.id, c.name)
+    )
     .sort((a, b) => (b.baseOvr || 70) - (a.baseOvr || 70));
 
-  const opponent: Club = divPeers[0] || {
+  let resolvedOpponent: Club | null = null;
+  let userQualificationLabel: string;
+  let opponentQualificationLabel: string;
+
+  if (userWonLeague && userWonCup) {
+    // Domestic Double winner faces the Tier 1 League Runner-Up
+    userQualificationLabel = 'Double Winner';
+    opponentQualificationLabel = 'League Runner-Up';
+    resolvedOpponent = findTier1TableSupercupCandidate(state, clubsDb, country, lastYear, 2);
+  } else if (userWonCup) {
+    // Domestic Cup winner faces the actual Tier 1 League Champion
+    userQualificationLabel = 'Cup Winner';
+    opponentQualificationLabel = 'League Champion';
+    resolvedOpponent = findTier1TableSupercupCandidate(state, clubsDb, country, lastYear, 1);
+  } else {
+    // Tier 1 League Champion faces the Domestic Cup Winner (or League Runner-Up if cup winner wasn't distinct/recorded)
+    userQualificationLabel = 'League Champion';
+    const cupWinner = findDomesticCupWinnerSupercupCandidate(state, clubsDb, country, lastYear);
+    if (cupWinner) {
+      resolvedOpponent = cupWinner;
+      opponentQualificationLabel = 'Cup Winner';
+    } else {
+      const runnerUp = findTier1TableSupercupCandidate(state, clubsDb, country, lastYear, 2);
+      if (runnerUp) {
+        resolvedOpponent = runnerUp;
+        opponentQualificationLabel = 'League Runner-Up';
+      } else {
+        opponentQualificationLabel = 'Cup Winner';
+      }
+    }
+  }
+
+  const opponent: Club = resolvedOpponent || divPeers[0] || {
     id: 99990,
     name: `${country} Cup Runners-Up`,
     tier: 1,
@@ -2568,6 +2787,8 @@ export const checkSupercupEligibility = (
     cupName,
     opponent,
     prizeK,
+    userQualificationLabel,
+    opponentQualificationLabel,
   };
 };
 

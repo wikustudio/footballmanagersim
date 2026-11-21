@@ -28,6 +28,11 @@ import confetti from 'canvas-confetti';
 import { BroadcastBadge } from './BroadcastBadge';
 import { PrestigeTrophy } from './PrestigeTrophy';
 import { WorldCupLiveMatchArena, WorldCupLiveEvent } from './WorldCupLiveMatchArena';
+import {
+  WorldCupVenueStage,
+  getHostCountryStadiumRoster,
+  getWorldCupMatchVenue,
+} from '../engine/worldCupStadiums';
 
 interface InternationalTournamentModalProps {
   year: number;
@@ -682,6 +687,22 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     return getScoutIntelligence(activeOpponent, effectiveUserOvr);
   }, [activeOpponent, selectedTeam, effectiveUserOvr]);
 
+  const hostStadiumRoster = useMemo(
+    () => getHostCountryStadiumRoster(hostNation, year),
+    [hostNation, year]
+  );
+
+  const knockoutVenueStage: WorldCupVenueStage =
+    currentStage === 'Semi-Final' ? 'semi_final' : 'quarter_final';
+  const knockoutVenue = useMemo(
+    () => getWorldCupMatchVenue(hostNation, knockoutVenueStage, year),
+    [hostNation, knockoutVenueStage, year]
+  );
+  const grandFinalVenue = useMemo(
+    () => getWorldCupMatchVenue(hostNation, 'final', year),
+    [hostNation, year]
+  );
+
   return (
     <motion.div
       data-wc-modal="true"
@@ -689,7 +710,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.14, ease: 'linear' }}
-      className="fixed inset-0 bg-[#18191F]/45 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm overflow-y-auto overscroll-contain"
+      className="fixed inset-0 bg-[#18191F]/65 flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto overscroll-contain"
     >
       <motion.div
         initial={{ scale: 0.98, opacity: 0 }}
@@ -763,17 +784,17 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
         {/* Streamlined Single Sleek Non-Wrapping Status Ribbon */}
         {step !== 'invite' && selectedTeam && (
           <div className="px-5 py-2.5 sm:px-6 bg-[#FAF9F6] border-b border-[#E6E3DC] flex items-center justify-between shrink-0 text-xs gap-3 relative z-10">
-            <div className="flex items-center gap-2 min-w-0 truncate">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="text-lg shrink-0">{selectedTeam.flag}</span>
-              <span className="text-[#18191F] font-black truncate">{selectedTeam.name}</span>
-              <span aria-hidden="true" className="text-[#C7C4BC]">·</span>
-              <span className="font-mono text-xs font-bold text-amber-800 tabular-nums whitespace-nowrap">
+              <span className="text-[#18191F] font-black whitespace-nowrap shrink-0">{selectedTeam.name}</span>
+              <span aria-hidden="true" className="text-[#C7C4BC] shrink-0">·</span>
+              <span className="font-mono text-xs font-bold text-amber-800 tabular-nums whitespace-nowrap shrink-0">
                 {effectiveUserOvr} Eff. OVR
               </span>
               {appointedCoach && (
                 <>
-                  <span aria-hidden="true" className="text-[#C7C4BC] hidden sm:inline">·</span>
-                  <span className="text-[11px] text-[#6B7280] truncate hidden sm:inline">
+                  <span aria-hidden="true" className="text-[#C7C4BC] hidden lg:inline shrink-0">·</span>
+                  <span className="text-[11px] text-[#6B7280] truncate hidden lg:inline">
                     HC: <strong className="text-[#18191F] font-semibold">{appointedCoach.name}</strong>
                   </span>
                 </>
@@ -790,18 +811,18 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
               <span className={step === 'final' || step === 'summary' ? 'text-[#18191F]' : 'text-[#6B7280]'}>04. Grand Final</span>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0 text-[11px] font-bold">
+            <div className="flex items-center gap-1.5 min-w-0 shrink-0 text-[11px] font-bold">
               <span className={
                 synergy.ovrModifier > 0
-                  ? 'text-emerald-700 font-mono tabular-nums'
+                  ? 'text-emerald-700 font-mono tabular-nums whitespace-nowrap'
                   : synergy.ovrModifier < 0
-                  ? 'text-rose-700 font-mono tabular-nums'
-                  : 'text-amber-800 font-mono tabular-nums'
+                  ? 'text-rose-700 font-mono tabular-nums whitespace-nowrap'
+                  : 'text-amber-800 font-mono tabular-nums whitespace-nowrap'
               }>
                 ⚡ {synergy.ovrModifier > 0 ? `+${synergy.ovrModifier}` : synergy.ovrModifier} OVR
               </span>
-              <span aria-hidden="true" className="text-[#C7C4BC] hidden sm:inline">·</span>
-              <span className="text-[#4B5563] hidden sm:inline">{synergy.title}</span>
+              <span aria-hidden="true" className="text-[#C7C4BC] hidden xl:inline">·</span>
+              <span className="text-[#4B5563] hidden xl:inline truncate max-w-[155px]">{synergy.title}</span>
             </div>
           </div>
         )}
@@ -831,7 +852,10 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                           {year} World Cup™ in {hostNation.name}
                         </h3>
                         <p className="text-xs text-[#4B5563] mt-0.5">
-                          Grand Final Venue: <strong className="text-[#18191F]">{hostNation.stadium}</strong> ({hostNation.city}) · Champion Reward: <strong className="text-amber-800">+5,000 Career Pts &amp; +25 Rep</strong>
+                          Grand Final Venue: <strong className="text-[#18191F]">{grandFinalVenue.name}</strong> ({grandFinalVenue.city}, {grandFinalVenue.capacity.toLocaleString()} seats) · Champion Reward: <strong className="text-amber-800">+5,000 Career Pts &amp; +25 Rep</strong>
+                        </p>
+                        <p className="text-[11px] text-[#6B7280] mt-1">
+                          Host Venues: {hostStadiumRoster.map(v => `${v.name} (${v.city.split('/')[0].trim()})`).join(' · ')}
                         </p>
                       </div>
                     </div>
@@ -1107,7 +1131,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 <div className="flex items-center justify-between bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl px-4 py-3">
                   <div>
                     <h3 className="font-black text-[#18191F] text-sm sm:text-base">
-                      {groupResult.groupName} · Matchday {groupMatchdayRevealed} of 3
+                      {groupResult.groupName} · Matchday {groupLiveMatchday ?? groupMatchdayRevealed} of 3
                     </h3>
                     <p className="text-xs text-[#6B7280]">
                       Top 2 nations advance to the World Cup Quarter-Finals
@@ -1162,12 +1186,20 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                       forUser: false,
                     });
                   }
+                  const groupVenueStage: WorldCupVenueStage =
+                    groupLiveMatchday === 3
+                      ? 'group_3'
+                      : groupLiveMatchday === 2
+                      ? 'group_2'
+                      : 'group_1';
                   return (
                     <WorldCupLiveMatchArena
                       stageLabel={`${groupResult.groupName} · Matchday ${groupLiveMatchday}`}
                       team={selectedTeam}
                       opponent={oppTeam}
                       hostNation={hostNation}
+                      year={year}
+                      venueStage={groupVenueStage}
                       teamGoals={uGoals}
                       oppGoals={oGoals}
                       minuteEvents={syntheticEvents}
@@ -1326,6 +1358,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                       team={selectedTeam}
                       opponent={pendingOpponent}
                       hostNation={hostNation}
+                      year={year}
+                      venueStage={knockoutVenueStage}
                       teamGoals={pendingLiveResult.teamGoals}
                       oppGoals={pendingLiveResult.oppGoals}
                       minuteEvents={pendingLiveResult.minuteEvents || []}
@@ -1369,9 +1403,12 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                         <span className="font-black text-sm sm:text-base text-[#18191F] truncate max-w-full">{selectedTeam.name}</span>
                         <span className="text-xs font-mono text-amber-800 font-bold tabular-nums">{effectiveUserOvr} Eff. OVR</span>
                       </div>
-                      <div className="flex flex-col items-center px-3">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-1">{currentStage}</span>
+                      <div className="flex flex-col items-center px-3 text-center">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-amber-800 mb-0.5">{currentStage}</span>
                         <span className="text-xl sm:text-2xl font-black text-[#6B7280]">VS</span>
+                        <span className="text-[10px] font-semibold text-[#6B7280] mt-0.5">
+                          {knockoutVenue.name}, {knockoutVenue.city}
+                        </span>
                       </div>
                       <div className="flex flex-col items-center gap-1 min-w-0">
                         <span className="text-4xl sm:text-5xl">{pendingOpponent.flag}</span>
@@ -1441,7 +1478,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                 ) : currentMatch ? (
                   <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-6 text-center space-y-4">
                     <div className="text-[11px] font-bold uppercase tracking-widest text-amber-800">
-                      {currentMatch.stage} · Full-Time Result
+                      {currentMatch.stage} · {knockoutVenue.name}, {knockoutVenue.city} · Full-Time Result
                     </div>
 
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-5 my-2 w-full max-w-md mx-auto">
@@ -1588,6 +1625,8 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
                       team={selectedTeam}
                       opponent={finalOpponent}
                       hostNation={hostNation}
+                      year={year}
+                      venueStage="final"
                       teamGoals={
                         currentMatch
                           ? currentMatch.teamGoals

@@ -85,6 +85,14 @@ interface StadiumBowl3DProps {
   cameraAngle?: CameraAngle;
   onCameraChange?: (cam: CameraAngle) => void;
   compactMode?: boolean;
+  hideTopHud?: boolean;
+  initialTimeOfDay?: MatchTimeOfDay | 'auto';
+  forcedMatchPhase?: MatchPhase | null;
+  customTopBoardText?: string;
+  customBottomBoardText?: string;
+  customHomeBoardText?: string;
+  customAwayBoardText?: string;
+  containerClassName?: string;
 }
 
 const CAMERA_OPTIONS: Array<{ id: CameraAngle; label: string }> = [
@@ -101,7 +109,7 @@ interface Pt2 {
   y: number;
 }
 
-export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
+export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = React.memo(({
   club,
   namingRights,
   pitchDesignId,
@@ -136,12 +144,25 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
   cameraAngle: controlledCam,
   onCameraChange,
   compactMode = false,
+  hideTopHud = false,
+  initialTimeOfDay = 'auto',
+  forcedMatchPhase = null,
+  customTopBoardText,
+  customBottomBoardText,
+  customHomeBoardText,
+  customAwayBoardText,
+  containerClassName,
 }) => {
   const [internalCam, setInternalCam] = useState<CameraAngle>('isometric');
   const [inspectZoom, setInspectZoom] = useState(1);
   const [idleTick, setIdleTick] = useState(0);
-  const [forcedTimeOfDay, setForcedTimeOfDay] = useState<MatchTimeOfDay | 'auto'>('auto');
+  const [forcedTimeOfDay, setForcedTimeOfDay] = useState<MatchTimeOfDay | 'auto'>(initialTimeOfDay);
   const camera = controlledCam ?? internalCam;
+
+  // Sync external time-of-day changes (e.g. World Cup daylight kickoff transitioning to floodlit Extra Time)
+  useEffect(() => {
+    setForcedTimeOfDay(initialTimeOfDay);
+  }, [initialTimeOfDay]);
 
   // Fluid 550ms live match choreography; gentle 1400ms warm-up cadence pre-kickoff
   useEffect(() => {
@@ -200,8 +221,10 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
 
   const effectiveTick = isLive ? subTick + idleTick : idleTick;
   const matchPhase: MatchPhase = useMemo(
-    () => getMatchPhaseForOutcome(currentOutcome, Math.floor(effectiveTick / 3), isLive),
-    [currentOutcome, effectiveTick, isLive]
+    () =>
+      forcedMatchPhase ??
+      getMatchPhaseForOutcome(currentOutcome, Math.floor(effectiveTick / 3), isLive),
+    [forcedMatchPhase, currentOutcome, effectiveTick, isLive]
   );
 
   // Tactic-Aware 3D Match Choreography (Continuous 11v11 Player & Ball Fluid Movement)
@@ -369,23 +392,27 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
     : P_V + 6;
   const vipSpanHalfU = Math.max(64, Math.min(132, straightHalfU - 8));
 
-  // Perimeter LED board copy reflecting active Fan Strategy
+  // Perimeter LED board copy reflecting active Fan Strategy (or custom World Cup branding)
   const topBoardText =
-    stadiumPolicy === 'commercial'
+    customTopBoardText ||
+    (stadiumPolicy === 'commercial'
       ? `${(namingRights?.partnerName || activeSponsorName || club.name).toUpperCase()} · VIP HOSPITALITY`
       : stadiumPolicy === 'family'
       ? `${club.name.toUpperCase()} · FAMILY STAND`
-      : namingRights?.partnerName || activeSponsorName || `${club.name.toUpperCase()} MATCHDAY`;
-  const bottomBoardText = stadiumName.toUpperCase();
-  const homeBoardText = buildBehindGoalBoardCopy(
-    club.name,
-    stadiumPolicy,
-    isReserveClub(club.name)
-  );
+      : namingRights?.partnerName || activeSponsorName || `${club.name.toUpperCase()} MATCHDAY`);
+  const bottomBoardText = (customBottomBoardText || stadiumName).toUpperCase();
+  const homeBoardText =
+    customHomeBoardText ||
+    buildBehindGoalBoardCopy(
+      club.name,
+      stadiumPolicy,
+      isReserveClub(club.name)
+    );
   const awayBoardText =
-    isMatchdayActive && effectiveOppName
+    customAwayBoardText ||
+    (isMatchdayActive && effectiveOppName
       ? `${effectiveOppName.toUpperCase().slice(0, 18)} AWAY`
-      : 'VISITING STAND';
+      : 'VISITING STAND');
 
   // Geometrically projected LED board layouts (scale smoothly with stadium capacity, zoom & camera angle)
   const topBoardLayout = computeProjectedBoardTextLayout(
@@ -2128,10 +2155,12 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-[24px] border ${
-        isDaytime ? 'border-[#4A6587]' : 'border-[#2C3B52]'
-      } shadow-sm select-none ${
-        compactMode ? 'h-[320px] sm:h-[360px]' : 'h-[405px] sm:h-[470px]'
+      className={`relative w-full overflow-hidden select-none ${
+        containerClassName
+          ? containerClassName
+          : `rounded-[24px] border ${
+              isDaytime ? 'border-[#4A6587]' : 'border-[#2C3B52]'
+            } shadow-sm ${compactMode ? 'h-[320px] sm:h-[360px]' : 'h-[405px] sm:h-[470px]'}`
       }`}
       style={{
         background: isDaytime
@@ -3596,6 +3625,7 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
          ===================================================================== */}
 
       {/* TOP HUD ROW: Top-Left Matchup + Primary Sim/Supercup CTA | Top-Right Scoreboard */}
+      {!hideTopHud && (
       <div className="pointer-events-none absolute inset-x-2.5 top-2.5 sm:inset-x-3 sm:top-3 flex items-start justify-between gap-2">
         {isInteractiveMatchMode ? (
           <>
@@ -3803,6 +3833,7 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
           </>
         )}
       </div>
+      )}
 
       {/* BOTTOM HUD ROW: Bottom-Left Camera + Day/Night Controls | Bottom-Right Attendance & Stadium Size */}
       <div className="pointer-events-none absolute inset-x-2 bottom-2 sm:inset-x-3 sm:bottom-3 flex items-end justify-between gap-1.5 sm:gap-2">
@@ -3876,4 +3907,4 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -99,7 +99,7 @@ test('UI & IPO hardening contracts are present in WorkspaceTabs, EventUI, IPOMod
   const eventUiSrc = fs.readFileSync('src/components/EventUI.tsx', 'utf-8');
   assert.ok(eventUiSrc.includes('!event.isForced && ('));
   assert.ok(eventUiSrc.includes('Decline & Remain at Current Club'));
-  assert.ok(eventUiSrc.includes('Stay at Current Club'));
+  assert.ok(!eventUiSrc.includes('Stay at Current Club · Decline All Offers'));
   assert.ok(eventUiSrc.includes('bg-emerald-700'));
 
   const ipoSrc = fs.readFileSync('src/components/IPOModal.tsx', 'utf-8');

@@ -123,6 +123,11 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
               <div className="text-[11px] font-bold text-[#6B7280] tabular-nums">
                 {gameState.club.baseOvr} OVR
               </div>
+              {eligibility.userQualificationLabel && (
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                  {eligibility.userQualificationLabel}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col items-center px-3 shrink-0">
@@ -155,6 +160,11 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
               <div className="text-[11px] font-bold text-[#6B7280] tabular-nums">
                 {eligibility.opponent.baseOvr} OVR
               </div>
+              {eligibility.opponentQualificationLabel && (
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#4B5563] bg-white border border-[#E6E3DC] px-2 py-0.5 rounded-md">
+                  {eligibility.opponentQualificationLabel}
+                </div>
+              )}
             </div>
           </div>
 
