@@ -110,6 +110,18 @@ export const MarketingModal: React.FC<MarketingModalProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (rollingId === null) return;
+    const blockEscapeDuringRoll = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', blockEscapeDuringRoll, true);
+    return () => window.removeEventListener('keydown', blockEscapeDuringRoll, true);
+  }, [rollingId]);
+
   const handleLaunchCampaign = (
     campaignId: 'regional' | 'continental' | 'global_tour',
     cost: number,

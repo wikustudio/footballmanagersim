@@ -115,7 +115,10 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
         type === 'platinum' || type === 'cl_champions' || isLeagueChampion || type === 'gold' ? 3500 : 2500;
       const end = Date.now() + duration;
 
+      let cancelled = false;
+      let rafId: number | null = null;
       const frame = () => {
+        if (cancelled) return;
         confetti({
           particleCount: 6,
           angle: 60,
@@ -132,9 +135,20 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
           colors: confColors,
           zIndex: 9999,
         });
-        if (Date.now() < end) requestAnimationFrame(frame);
+        if (Date.now() < end && !cancelled) {
+          rafId = requestAnimationFrame(frame);
+        }
       };
-      requestAnimationFrame(frame);
+      rafId = requestAnimationFrame(frame);
+      return () => {
+        cancelled = true;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        try {
+          confetti.reset();
+        } catch {
+          /* ignore */
+        }
+      };
     } else if (type === 'success') {
       confetti({
         particleCount: 80,
@@ -143,6 +157,13 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
         colors: ['#30d158', '#ffffff'],
         zIndex: 9999,
       });
+      return () => {
+        try {
+          confetti.reset();
+        } catch {
+          /* ignore */
+        }
+      };
     }
   }, [type, isEpicWin, isPlatinum, isGold, isSilver, isBronze, isLeagueChampion, isBl, isB2, isL3, isReg, isOb]);
 

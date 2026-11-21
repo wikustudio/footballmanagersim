@@ -542,8 +542,8 @@ export const computeStadiumArchitecture = (
   const outerV = Math.round(153 + standGapV + standDepth + 6);
 
   // High-density spectator grid counts so filled stands look packed shoulder-to-shoulder across 1-4 tiers
-  const sideCols = Math.round(42 + scaleT * 28 + megaT * 8); // 42 -> 78 columns along touchline
-  const sideRows = Math.round(7 + scaleT * 9 + megaT * 5); // 7 -> 21 rows deep on sidelines
+  const sideCols = Math.round(48 + scaleT * 30 + megaT * 8); // 48 -> 86 columns along touchline
+  const sideRows = Math.round(9 + scaleT * 9 + megaT * 5); // 9 -> 23 rows deep on sidelines
   const endCols = Math.round(6 + scaleT * 8 + megaT * 4); // 6 -> 18 rows deep behind goals
   const endRows = Math.round(28 + scaleT * 16 + megaT * 6); // 28 -> 50 columns across goal line
   const cornerCols = isRoundedBowl
@@ -844,8 +844,8 @@ export const auditBowlSeatOccupancy = (
   }
 
   // 2. Top & Bottom Sidelines
-  const sideU = Math.min(geom.sideCols, 48);
-  const sideV = Math.min(geom.sideRows, 10);
+  const sideU = Math.min(geom.sideCols, 58);
+  const sideV = Math.min(geom.sideRows, 12);
   for (const stand of [
     { mid: profile.oppositeMidfieldFill, wing: profile.oppositeWingFill, invFB: true },
     { mid: profile.mainMidfieldFill, wing: profile.mainWingFill, invFB: false },

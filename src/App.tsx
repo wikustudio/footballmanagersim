@@ -1100,11 +1100,39 @@ export default function App() {
     }
   };
 
+  const readPendingHighscores = (): any[] => {
+    try {
+      const raw = localStorage.getItem('pending_highscores');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      try {
+        localStorage.removeItem('pending_highscores');
+      } catch {
+        /* ignore */
+      }
+      return [];
+    }
+  };
+
+  const writePendingHighscores = (entries: any[]) => {
+    try {
+      if (entries.length === 0) {
+        localStorage.removeItem('pending_highscores');
+      } else {
+        localStorage.setItem('pending_highscores', JSON.stringify(entries.slice(-50)));
+      }
+    } catch {
+      /* ignore quota / privacy errors */
+    }
+  };
+
   useEffect(() => {
     const syncOfflineScores = async () => {
       if (!navigator.onLine) return;
 
-      const pending = JSON.parse(localStorage.getItem('pending_highscores') || '[]');
+      const pending = readPendingHighscores();
       if (pending.length > 0) {
         const remaining: any[] = [];
         let success = false;
@@ -1135,13 +1163,13 @@ export default function App() {
         }
 
         if (remaining.length === 0) {
-          localStorage.removeItem('pending_highscores');
+          writePendingHighscores([]);
           if (success) {
             showToast("Offline scores synced to leaderboards!", "success");
             fetchGlobalHighscores();
           }
         } else {
-          localStorage.setItem('pending_highscores', JSON.stringify(remaining));
+          writePendingHighscores(remaining);
           if (success) fetchGlobalHighscores();
         }
       }
@@ -1204,9 +1232,9 @@ export default function App() {
     });
 
     if (!navigator.onLine) {
-      const pending = JSON.parse(localStorage.getItem('pending_highscores') || '[]');
+      const pending = readPendingHighscores();
       pending.push(newEntry);
-      localStorage.setItem('pending_highscores', JSON.stringify(pending));
+      writePendingHighscores(pending);
       showToast("Career saved locally and will sync to leaderboards when you reconnect!", "info");
       return;
     }
@@ -1215,17 +1243,17 @@ export default function App() {
       const ok = await submitAuthenticatedHighscore(newEntry);
 
       if (!ok) {
-        const pending = JSON.parse(localStorage.getItem('pending_highscores') || '[]');
+        const pending = readPendingHighscores();
         pending.push(newEntry);
-        localStorage.setItem('pending_highscores', JSON.stringify(pending));
+        writePendingHighscores(pending);
         return;
       }
 
       fetchGlobalHighscores();
     } catch {
-      const pending = JSON.parse(localStorage.getItem('pending_highscores') || '[]');
+      const pending = readPendingHighscores();
       pending.push(newEntry);
-      localStorage.setItem('pending_highscores', JSON.stringify(pending));
+      writePendingHighscores(pending);
     }
   };
   // ----------------------
@@ -1871,6 +1899,7 @@ export default function App() {
   const inlineSimCompletedRef = useRef<boolean>(false);
   const inlineSimIsSecondHalfRef = useRef<boolean>(false);
   const returnToYouthModalRef = useRef<boolean>(false);
+  const careerSessionIdRef = useRef<number>(1);
 
   // Centralized Escape key dismissal for voluntary modals (top-of-stack order)
   useEffect(() => {
@@ -2193,8 +2222,10 @@ export default function App() {
 
   const handleCompleteSupercup = (result: SupercupResult) => {
     setShowSupercupModal(false);
+    let completed = false;
     setGameState((prev) => {
-      if (!prev) return prev;
+      if (!prev || prev.supercupPlayedYear === prev.year) return prev;
+      completed = true;
       const nextTrophyHistory = result.won
         ? [
             {
@@ -2230,6 +2261,7 @@ export default function App() {
       latestGameStateRef.current = updated;
       return updated;
     });
+    if (!completed) return;
     showToast(
       result.won
         ? `${result.cupName} Champions! (${result.ourScore}–${result.oppScore}) +${formatMoney(result.prizeK)}`
@@ -3099,8 +3131,11 @@ export default function App() {
         setClubsDb(getBaseModClubs());
       }
       // Keep custom DB mod active so user can start a new career with their uploaded original data!
+      careerSessionIdRef.current += 1;
       simOverlayCompleteResolveRef.current = null;
       inlineSimCompletedRef.current = false;
+      pendingSeasonStateRef.current = null;
+      latestGameStateRef.current = null;
       setIsSimulating(false);
       setShowSimulatingOverlay(false);
       setInlineSim((prev) => ({
@@ -3164,6 +3199,11 @@ export default function App() {
       setShowMarketingModal(false);
       setShowIpoModal(false);
       setShowWorldCupHistory(false);
+      setShowSupercupModal(false);
+      setShowBankLoanModal(false);
+      setShowNamingRightsModal(false);
+      setShowAttendanceModal(false);
+      setShowFeedbackModal(false);
       setViewMode('game');
     }, 'Resetting Career...', 'Returning to Club Selection');
   };
@@ -3390,6 +3430,8 @@ export default function App() {
       return;
     }
     
+    const activeSessionId = careerSessionIdRef.current;
+
     if ((gameState as any).pendingRandomEvent) {
         setGameState(prev => {
             if (!prev) return prev;
@@ -3397,7 +3439,10 @@ export default function App() {
             delete (updated as any).pendingRandomEvent;
             return updated;
         });
-        setTimeout(() => triggerRandomSeasonEvent(gameState), 100);
+        setTimeout(() => {
+          if (careerSessionIdRef.current !== activeSessionId || !latestGameStateRef.current) return;
+          triggerRandomSeasonEvent(gameState);
+        }, 100);
     }
     
     if ((gameState as any).pendingReservePromo) {
@@ -3405,13 +3450,15 @@ export default function App() {
         if (rawParentClub) {
             const liveParentTier = (gameState.livingTiers && ((rawParentClub.id != null ? gameState.livingTiers[rawParentClub.id] : undefined) ?? (rawParentClub.name ? gameState.livingTiers[rawParentClub.name.toLowerCase().trim()] : undefined)));
             const parentFac = gameState.managedClubFacilities?.[String(rawParentClub.id || rawParentClub.name)];
+            const parentOvr = rawParentClub.baseOvr || 75;
+            const parentFacFloor = rawParentClub.isInsolventGiant ? 1 : parentOvr >= 90 ? 5 : parentOvr >= 85 ? 4 : parentOvr >= 80 ? 3 : parentOvr >= 75 ? 2 : 1;
             const parentClub: Club = {
               ...rawParentClub,
               tier: (typeof liveParentTier === 'number' && liveParentTier >= 1) ? liveParentTier : rawParentClub.tier,
               baseOvr: rawParentClub.baseOvr,
               stadium: Math.max(rawParentClub.stadium || 0, parentFac?.stadium || 0),
-              academyLevel: Math.max(rawParentClub.academyLevel || 1, parentFac?.academyLevel || 1),
-              medicalLevel: Math.max(rawParentClub.medicalLevel || 1, parentFac?.medicalLevel || 1),
+              academyLevel: Math.max(parentFacFloor, rawParentClub.academyLevel || 1, parentFac?.academyLevel || 1),
+              medicalLevel: Math.max(parentFacFloor, rawParentClub.medicalLevel || 1, parentFac?.medicalLevel || 1),
             };
             setGameState(prev => {
                 if (!prev) return prev;
@@ -3420,6 +3467,7 @@ export default function App() {
                 return updated;
             });
             setTimeout(() => {
+                if (careerSessionIdRef.current !== activeSessionId || !latestGameStateRef.current) return;
                 enqueueEvent({
                   id: 'reserve_promo_' + Date.now(),
                   type: 'job_offer',
@@ -11735,20 +11783,26 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     setClubsDb(cleanNewClubsDb);
     setGameState(state);
 
+    const postSeasonSessionId = careerSessionIdRef.current;
+
     if (bankruptcyDecisionEvent && !sackedJobOffer) {
       setTimeout(() => {
+        if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
         enqueueEvent(bankruptcyDecisionEvent);
       }, 700);
     } else if (rivalTakeoverEventTriggered && !sackedJobOffer) {
       setTimeout(() => {
+        if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
         enqueueEvent(rivalTakeoverEventTriggered);
       }, 700);
     } else if (nlzLossEventTriggered && !sackedJobOffer) {
       setTimeout(() => {
+        if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
         enqueueEvent(nlzLossEventTriggered);
       }, 700);
     } else if (glassCeilingEventTriggered && !sackedJobOffer) {
       setTimeout(() => {
+        if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
         enqueueEvent(glassCeilingEventTriggered);
       }, 700);
     } else if (!sackedJobOffer) {
@@ -11769,6 +11823,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             medicalLevel: Math.max(parentFacFloor, rawParentClub.medicalLevel || 1, parentFac?.medicalLevel || 1),
           };
           setTimeout(() => {
+            if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
             enqueueEvent({
               id: 'reserve_promo_' + Date.now(),
               type: 'job_offer',
@@ -11859,6 +11914,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
         if (poachedClubs.length > 0) {
           setTimeout(() => {
+            if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
             enqueueEvent({
               id: 'proactive_poach_' + Date.now(),
               type: 'job_offer',
@@ -11890,6 +11946,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const eventRoll = Math.random();
       if (!isSummerWorldCupInviteYear && (state.madeCupFinal || eventRoll < 0.85)) {
         setTimeout(() => {
+          if (careerSessionIdRef.current !== postSeasonSessionId || !latestGameStateRef.current) return;
           triggerRandomSeasonEvent(state);
         }, 600);
       }

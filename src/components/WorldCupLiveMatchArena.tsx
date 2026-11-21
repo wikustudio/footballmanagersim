@@ -93,8 +93,30 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
 
   const onMinuteUpdateRef = useRef(onMinuteUpdate);
   const onCompleteRef = useRef(onComplete);
+  const minuteRef = useRef<number>(startMinute);
+  const completedRef = useRef<boolean>(false);
+  const completeTimeoutRef = useRef<number | null>(null);
   onMinuteUpdateRef.current = onMinuteUpdate;
   onCompleteRef.current = onComplete;
+
+  const triggerComplete = () => {
+    if (completeTimeoutRef.current !== null) {
+      window.clearTimeout(completeTimeoutRef.current);
+      completeTimeoutRef.current = null;
+    }
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onCompleteRef.current?.();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (completeTimeoutRef.current !== null) {
+        window.clearTimeout(completeTimeoutRef.current);
+        completeTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const sortedEvents = useMemo(
     () => [...minuteEvents].sort((a, b) => a.minute - b.minute),
@@ -103,6 +125,12 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
 
   // Reset minute cleanly if a new phase/half starts (e.g. Grand Final 2nd half 45 -> 90/120)
   useEffect(() => {
+    if (completeTimeoutRef.current !== null) {
+      window.clearTimeout(completeTimeoutRef.current);
+      completeTimeoutRef.current = null;
+    }
+    completedRef.current = false;
+    minuteRef.current = startMinute;
     setMinute(startMinute);
     setPhase('match');
     setKickIndex(0);
@@ -148,7 +176,7 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
       if (resolvedShootoutSequence.length === 0 || kickIndex >= resolvedShootoutSequence.length) {
         const doneTimer = window.setTimeout(() => {
           setPhase('finished');
-          onCompleteRef.current?.();
+          triggerComplete();
         }, speedMultiplier === 3 ? 280 : 650);
         return () => window.clearTimeout(doneTimer);
       }
@@ -163,46 +191,50 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
     const stepMs = speedMultiplier === 3 ? Math.max(16, Math.round(baseIntervalMs / 3)) : baseIntervalMs;
 
     const timer = window.setInterval(() => {
-      setMinute((prevMin) => {
-        const step = mode === 'group' ? 3 : 1;
-        const nextMin = Math.min(effectiveTargetMinute, prevMin + step);
+      const prevMin = minuteRef.current;
+      const step = mode === 'group' ? 3 : 1;
+      const nextMin = Math.min(effectiveTargetMinute, prevMin + step);
+      minuteRef.current = nextMin;
+      setMinute(nextMin);
 
-        // Trigger Extra Time floodlights transition at 90' when match goes beyond 90
-        if (prevMin < 90 && nextMin >= 90 && effectiveTargetMinute > 90) {
-          setPhase('extra_time_banner');
-        }
+      // Trigger Extra Time floodlights transition at 90' when match goes beyond 90
+      if (prevMin < 90 && nextMin >= 90 && effectiveTargetMinute > 90) {
+        setPhase('extra_time_banner');
+      }
 
-        // Trigger Goal celebration flash when crossing a goal event minute
-        const newlyScoredGoal = sortedEvents.find(
-          (ev) => ev.isGoal && ev.minute > prevMin && ev.minute <= nextMin
-        );
-        if (newlyScoredGoal) {
-          setGoalBanner({
-            teamName: newlyScoredGoal.forUser ? team.name : opponent.name,
-            flag: newlyScoredGoal.forUser ? team.flag : opponent.flag,
-            minute: newlyScoredGoal.minute,
-            forUser: !!newlyScoredGoal.forUser,
-          });
-        }
+      // Trigger Goal celebration flash when crossing a goal event minute
+      const newlyScoredGoal = sortedEvents.find(
+        (ev) => ev.isGoal && ev.minute > prevMin && ev.minute <= nextMin
+      );
+      if (newlyScoredGoal) {
+        setGoalBanner({
+          teamName: newlyScoredGoal.forUser ? team.name : opponent.name,
+          flag: newlyScoredGoal.forUser ? team.flag : opponent.flag,
+          minute: newlyScoredGoal.minute,
+          forUser: !!newlyScoredGoal.forUser,
+        });
+      }
 
-        const revealed = sortedEvents.filter((ev) => ev.minute <= nextMin);
-        const liveUserGoals = revealed.filter((ev) => ev.isGoal && ev.forUser).length;
-        const liveOppGoals = revealed.filter((ev) => ev.isGoal && !ev.forUser).length;
-        onMinuteUpdateRef.current?.(nextMin, liveUserGoals, liveOppGoals, revealed);
+      const revealed = sortedEvents.filter((ev) => ev.minute <= nextMin);
+      const liveUserGoals = revealed.filter((ev) => ev.isGoal && ev.forUser).length;
+      const liveOppGoals = revealed.filter((ev) => ev.isGoal && !ev.forUser).length;
+      onMinuteUpdateRef.current?.(nextMin, liveUserGoals, liveOppGoals, revealed);
 
-        if (nextMin >= effectiveTargetMinute) {
-          window.clearInterval(timer);
-          if (pens && !pauseAtMinute) {
-            setPhase('shootout');
-          } else {
-            setPhase('finished');
-            window.setTimeout(() => {
-              onCompleteRef.current?.();
-            }, 220);
+      if (nextMin >= effectiveTargetMinute) {
+        window.clearInterval(timer);
+        if (pens && !pauseAtMinute) {
+          setPhase('shootout');
+        } else {
+          setPhase('finished');
+          if (completeTimeoutRef.current !== null) {
+            window.clearTimeout(completeTimeoutRef.current);
           }
+          completeTimeoutRef.current = window.setTimeout(() => {
+            completeTimeoutRef.current = null;
+            triggerComplete();
+          }, 220);
         }
-        return nextMin;
-      });
+      }
     }, stepMs);
 
     return () => window.clearInterval(timer);
@@ -230,6 +262,8 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
   }, [goalBanner, speedMultiplier]);
 
   const handleSkipToResult = () => {
+    if (completedRef.current) return;
+    minuteRef.current = effectiveTargetMinute;
     const revealed = sortedEvents.filter((ev) => ev.minute <= effectiveTargetMinute);
     onMinuteUpdateRef.current?.(
       effectiveTargetMinute,
@@ -243,7 +277,7 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
       setKickIndex(resolvedShootoutSequence.length);
     }
     setPhase('finished');
-    onCompleteRef.current?.();
+    triggerComplete();
   };
 
   // Revealed live scores during play
@@ -323,11 +357,13 @@ export const WorldCupLiveMatchArena: React.FC<WorldCupLiveMatchArenaProps> = ({
       34,
       68
     );
+    const safeUserOvr = Math.max(1, effectiveUserOvr || 70);
+    const safeOppOvr = Math.max(1, opponent.ovr || 70);
     const progressRatio = clamp((minute - 1) / Math.max(1, endMinute), 0.05, 1.25);
-    const userXg = (liveUserGoals * 0.72 + progressRatio * (effectiveUserOvr / opponent.ovr) * 0.95).toFixed(2);
-    const oppXg = (liveOppGoals * 0.72 + progressRatio * (opponent.ovr / effectiveUserOvr) * 0.85).toFixed(2);
-    const userShots = Math.max(liveUserGoals, Math.round(progressRatio * 11 * (effectiveUserOvr / opponent.ovr)));
-    const oppShots = Math.max(liveOppGoals, Math.round(progressRatio * 10 * (opponent.ovr / effectiveUserOvr)));
+    const userXg = (liveUserGoals * 0.72 + progressRatio * (safeUserOvr / safeOppOvr) * 0.95).toFixed(2);
+    const oppXg = (liveOppGoals * 0.72 + progressRatio * (safeOppOvr / safeUserOvr) * 0.85).toFixed(2);
+    const userShots = Math.max(liveUserGoals, Math.round(progressRatio * 11 * (safeUserOvr / safeOppOvr)));
+    const oppShots = Math.max(liveOppGoals, Math.round(progressRatio * 10 * (safeOppOvr / safeUserOvr)));
 
     return {
       userPositions,

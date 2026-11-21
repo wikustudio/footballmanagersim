@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameState, SupercupResult } from '../types';
 import { SupercupEligibility, resolveSupercupMatch } from '../engine/liveSimVisualEngine';
 import { formatMoney, formatNum } from '../data/gameConstants';
@@ -25,12 +25,48 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
 }) => {
   const [stance, setStance] = useState<'high_press' | 'balanced' | 'counter'>('high_press');
   const [result, setResult] = useState<SupercupResult | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const hasKickedOffRef = useRef(false);
+  const isCompletingRef = useRef(false);
+
+  // Reset modal state cleanly whenever opened or eligibility changes across seasons
+  useEffect(() => {
+    if (isOpen) {
+      setStance('high_press');
+      setResult(null);
+      setIsCompleting(false);
+      hasKickedOffRef.current = false;
+      isCompletingRef.current = false;
+    }
+  }, [isOpen, eligibility?.cupName, eligibility?.opponent?.id, gameState.year]);
+
+  // Prevent Escape-key dismissal after match result is already decided (prevents save-scum replay)
+  useEffect(() => {
+    if (!isOpen || !result) return;
+    const blockEscapeAfterResult = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('keydown', blockEscapeAfterResult, true);
+    return () => window.removeEventListener('keydown', blockEscapeAfterResult, true);
+  }, [isOpen, result]);
 
   if (!isOpen || !eligibility) return null;
 
   const handleKickoff = () => {
+    if (hasKickedOffRef.current || result) return;
+    hasKickedOffRef.current = true;
     const res = resolveSupercupMatch(gameState, eligibility, stance);
     setResult(res);
+  };
+
+  const handleComplete = () => {
+    if (!result || isCompletingRef.current) return;
+    isCompletingRef.current = true;
+    setIsCompleting(true);
+    onComplete(result);
   };
 
   return (
@@ -188,8 +224,9 @@ export const SupercupModal: React.FC<SupercupModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => onComplete(result)}
-                className="w-full py-3 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] text-white text-sm font-extrabold transition cursor-pointer"
+                disabled={isCompleting}
+                onClick={handleComplete}
+                className="w-full py-3 rounded-2xl bg-[#18191F] hover:bg-[#2A2C35] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-extrabold transition cursor-pointer"
               >
                 Collect Silverware & Start Season →
               </button>

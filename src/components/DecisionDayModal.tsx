@@ -117,6 +117,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     isResolvedRef.current = true;
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    try { confetti.reset(); } catch { /* ignore */ }
     resolve(arg);
   };
 
@@ -124,6 +125,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      try { confetti.reset(); } catch { /* ignore */ }
       delete (window as any)._decisionChoice;
     };
   }, []);
@@ -721,6 +723,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
               zIndex: 110
             });
             const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+            if (intervalRef.current) clearInterval(intervalRef.current);
             intervalRef.current = setInterval(function () {
               const timeLeft = animationEnd - Date.now();
               if (timeLeft <= 0) {

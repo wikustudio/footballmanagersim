@@ -10,14 +10,35 @@ interface TransferSagaModalProps {
 
 export const TransferSagaModal: React.FC<TransferSagaModalProps> = ({ saga, onSelectOption, onClose }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const submittingRef = React.useRef(false);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    submittingRef.current = false;
+    setIsSubmitting(false);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [saga.id]);
 
   const handleSelectOption = (opt: TransferSagaOption) => {
-    if (isSubmitting) return;
+    if (submittingRef.current || isSubmitting) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     onSelectOption(opt);
     // Auto-unlock after 400ms so validation returns (e.g. credit/squad limit) do not permanently brick the UI
-    setTimeout(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      submittingRef.current = false;
       setIsSubmitting(false);
+      timerRef.current = null;
     }, 400);
   };
 

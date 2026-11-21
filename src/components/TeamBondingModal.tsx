@@ -19,7 +19,16 @@ export const TeamBondingModal: React.FC<TeamBondingModalProps> = ({ state, lang,
 
   const currentMorale = state.club.morale ?? 100;
   const isAlreadyDone = Boolean(state.teamBondingThisSeason);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const submittingRef = React.useRef(false);
   const costScaleInfo = t(`Tier ${state.club.tier} football pricing`, `Skaliert für Liga ${state.club.tier}`);
+
+  const handleConfirm = () => {
+    if (submittingRef.current || isSubmitting || !canAfford || currentMorale >= 100 || isAlreadyDone) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    onConfirm();
+  };
 
   return (
     <motion.div 
@@ -141,8 +150,8 @@ export const TeamBondingModal: React.FC<TeamBondingModalProps> = ({ state, lang,
         {/* Footer */}
         <div className="p-4 sm:p-5 border-t border-[#E6E3DC] bg-[#FAF9F6] flex items-center gap-2.5 shrink-0 relative z-10">
           <button
-            onClick={onConfirm}
-            disabled={!canAfford || currentMorale >= 100 || isAlreadyDone}
+            onClick={handleConfirm}
+            disabled={!canAfford || currentMorale >= 100 || isAlreadyDone || isSubmitting}
             className={`flex-1 py-3.5 px-5 rounded-2xl font-bold text-xs tracking-wide transition shadow-sm ${
               isAlreadyDone || currentMorale >= 100
                 ? 'bg-[#F5F4F0] text-[#9A9890] border border-[#E6E3DC] cursor-not-allowed'

@@ -131,7 +131,10 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
           confetti({ ...defaults, particleCount, origin: { x: 0.5, y: 0.35 } });
         }, 300);
         
-        return () => clearInterval(interval);
+        return () => {
+          clearInterval(interval);
+          try { confetti.reset(); } catch { /* ignore */ }
+        };
       }
     }
   }, [globalHighscores, state.careerScore]);

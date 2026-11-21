@@ -15,11 +15,13 @@ interface FanBondingModalProps {
 
 export const FanBondingModal: React.FC<FanBondingModalProps> = ({ state, lang, cost, onConfirm, onClose, creditLimit }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = React.useRef(false);
   const canAfford = state.budget - cost >= -(creditLimit || 0);
   const isAlreadyDone = Boolean(state.fanBondingThisSeason);
 
   const handleConfirm = () => {
-    if (isProcessing || isAlreadyDone || !canAfford) return;
+    if (processingRef.current || isProcessing || isAlreadyDone || !canAfford) return;
+    processingRef.current = true;
     setIsProcessing(true);
     onConfirm();
     onClose();

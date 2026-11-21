@@ -597,7 +597,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     if (!pendingLiveResult) return;
     const finishedResult = pendingLiveResult;
     setCurrentMatch(finishedResult);
-    setMatches(prev => [...prev, finishedResult]);
+    setMatches(prev => [...prev.filter(m => m.stage !== finishedResult.stage), finishedResult]);
     setPendingLiveResult(null);
     setKnockoutPhase('result');
     if (!finishedResult.won) setWonTrophy(false);
@@ -652,7 +652,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
   // Resolve Second Half of Grand Final after Director Halftime Intervention
   const resolveGrandFinalSecondHalf = (intervention: 'steady' | 'all_out_attack' | 'park_the_bus') => {
-    if (!selectedTeam || !appointedCoach || !finalOpponent) return;
+    if (!selectedTeam || !appointedCoach || !finalOpponent || finalPhase !== 'halftime') return;
     setFinalHalftimeIntervention(intervention);
     setFinalPhase('live');
     setIsFinalLiveRunning(true);
@@ -672,7 +672,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
     );
 
     setCurrentMatch(result);
-    setMatches(prev => [...prev, result]);
+    setMatches(prev => [...prev.filter(m => m.stage !== 'Grand Final'), result]);
   };
 
   const activeOpponent = step === 'final' ? finalOpponent : step === 'knockout' ? pendingOpponent : null;

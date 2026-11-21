@@ -346,7 +346,8 @@ describe('liveSimVisualEngine', () => {
     expect(village.endRows).toBeGreaterThanOrEqual(28);
     expect(colossus.endRows).toBeGreaterThanOrEqual(40);
     expect(stadiumSrc).not.toContain('const effVCount = Math.min(vCount, 10);');
-    expect(stadiumSrc).toContain('isGoalEnd ? Math.min(vCount, 32) : Math.min(vCount, 10)');
+    expect(stadiumSrc).toContain('isGoalEnd ? Math.min(vCount, 32) : Math.min(vCount, 12)');
+    expect(stadiumSrc).toContain('Math.min(uCount, 58)');
   });
 
   it('supports distinct stadium varieties with realistic heritage distribution, size scaling, and single stadium name label', async () => {

@@ -29,12 +29,14 @@ export const WinterCampModal: React.FC<WinterCampModalProps> = ({
   const costSpain = getLeagueScaledVal(tier, 9000, country);
   const costDubai = getLeagueScaledVal(tier, 25000, country);
   const [submitting, setSubmitting] = React.useState(false);
+  const submittingRef = React.useRef(false);
 
   const canAfford = (c: number) => state.budget - c >= -(creditLimit || 0);
   const isAlreadyDone = Boolean(state.winterCampDone);
   const triggerCamp = (type: 'local' | 'spain' | 'dubai', cost: number) => {
-    if (submitting || isAlreadyDone) return;
+    if (submittingRef.current || submitting || isAlreadyDone) return;
     if (cost > 0 && !canAfford(cost)) return;
+    submittingRef.current = true;
     setSubmitting(true);
     onSelectCamp(type, cost);
   };

@@ -326,6 +326,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
     if (isResolvedRef.current) return;
     isResolvedRef.current = true;
     clearAllTimers();
+    try { confetti.reset(); } catch { /* ignore */ }
     onComplete({ ...result, mpSpent: mpBoostCount * 5, rivalStats, playedOpponents: playedOpponentsRef.current });
     delete (window as any)._cupChoice;
   };
@@ -333,6 +334,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
   useEffect(() => {
     return () => {
       clearAllTimers();
+      try { confetti.reset(); } catch { /* ignore */ }
       delete (window as any)._cupChoice;
     };
   }, []);
@@ -741,6 +743,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
 
       const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
+      if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(function() {
         const timeLeft = animationEnd - Date.now();
 
@@ -753,7 +756,10 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
         confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
       }, 250);
 
-      return () => clearInterval(intervalRef.current);
+      return () => {
+        clearInterval(intervalRef.current);
+        try { confetti.reset(); } catch { /* ignore */ }
+      };
     }
   }, [stage]);
 

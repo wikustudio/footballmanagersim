@@ -14,17 +14,34 @@ interface EventUIProps {
 
 export const EventUI: React.FC<EventUIProps> = ({ event, lang, isModActive, onResolve }) => {
   const [isResolving, setIsResolving] = React.useState(false);
+  const resolvingRef = React.useRef(false);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
+    resolvingRef.current = false;
     setIsResolving(false);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [event?.id, event?.type]);
 
   const handleChoice = (choiceIndex: number) => {
-    if (isResolving) return;
+    if (resolvingRef.current || isResolving) return;
+    resolvingRef.current = true;
     setIsResolving(true);
     onResolve(choiceIndex);
-    setTimeout(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      resolvingRef.current = false;
       setIsResolving(false);
+      timerRef.current = null;
     }, 320);
   };
 

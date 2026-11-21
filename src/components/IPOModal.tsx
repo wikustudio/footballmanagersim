@@ -123,6 +123,18 @@ export const IPOModal: React.FC<IPOModalProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isPitching) return;
+    const blockEscapeDuringPitch = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', blockEscapeDuringPitch, true);
+    return () => window.removeEventListener('keydown', blockEscapeDuringPitch, true);
+  }, [isPitching]);
+
   // Post-IPO metrics
   const tickerLetters = (state.club?.name || 'FMS').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'FMS';
   const ticker = `${tickerLetters} PLC`;

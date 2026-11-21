@@ -696,6 +696,36 @@ export interface DeterministicDivisionTableParams {
   isModActive?: boolean;
 }
 
+const getSeasonalPeerStrengthScore = (
+  club: Club,
+  year: number,
+  country: string,
+  tier: number
+): number => {
+  const rawOvr = club.baseOvr || 65;
+  // Dampen extreme Tier 1 OVR gap above 86 so an initial 95-96 giant doesn't lock peer slot #1 100% of seasons
+  const base =
+    tier === 1 && rawOvr > 86 ? 86 + (rawOvr - 86) * 0.42 : rawOvr;
+  const formSwing = seededInt(`str-${year}-${country}-${tier}-${club.id}-${club.name}`, -7, 7);
+  let arcDelta = 0;
+
+  if (tier === 1 && !club.isInsolventGiant) {
+    const arcRoll = deterministicHash(`arc-${year}-${country}-${tier}-${club.id}-${club.name}`);
+    if (rawOvr >= 83 && arcRoll < 0.12) {
+      // Transitional slump / injury wave (-8 to -14)
+      arcDelta = -seededInt(`slump-${year}-${club.id}`, 8, 14);
+    } else if (rawOvr >= 78 && arcRoll >= 0.78) {
+      // Title challenger breakthrough (+5 to +11)
+      arcDelta = seededInt(`surge-${year}-${club.id}`, 5, 11);
+    } else if (rawOvr >= 72 && rawOvr < 80 && arcRoll >= 0.64 && arcRoll < 0.78) {
+      // Dark-horse European push (+7 to +12)
+      arcDelta = seededInt(`dark-${year}-${club.id}`, 7, 12);
+    }
+  }
+
+  return base + formSwing + arcDelta;
+};
+
 /**
  * Single deterministic standings engine producing identical 18-club tables across:
  * - Pre-season (MD 0)
@@ -738,31 +768,6 @@ export const buildDeterministicDivisionTable = (
           (rivalNameLower && c.name.toLowerCase().trim() === rivalNameLower))
     );
 
-  const getSeasonalPeerStrengthScore = (club: Club): number => {
-    const rawOvr = club.baseOvr || 65;
-    // Dampen extreme Tier 1 OVR gap above 86 so an initial 95-96 giant doesn't lock peer slot #1 100% of seasons
-    const base =
-      tier === 1 && rawOvr > 86 ? 86 + (rawOvr - 86) * 0.42 : rawOvr;
-    const formSwing = seededInt(`str-${year}-${country}-${tier}-${club.id}-${club.name}`, -7, 7);
-    let arcDelta = 0;
-
-    if (tier === 1 && !club.isInsolventGiant) {
-      const arcRoll = deterministicHash(`arc-${year}-${country}-${tier}-${club.id}-${club.name}`);
-      if (rawOvr >= 83 && arcRoll < 0.12) {
-        // Transitional slump / injury wave (-8 to -14)
-        arcDelta = -seededInt(`slump-${year}-${club.id}`, 8, 14);
-      } else if (rawOvr >= 78 && arcRoll >= 0.78) {
-        // Title challenger breakthrough (+5 to +11)
-        arcDelta = seededInt(`surge-${year}-${club.id}`, 5, 11);
-      } else if (rawOvr >= 72 && rawOvr < 80 && arcRoll >= 0.64 && arcRoll < 0.78) {
-        // Dark-horse European push (+7 to +12)
-        arcDelta = seededInt(`dark-${year}-${club.id}`, 7, 12);
-      }
-    }
-
-    return base + formSwing + arcDelta;
-  };
-
   // Order peers deterministically by season strength & promotion/relegation coherence
   const orderedPeers = [...peers].sort((a, b) => {
     if (promotedPeerIds || promotedPeerNames) {
@@ -777,8 +782,8 @@ export const buildDeterministicDivisionTable = (
       if (aRel && !bRel) return 1;
       if (!aRel && bRel) return -1;
     }
-    const bScore = getSeasonalPeerStrengthScore(b);
-    const aScore = getSeasonalPeerStrengthScore(a);
+    const bScore = getSeasonalPeerStrengthScore(b, year, country, tier);
+    const aScore = getSeasonalPeerStrengthScore(a, year, country, tier);
     if (bScore !== aScore) return bScore - aScore;
     return a.name.localeCompare(b.name);
   });
@@ -1210,8 +1215,8 @@ export const syncScheduleRunningPositions = (params: {
   }
 
   const orderedPeers = [...peers].sort((a, b) => {
-    const bScore = (b.baseOvr || 65) + seededInt(`str-${year}-${country}-${tier}-${b.id}-${b.name}`, -4, 4);
-    const aScore = (a.baseOvr || 65) + seededInt(`str-${year}-${country}-${tier}-${a.id}-${a.name}`, -4, 4);
+    const bScore = getSeasonalPeerStrengthScore(b, year, country, tier);
+    const aScore = getSeasonalPeerStrengthScore(a, year, country, tier);
     if (bScore !== aScore) return bScore - aScore;
     return a.name.localeCompare(b.name);
   });

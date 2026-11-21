@@ -27,8 +27,16 @@ export const BankLoanModal: React.FC<BankLoanModalProps> = ({
 }) => {
   const [selectedTenure, setSelectedTenure] = useState<10 | 15 | 25>(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = React.useRef(false);
   const isDe = lang === 'de';
   const tr = (en: string, de?: string) => t(lang, en, de);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
 
 
   const options: LoanTermOption[] = getLoanOptions(maxLoanAmount);
@@ -209,7 +217,8 @@ export const BankLoanModal: React.FC<BankLoanModalProps> = ({
             type="button"
             disabled={hasActiveLoan || maxLoanAmount <= 0 || isSubmitting}
             onClick={() => {
-              if (!hasActiveLoan && maxLoanAmount > 0 && !isSubmitting) {
+              if (!hasActiveLoan && maxLoanAmount > 0 && !submittingRef.current && !isSubmitting) {
+                submittingRef.current = true;
                 setIsSubmitting(true);
                 onConfirmLoan(maxLoanAmount, selectedTenure);
               }

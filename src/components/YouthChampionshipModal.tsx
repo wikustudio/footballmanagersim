@@ -256,6 +256,10 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
     for (let i = 0; i < currentTeams.length; i += 2) {
       const t1 = currentTeams[i];
       const t2 = currentTeams[i + 1];
+      if (!t1 || !t2) {
+        if (t1) winners.push(t1);
+        continue;
+      }
       const diff = t1.ovr - t2.ovr;
       // Knockout tension scaling: tighter margins in Semi-Finals and Final so even Level 5 academies face real jeopardy
       const mult = isFinalRound ? 1.25 : isSemiRound ? 1.55 : 1.8;
@@ -318,8 +322,33 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
     return { results, winners };
   };
 
+  const hasClosedRef = React.useRef(false);
+
+  useEffect(() => {
+    return () => {
+      try {
+        confetti.reset();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  const handleCloseModal = () => {
+    if (hasClosedRef.current) return;
+    hasClosedRef.current = true;
+    try {
+      confetti.reset();
+    } catch {
+      /* ignore */
+    }
+    claimRewardsIfNeeded(tournamentWon);
+    onClose(tournamentWon, hasStartedRef.current);
+  };
+
   const handleNextPhase = () => {
     if (phase === 'intro') {
+      if (teams.length < 2) return;
       hasStartedRef.current = true;
       if (onTournamentStart) {
         onTournamentStart();
@@ -329,11 +358,13 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
       setTeams(winners);
       setPhase('qf');
     } else if (phase === 'qf') {
+      if (teams.length < 2) return;
       const { results, winners } = simulateRound(teams, phase);
       setMatches(results);
       setTeams(winners);
       setPhase('sf');
     } else if (phase === 'sf') {
+      if (teams.length < 2) return;
       if (teams.some(t => t.isPlayer)) {
         setReachedFinal(true);
       }
@@ -354,8 +385,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
         });
       }
     } else if (phase === 'result') {
-      claimRewardsIfNeeded(tournamentWon);
-      onClose(tournamentWon, hasStartedRef.current);
+      handleCloseModal();
     }
   };
 
@@ -407,7 +437,7 @@ export const YouthChampionshipModal: React.FC<Props> = ({ state, lang, clubsDb, 
 
             <button 
               aria-label="Close modal" 
-              onClick={() => { claimRewardsIfNeeded(tournamentWon); onClose(tournamentWon, hasStartedRef.current); }} 
+              onClick={handleCloseModal} 
               className="w-8 h-8 rounded-full bg-[#F5F4F0] hover:bg-[#EAE7E0] text-[#6B7280] hover:text-[#18191F] flex items-center justify-center transition border border-[#E6E3DC] cursor-pointer shrink-0"
             >
               <i className="fas fa-xmark text-xs"></i>

@@ -18,8 +18,16 @@ export const OffSeasonEventModal: React.FC<Props> = ({ event }) => {
   const isGold = event.id === 'billionaire';
 
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const processingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    processingRef.current = false;
+    setIsProcessing(false);
+  }, [event.id]);
+
   const handleAction = (action: () => void) => {
-    if (isProcessing) return;
+    if (processingRef.current || isProcessing) return;
+    processingRef.current = true;
     setIsProcessing(true);
     action();
   };

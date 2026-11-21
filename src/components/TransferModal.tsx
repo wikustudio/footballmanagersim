@@ -81,11 +81,29 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'all' | 'signings' | 'outgoings' | 'galactico' | 'academy'>('all');
   const [isLocalProcessing, setIsLocalProcessing] = useState(false);
+  const localProcessingRef = React.useRef(false);
+  const actionTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (actionTimerRef.current) {
+        clearTimeout(actionTimerRef.current);
+        actionTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleAction = (action: () => void) => {
-    if (isLocalProcessing) return;
+    if (localProcessingRef.current || isLocalProcessing) return;
+    localProcessingRef.current = true;
     setIsLocalProcessing(true);
     action();
-    setTimeout(() => setIsLocalProcessing(false), 350);
+    if (actionTimerRef.current) clearTimeout(actionTimerRef.current);
+    actionTimerRef.current = setTimeout(() => {
+      localProcessingRef.current = false;
+      setIsLocalProcessing(false);
+      actionTimerRef.current = null;
+    }, 350);
   };
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const savedScrollTop = React.useRef<number>(0);

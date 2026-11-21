@@ -135,18 +135,22 @@ export function advanceLoanSeason(loan?: BankLoan): { updatedLoan?: BankLoan; an
     };
   }
 
+  const totalYears = loan.totalYears && loan.totalYears > 0
+    ? loan.totalYears
+    : Math.max(15, loan.yearsLeft);
   const initialPrincipal = (loan.initialPrincipal && loan.initialPrincipal > 0)
     ? loan.initialPrincipal
-    : (loan.principal && loan.yearsLeft < loan.totalYears)
-    ? Math.round(loan.principal / (loan.yearsLeft / loan.totalYears))
+    : (loan.principal && loan.yearsLeft < totalYears)
+    ? Math.round(loan.principal / (loan.yearsLeft / totalYears))
     : loan.principal;
-  const nextPrincipal = Math.round(initialPrincipal * (nextYearsLeft / loan.totalYears));
+  const nextPrincipal = Math.max(0, Math.round(initialPrincipal * (nextYearsLeft / totalYears)));
 
   return {
     updatedLoan: {
       ...loan,
-      principal: nextPrincipal,
-      initialPrincipal,
+      totalYears,
+      principal: Number.isFinite(nextPrincipal) ? nextPrincipal : 0,
+      initialPrincipal: Number.isFinite(initialPrincipal) ? initialPrincipal : loan.principal,
       yearsLeft: nextYearsLeft,
       totalPaidK: (loan.totalPaidK || 0) + annualDebitedK
     },

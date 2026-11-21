@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Club, GameState, PressureAssessment, PressureChoiceId, PressureOption } from '../types';
 import {
@@ -124,11 +124,19 @@ export const PressureMomentModal: React.FC<PressureMomentModalProps> = ({
     });
   }, [canActThisSeason, state, assessment, creditLimit]);
 
+  const selectingRef = useRef(false);
+  useEffect(() => {
+    selectingRef.current = false;
+  }, [state.year, assessment.scenario]);
+
   const handleSelectOption = (opt: PressureOption) => {
-    if (opt.disabledReason || resolution) return;
+    if (opt.disabledReason || resolution || selectingRef.current) return;
+    selectingRef.current = true;
     const res = onResolveChoice(opt.id, assessment);
     if (res) {
       setResolution(res);
+    } else {
+      selectingRef.current = false;
     }
   };
 

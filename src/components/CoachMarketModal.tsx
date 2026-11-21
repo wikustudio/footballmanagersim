@@ -58,6 +58,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<any>(null);
+  const processingRef = useRef(false);
 
   const directorRep = state.reputation || 50;
   const creditLimit = getCreditLimit(state.club.tier, state.club.country || 'GER');
@@ -127,24 +128,28 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
   };
 
   const handleRenew = () => {
-    if (isProcessing || !state.currentCoach) return;
+    if (processingRef.current || isProcessing || !state.currentCoach) return;
+    processingRef.current = true;
     setIsProcessing(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       if (onRenew) onRenew(renewYears);
+      processingRef.current = false;
       setIsProcessing(false);
     }, 500);
   };
 
   const executeHire = (coach: Coach) => {
-    if (isProcessing) return;
+    if (processingRef.current || isProcessing) return;
     const guard = evaluateCoachHireGuard(state, coach, creditLimit);
     if (!guard.allowed) return;
+    processingRef.current = true;
     setIsProcessing(true);
     setPendingMismatchCoach(null);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       onHire(coach);
+      processingRef.current = false;
       setIsProcessing(false);
       // Smart Auto-Routing: Instantly route user to 'staff' tab to see their new hire!
       setActiveTab('staff');
@@ -152,7 +157,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
   };
 
   const handleHire = (coach: Coach) => {
-    if (isProcessing) return;
+    if (processingRef.current || isProcessing) return;
     const guard = evaluateCoachHireGuard(state, coach, creditLimit);
     if (!guard.allowed) return;
     // Synergy Mismatch Intercept
@@ -207,11 +212,14 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
   };
 
   const handleFire = () => {
+    if (processingRef.current || isProcessing || !state.currentCoach) return;
+    processingRef.current = true;
     setIsProcessing(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       onFire();
       setConfirmFire(false);
+      processingRef.current = false;
       setIsProcessing(false);
       // Smart Auto-Routing: Instantly route user to 'market' tab to find replacement!
       setActiveTab('market');

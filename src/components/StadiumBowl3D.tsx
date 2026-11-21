@@ -517,8 +517,8 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
       ? Math.max(24, Math.min(54, Math.round((Math.PI * 0.5 * arcMidR) / 5.0)))
       : isGoalEnd
       ? Math.min(uCount, 12)
-      : Math.min(uCount, 48);
-    const effVCount = roundedCornerMask ? Math.min(vCount, 16) : isGoalEnd ? Math.min(vCount, 32) : Math.min(vCount, 10);
+      : Math.min(uCount, 58);
+    const effVCount = roundedCornerMask ? Math.min(vCount, 16) : isGoalEnd ? Math.min(vCount, 32) : Math.min(vCount, 12);
     const polarRadSteps = roundedCornerMask
       ? Math.max(8, Math.min(16, Math.round((roundedCornerMask.rMax - roundedCornerMask.rMin) / 4.2)))
       : effVCount;
@@ -568,13 +568,15 @@ export const StadiumBowl3D: React.FC<StadiumBowl3DProps> = ({
         // Keep concrete gangway stairs & horizontal mid-tier walkway clear so seats look like real fan sectors
         if (aisles && aisles.length > 0 && !roundedCornerMask) {
           const longCoord = isGoalEnd ? vFrac * 2 - 1 : uFrac * 2 - 1;
-          if (isCoordOnFanAisle(longCoord, aisles, 0.052)) {
+          const aisleHalfWidth = isGoalEnd ? 0.048 : 0.03;
+          if (isCoordOnFanAisle(longCoord, aisles, aisleHalfWidth)) {
             continue;
           }
         }
         if (standGeom.hasUpperRing) {
           const depthFrac = roundedCornerMask ? vFrac : isGoalEnd ? uFrac : vFrac;
-          if (Math.abs(depthFrac - 0.52) < 0.048) {
+          const walkwayHalfBand = isGoalEnd ? 0.046 : 0.036;
+          if (Math.abs(depthFrac - 0.52) < walkwayHalfBand) {
             continue;
           }
         }
