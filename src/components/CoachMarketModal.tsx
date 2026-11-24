@@ -337,27 +337,27 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
           </div>
 
           {/* Primary Navigation Tabs */}
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#E6E3DC]">
-            <div className="flex items-center gap-1.5 p-1 bg-[#EFECE4] border border-[#E6E3DC] rounded-2xl w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[#E6E3DC]">
+            <div className="grid grid-cols-3 sm:flex items-center gap-1 sm:gap-1.5 p-1 bg-[#EFECE4] border border-[#E6E3DC] rounded-2xl w-full sm:w-auto min-w-0">
               {/* Tab 1: My Staff */}
               <button
                 type="button"
                 onClick={() => handleTabChange('staff')}
-                className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                className={`min-w-0 sm:flex-initial px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'staff'
                     ? 'bg-[#18191F] text-white shadow-sm'
                     : 'text-[#6B7280] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
-                <i className="fa-solid fa-id-badge text-[11px]"></i>
-                <span>{t(lang, 'My Staff', 'Mein Stab')}</span>
+                <i className="fa-solid fa-id-badge text-[10px] sm:text-[11px] shrink-0"></i>
+                <span className="truncate">{t(lang, 'My Staff', 'Mein Stab')}</span>
                 {state.currentCoach ? (
                   currentCoachHasSynergy ? (
-                    <i className={`fa-solid fa-bolt text-[10px] ${activeTab === 'staff' ? 'text-amber-300' : 'text-sky-700'}`} title="Synergy Active"></i>
+                    <i className={`fa-solid fa-bolt text-[10px] shrink-0 ${activeTab === 'staff' ? 'text-amber-300' : 'text-sky-700'}`} title="Synergy Active"></i>
                   ) : null
                 ) : (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider tabular-nums ${activeTab === 'staff' ? 'bg-rose-500/30 text-rose-200' : 'bg-rose-100 text-rose-700'}`}>
-                    -4 OVR
+                  <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.2 rounded font-bold uppercase tracking-wider tabular-nums shrink-0 ${activeTab === 'staff' ? 'bg-rose-500/30 text-rose-200' : 'bg-rose-100 text-rose-700'}`}>
+                    -4
                   </span>
                 )}
               </button>
@@ -366,15 +366,15 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleTabChange('market')}
-                className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                className={`min-w-0 sm:flex-initial px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'market'
                     ? 'bg-[#18191F] text-white shadow-sm'
                     : 'text-[#6B7280] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
-                <i className="fa-solid fa-briefcase text-[11px]"></i>
-                <span>{t(lang, 'Job Market', 'Trainermarkt')}</span>
-                <span className={`text-[10px] tabular-nums font-semibold px-1.5 py-0.2 rounded ${
+                <i className="fa-solid fa-briefcase text-[10px] sm:text-[11px] shrink-0"></i>
+                <span className="truncate">{t(lang, 'Job Market', 'Trainermarkt')}</span>
+                <span className={`text-[9px] sm:text-[10px] tabular-nums font-semibold px-1 sm:px-1.5 py-0.2 rounded shrink-0 ${
                   activeTab === 'market' ? 'bg-white/20 text-white' : 'bg-white text-[#4B5563] border border-[#E6E3DC]'
                 }`}>
                   {market.length}
@@ -385,14 +385,14 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleTabChange('philosophy')}
-                className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                className={`min-w-0 sm:flex-initial px-2 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'philosophy'
                     ? 'bg-[#18191F] text-white shadow-sm'
                     : 'text-[#6B7280] hover:text-[#18191F] hover:bg-white/60'
                 }`}
               >
-                <i className="fa-solid fa-chess text-[11px]"></i>
-                <span>{t(lang, 'Philosophy', 'Philosophie')}</span>
+                <i className="fa-solid fa-chess text-[10px] sm:text-[11px] shrink-0"></i>
+                <span className="truncate">{t(lang, 'Philosophy', 'Philosophie')}</span>
                 <span className={`text-[10px] hidden md:inline font-semibold px-1.5 py-0.2 rounded truncate max-w-[90px] ${
                   activeTab === 'philosophy' ? 'bg-white/20 text-white' : 'bg-white text-[#4B5563] border border-[#E6E3DC]'
                 }`}>
@@ -402,10 +402,15 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
             </div>
 
             {/* Mobile Director Stats */}
-            <div className="flex sm:hidden items-center gap-2 text-[11px] text-[#6B7280] shrink-0">
-              <span className="font-semibold text-sky-700 tabular-nums">{directorRep} Rep</span>
-              <span className="text-[#C7C4BC]">·</span>
-              <span className="font-semibold text-amber-700 tabular-nums">{state.skillPoints || 0} DP</span>
+            <div className="flex sm:hidden items-center justify-between px-1 text-[11px] text-[#6B7280]">
+              <span className="font-medium text-[#6B7280]">
+                {t(lang, 'Director Standing', 'Direktor-Status')}
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-semibold text-sky-700 tabular-nums">{directorRep} Rep</span>
+                <span className="text-[#C7C4BC]">·</span>
+                <span className="font-semibold text-amber-700 tabular-nums">{state.skillPoints || 0} DP</span>
+              </div>
             </div>
           </div>
         </div>
@@ -456,11 +461,11 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                             {state.currentCoach.name}
                           </h3>
 
-                          <div className="text-xs font-semibold text-[#18191F] flex items-center gap-1.5 bg-white border border-[#E6E3DC] px-2.5 py-1 rounded-xl">
-                            <i className={`fas ${TACTICS[state.currentCoach.style]?.icon || 'fa-chess-board'} text-sky-700 text-xs`}></i>
-                            <span>{state.currentCoach.style}</span>
+                          <div className="text-xs font-semibold text-[#18191F] flex items-center flex-wrap gap-1.5 bg-white border border-[#E6E3DC] px-2.5 py-1 rounded-xl max-w-full">
+                            <i className={`fas ${TACTICS[state.currentCoach.style]?.icon || 'fa-chess-board'} text-sky-700 text-xs shrink-0`}></i>
+                            <span className="break-words">{state.currentCoach.style}</span>
                             {currentCoachHasSynergy && (
-                              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                              <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
                                 <i className="fa-solid fa-bolt text-[9px]"></i>
                                 {t(lang, 'Aligned', 'Harmonisch')}
                               </span>
@@ -488,8 +493,8 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                             )}
 
                             {state.hasNewManagerBounce && (
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
-                                <i className="fa-solid fa-sparkles text-emerald-700 text-xs"></i>
+                              <div className="inline-flex items-center flex-wrap gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold max-w-full">
+                                <i className="fa-solid fa-sparkles text-emerald-700 text-xs shrink-0"></i>
                                 <span>{t(lang, 'New Manager Bounce: Honeymoon phase active (+2 OVR)', 'Trainereffekt aktiv: Flitterwochen (+2 GES)')}</span>
                               </div>
                             )}
@@ -507,7 +512,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                           }`}>
                             <i className={`fa-solid ${currentCoachHasSynergy ? 'fa-bolt' : 'fa-arrows-split-up-and-left'} text-sm`}></i>
                           </div>
-                          <div className="text-xs leading-relaxed">
+                          <div className="text-xs leading-relaxed min-w-0 flex-1">
                             <div className={`font-bold ${currentCoachHasSynergy ? 'text-emerald-900' : 'text-amber-900'}`}>
                               {currentCoachHasSynergy 
                                 ? (state.currentCoach.weakness === 'Tactical Rigidity'
@@ -1855,18 +1860,18 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
               {/* Active Philosophy Highlight Banner */}
               <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-3xl p-5 sm:p-6 relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 text-xl shrink-0">
                       <i className={`fas ${PHILOSOPHIES[state.tactic]?.icon || 'fa-chess-board'}`}></i>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-700 mb-0.5">
                         {t(lang, 'Active Tactical DNA', 'Aktive Vereins-DNA')}
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-[#18191F] tracking-tight">
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-[#18191F] tracking-tight break-words">
                         {state.tactic || 'Total Football'}
                       </h3>
-                      <p className="text-xs text-[#4B5563] mt-0.5">
+                      <p className="text-xs text-[#4B5563] mt-0.5 break-words">
                         {PHILOSOPHIES[state.tactic]?.en}
                       </p>
                     </div>
@@ -1937,7 +1942,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                   {/* Left Column: Tactical DNA Alignment & Staleness */}
                   <div className="p-3.5 rounded-2xl bg-white border border-[#E6E3DC] flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold text-[#6B7280] mb-1 flex items-center justify-between">
+                      <div className="text-[10px] uppercase font-semibold text-[#6B7280] mb-1 flex flex-wrap items-center justify-between gap-1.5">
                         <span>{t(lang, 'Philosophical Pivot (5 DP)', 'Philosophischer Pivot (5 DP)')}</span>
                         <span className={`px-2 py-0.2 rounded-full font-bold text-[9px] border ${
                           state.staleTactic && state.tactic === state.staleTactic
@@ -1970,7 +1975,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                   {/* Right Column: Backroom Archetype Rebuild */}
                   <div className="p-3.5 rounded-2xl bg-white border border-[#E6E3DC] flex flex-col justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold text-[#6B7280] mb-1 flex items-center justify-between">
+                      <div className="text-[10px] uppercase font-semibold text-[#6B7280] mb-1 flex flex-wrap items-center justify-between gap-1.5">
                         <span>{t(lang, 'Backroom Staff Archetypes', 'Trainerstab-Archetypen')}</span>
                         <span className="text-[#6B7280] font-mono text-[10px]">
                           {state.currentCoach ? state.currentCoach.style : t(lang, 'No Coach', 'Kein Trainer')}
@@ -2000,7 +2005,7 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
 
               {/* Philosophy Catalog Grid */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <h4 className="text-sm font-bold tracking-tight uppercase text-[#6B7280]">
                     {t(lang, 'Available Tactical Philosophies', 'Verfügbare Spielphilosophien')}
                   </h4>
@@ -2020,16 +2025,16 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                     return (
                       <div
                         key={key}
-                        className={`rounded-3xl p-4 sm:p-5 border transition-all flex flex-col justify-between ${
+                        className={`rounded-3xl p-4 sm:p-5 border transition-all flex flex-col justify-between min-w-0 ${
                           isActive
                             ? 'bg-sky-50/60 border-sky-300'
                             : 'bg-[#FAF9F6] hover:bg-[#F5F4F0] border-[#E6E3DC]'
                         }`}
                       >
-                        <div className="space-y-2.5">
+                        <div className="space-y-2.5 min-w-0">
                           {/* Header: Icon, Name & Status Badges */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-start justify-between gap-2 sm:gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
                               <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 border ${
                                 isActive 
                                   ? 'bg-white text-sky-700 border-sky-200'
@@ -2037,11 +2042,11 @@ export const CoachMarketModal: React.FC<CoachMarketModalProps> = ({
                               }`}>
                                 <i className={`fas ${info.icon || 'fa-chess-board'}`}></i>
                               </div>
-                              <div>
-                                <h5 className="text-base font-bold text-[#18191F] tracking-tight leading-tight">
+                              <div className="min-w-0">
+                                <h5 className="text-base font-bold text-[#18191F] tracking-tight leading-tight break-words">
                                   {key === 'Defensive' ? 'Defensive (Catenaccio)' : key}
                                 </h5>
-                                <div className="text-[11px] text-[#6B7280]">
+                                <div className="text-[11px] text-[#6B7280] break-words">
                                   {info.en}
                                 </div>
                               </div>

@@ -4859,8 +4859,8 @@ export const generateRandomEvent = (currentState: GameState): GameEvent | null =
         opt1: {
           title: { en: 'High-Altitude Pressing', de: 'Hochgeschwindigkeits-Pressing' },
           goodPct: 100,
-          goodTxt: { en: 'Tactical Shock! (OVR Boost, MP Penalty)', de: 'Taktischer Schock! (GES Boost, MP Strafe)' },
-          mpCost: 100
+          goodTxt: { en: 'Tactical Shock! (+2 OVR, -5 DP)', de: 'Taktischer Schock! (+2 GES, -5 DP)' },
+          mpCost: 5
         },
         opt2: {
           title: { en: 'Controlled Counter', de: 'Kontrollierter Konter' },
@@ -4950,8 +4950,8 @@ export const generateRandomEvent = (currentState: GameState): GameEvent | null =
         opt1: {
           title: { en: 'Embrace the Circus', de: 'Den Zirkus mitmachen' },
           goodPct: 100,
-          goodTxt: { en: `Massive Exposure (+${formatMoney(getLeagueScaledVal(tier, 10000, clubCountry))}, +3 Rep, -100 MP)`, de: `Massive Prsenz (+${formatMoney(getLeagueScaledVal(tier, 10000, clubCountry))}, +3 Rep, -100 MP)` },
-          mpCost: 100
+          goodTxt: { en: `Massive Exposure (+${formatMoney(getLeagueScaledVal(tier, 10000, clubCountry))}, +3 Rep, -5 DP)`, de: `Massive Präsenz (+${formatMoney(getLeagueScaledVal(tier, 10000, clubCountry))}, +3 Rep, -5 DP)` },
+          mpCost: 5
         },
         opt2: {
           title: { en: 'Reject & Focus', de: 'Ablehnen & Fokussieren' },

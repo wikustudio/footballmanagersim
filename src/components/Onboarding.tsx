@@ -2057,7 +2057,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
       {/* STEP 4: Hire Head Coach */}
       {step === 4 && selectedClubForArchetype && (
         <div className="max-w-2xl mx-auto text-center fade-in px-4 pb-10">
-          <div className="inline-flex items-center gap-2 mb-3 px-4 py-1.5 rounded-full bg-white border border-[#E6E3DC] text-xs font-medium shadow-sm">
+          <div className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 max-w-full mb-3 px-4 py-1.5 rounded-2xl sm:rounded-full bg-white border border-[#E6E3DC] text-xs font-medium shadow-sm">
             <span className="text-[#6B6A64]">{isDe ? 'Verein:' : 'Club:'}</span>
             <span className="text-[#18191F] font-semibold">{selectedClubForArchetype.name}</span>
             <span className="text-[#D4D0C7]">•</span>

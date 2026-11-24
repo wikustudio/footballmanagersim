@@ -2965,8 +2965,8 @@ export const computeSupercupWinOdds = (
     stance === 'high_press'
       ? 'Gegenpressing'
       : stance === 'counter'
-      ? 'Counter-Attack'
-      : 'Tiki-Taka';
+      ? 'Direct Counter'
+      : 'Total Football';
   const styleOffset = getTacticalStyleOffset(stanceChoice, state.tactic, state.currentCoach?.style);
   const readiness = computeMatchdayReadinessModifier({
     morale: state.club.morale,
@@ -2977,7 +2977,7 @@ export const computeSupercupWinOdds = (
   });
   const underdogCounterBoost = stance === 'counter' && rawDiff <= -2 ? 1.2 : 0;
   const effectiveDiff = rawDiff + styleOffset * 0.65 + readiness.totalOvrMod + underdogCounterBoost;
-  const odds = computeCupTieOdds(effectiveDiff);
+  const odds = computeCupTieOdds(effectiveDiff, { isParkTheBus: stance === 'counter' });
   return {
     winProbPct: odds.advancePct,
     effectiveDiff,
@@ -2991,24 +2991,28 @@ export const resolveSupercupMatch = (
   stance: 'high_press' | 'balanced' | 'counter'
 ): SupercupResult => {
   const { effectiveDiff } = computeSupercupWinOdds(state, eligibility, stance);
+  const odds = computeCupTieOdds(effectiveDiff, { isParkTheBus: stance === 'counter' });
 
-  const h1 = deterministicHash(`sc-${state.year}-${state.club.id}-${stance}-u`);
-  const h2 = deterministicHash(`sc-${state.year}-${state.club.id}-${stance}-o`);
-  const tempoBoost = stance === 'high_press' ? 0.35 : stance === 'counter' ? -0.22 : 0.05;
+  const outcomeRoll = deterministicHash(`sc-outcome-${state.year}-${state.club.id}-${eligibility.opponent.id}-${stance}`);
+  const scoreRoll = deterministicHash(`sc-score-${state.year}-${state.club.id}-${eligibility.opponent.id}-${stance}`);
+  const penRoll = deterministicHash(`sc-pen-${state.year}-${state.club.id}-${eligibility.opponent.id}-${stance}`);
 
-  const ourScore = Math.max(0, Math.min(5, Math.round(1.25 + tempoBoost + effectiveDiff * 0.075 + h1 * 1.85)));
-  const oppScore = Math.max(0, Math.min(5, Math.round(1.20 + tempoBoost * 0.7 - effectiveDiff * 0.065 + h2 * 1.75)));
-
-  let won = ourScore > oppScore;
+  let ourScore = 1;
+  let oppScore = 1;
+  let won = false;
   let decidedOnPens = false;
   let ourPenScore: number | undefined;
   let oppPenScore: number | undefined;
 
-  if (ourScore === oppScore) {
+  if (outcomeRoll < odds.penDrawProb) {
+    // Regulation / ET draw -> decided on penalties using calibrated penWinProb
     decidedOnPens = true;
-    const penRoll = deterministicHash(`sc-pen-${state.year}-${state.club.id}-${stance}`);
-    const penWinThreshold = Math.max(0.32, Math.min(0.68, 0.50 + effectiveDiff * 0.014));
-    won = penRoll < penWinThreshold;
+    won = penRoll < odds.penWinProb;
+    const drawScores = stance === 'high_press' ? [1, 2, 2, 3] : stance === 'counter' ? [0, 0, 1, 1] : [0, 1, 1, 2];
+    const drawGoals = drawScores[Math.floor(scoreRoll * drawScores.length) % drawScores.length];
+    ourScore = drawGoals;
+    oppScore = drawGoals;
+
     const penPairs: Array<[number, number]> = [
       [5, 4],
       [4, 3],
@@ -3018,11 +3022,31 @@ export const resolveSupercupMatch = (
       [7, 6],
     ];
     const pairIdx = Math.floor(
-      deterministicHash(`sc-pen-score-${state.year}-${state.club.id}-${stance}`) * penPairs.length
+      deterministicHash(`sc-pen-score-${state.year}-${state.club.id}-${eligibility.opponent.id}-${stance}`) * penPairs.length
     ) % penPairs.length;
     const [wPen, lPen] = penPairs[pairIdx];
     ourPenScore = won ? wPen : lPen;
     oppPenScore = won ? lPen : wPen;
+  } else {
+    // Settled in 90/120 minutes: exact conditional win probability matches odds.win90Prob / (1 - odds.penDrawProb)
+    const regRoll = (outcomeRoll - odds.penDrawProb) / Math.max(0.0001, 1 - odds.penDrawProb);
+    const condWinProb = odds.win90Prob / Math.max(0.0001, 1 - odds.penDrawProb);
+    won = regRoll < condWinProb;
+
+    const marginWeights =
+      Math.abs(effectiveDiff) >= 10
+        ? [1, 2, 2, 3]
+        : stance === 'counter'
+        ? [1, 1, 1, 2]
+        : [1, 1, 2, 2];
+    const margin = marginWeights[Math.floor(scoreRoll * marginWeights.length) % marginWeights.length];
+    const loserBasePool = stance === 'high_press' ? [0, 1, 1, 2] : stance === 'counter' ? [0, 0, 1] : [0, 1, 1];
+    const loserRoll = deterministicHash(`sc-loser-${state.year}-${state.club.id}-${eligibility.opponent.id}-${stance}`);
+    const loserGoals = loserBasePool[Math.floor(loserRoll * loserBasePool.length) % loserBasePool.length];
+    const winnerGoals = Math.min(5, loserGoals + margin);
+
+    ourScore = won ? winnerGoals : loserGoals;
+    oppScore = won ? loserGoals : winnerGoals;
   }
 
   return {

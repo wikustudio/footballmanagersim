@@ -962,9 +962,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
                   <i className="fa-solid fa-bolt"></i> Gegenpressing
                 </div>
                 <p className="text-[#4B5563] leading-relaxed">
-                  {isDe
-                    ? '+15% Tore erzielt, +10% Gegentore. Hohes Tempo & Risiko.'
-                    : '+15% Goals Scored, +10% Goals Conceded. High tempo & chaos.'}
+                  +28% Goals Scored, +22% Goals Conceded. +3 OVR Giant-Killer boost vs stronger opponents &amp; cup ties.
                 </p>
               </div>
 
@@ -973,9 +971,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
                   <i className="fa-solid fa-arrows-spin"></i> Tiki-Taka
                 </div>
                 <p className="text-[#4B5563] leading-relaxed">
-                  {isDe
-                    ? '+10% Tore erzielt, -5% Gegentore. Kontrollierter Ballbesitz.'
-                    : '+10% Goals Scored, -5% Goals Conceded. Controlled possession.'}
+                  -12% Goals Scored, -28% Goals Conceded. +15% Sponsor Income &amp; +2 OVR vs weaker opponents (60+ OVR).
                 </p>
               </div>
 
@@ -984,20 +980,25 @@ export const AboutPage: React.FC<AboutPageProps> = ({
                   <i className="fa-solid fa-fire"></i> Total Football
                 </div>
                 <p className="text-[#4B5563] leading-relaxed">
-                  {isDe
-                    ? '+20% Tore erzielt, +15% Gegentore. Maximale Offensive.'
-                    : '+20% Goals Scored, +15% Goals Conceded. Maximum firepower.'}
+                  +18% Goals Scored, +10% Goals Conceded. +12% Fanbase Growth &amp; +1 Home OVR boost.
                 </p>
               </div>
 
               <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4">
                 <div className="font-bold text-amber-700 mb-1 flex items-center gap-1.5">
-                  <i className="fa-solid fa-shield-halved"></i> Park the Bus (Catenaccio)
+                  <i className="fa-solid fa-shield-halved"></i> Defensive (Catenaccio / Park the Bus)
                 </div>
                 <p className="text-[#4B5563] leading-relaxed">
-                  {isDe
-                    ? '-15% Tore erzielt, -25% Gegentore. Defensive Abwehrfestung.'
-                    : '-15% Goals Scored, -25% Goals Conceded. Defensive lockdown.'}
+                  -38% Goals Scored, -48% Goals Conceded. -40% Goal Difference damage &amp; +1 year insolvency grace.
+                </p>
+              </div>
+
+              <div className="bg-[#FAF9F6] border border-[#E6E3DC] rounded-2xl p-4 sm:col-span-2">
+                <div className="font-bold text-cyan-700 mb-1 flex items-center gap-1.5">
+                  <i className="fa-solid fa-gauge-high"></i> Direct Counter
+                </div>
+                <p className="text-[#4B5563] leading-relaxed">
+                  +5% Goals Scored, -12% Goals Conceded. +2 OVR Away Match Master &amp; -10% squad upgrade costs in lower leagues.
                 </p>
               </div>
             </div>

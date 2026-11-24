@@ -1362,7 +1362,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] uppercase font-bold text-rose-700">Tactical Obsolescence · System Decoded</div>
                         <p className="text-xs text-[#4B5563] mt-0.5">
-                          The league has decoded your tactic ({state.tactic})! You face {hasSystemicImmunity ? 'a cushioned' : 'an unavoidable'} <strong className="text-rose-700">-{hasSystemicImmunity ? 2 : 4} OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-700 font-semibold">-5 MP</span>).
+                          The league has decoded your tactic ({state.tactic})! You face {hasSystemicImmunity ? 'a cushioned' : 'an unavoidable'} <strong className="text-rose-700">-{hasSystemicImmunity ? 2 : 4} OVR penalty</strong> next season unless you reinvent or switch your philosophy in the Coach room (<span className="text-amber-700 font-semibold">-5 DP</span>).
                         </p>
                       </div>
                     </div>
@@ -2182,7 +2182,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                   </div>
                   <div className="text-xs text-[#6B7280] sm:text-right">
                     {isStaleActive ? (
-                      <span className="text-rose-700 font-semibold">Adapt philosophy in Headquarters for 5 MP to clear penalty.</span>
+                      <span className="text-rose-700 font-semibold">Adapt philosophy in Headquarters for 5 DP to clear penalty.</span>
                     ) : isStaleWarning ? (
                       <span className="text-amber-800">Winning again with this tactic triggers staleness.</span>
                     ) : (
@@ -2331,7 +2331,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       <p className="text-xs text-[#4B5563] mt-1 leading-relaxed">
                         {isStaleActive ? (
                           <span className="text-rose-700">
-                            <strong>Obsolescence Active:</strong> League opposition has fully solved this philosophy (-4 OVR penalty in simulations). Head to the Coach room to adapt philosophy for 5 MP.
+                            <strong>Obsolescence Active:</strong> League opposition has fully solved this philosophy (-{hasSystemicImmunity ? 2 : 4} OVR penalty in simulations). Head to the Coach room to adapt philosophy for 5 DP.
                           </span>
                         ) : isStaleWarning ? (
                           <span className="text-amber-800">
@@ -2345,9 +2345,9 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                       </p>
                     </div>
                     <div className="shrink-0 bg-[#FAF9F6] p-3 rounded-xl border border-[#E6E3DC] text-right">
-                      <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Management Points</div>
-                      <div className="text-base font-bold text-amber-700 tabular-nums">{state.skillPoints || 0} MP Available</div>
-                      <div className="text-[10px] text-[#6B7280]">5 MP to adapt system</div>
+                      <div className="text-[10px] text-[#6B7280] uppercase font-semibold">Director Points</div>
+                      <div className="text-base font-bold text-amber-700 tabular-nums">{state.skillPoints || 0} DP Available</div>
+                      <div className="text-[10px] text-[#6B7280]">5 DP to adapt system</div>
                     </div>
                   </div>
                 </div>

@@ -579,7 +579,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                  }}
                  className="text-[9px] font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 px-2 py-0.5 rounded-xl border border-amber-500/25 uppercase tracking-wider cursor-pointer transition-colors tabular-nums"
                >
-                 +{(state.skillPoints || 0)} SP
+                 +{(state.skillPoints || 0)} DP
                </button>
              )}
           </div>

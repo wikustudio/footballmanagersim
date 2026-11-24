@@ -202,3 +202,81 @@ test('StadiumBowl3D includes authentic pitch markings, dugouts/tunnel, floodligh
   assert.ok(bowlSrc.includes('data-testid="crowd-night-flashes"'));
 });
 
+test('Supercup balanced stance does not penalize Direct Counter clubs as opposites and resolution tracks displayed odds', async () => {
+  const { computeSupercupWinOdds, resolveSupercupMatch } = await import('./liveSimVisualEngine');
+  const opponent = { id: 88, name: 'Cup Rival', tier: 1, baseOvr: 80, color: '#00f', stadium: 50000, country: 'GER' } as Club;
+  const eligibility = {
+    eligible: true,
+    cupName: 'DFL-Supercup',
+    opponent,
+    prizeK: 4000,
+    userQualificationLabel: 'League Champion',
+    opponentQualificationLabel: 'Cup Winner',
+  };
+
+  const counterClubState = {
+    year: 2028,
+    club: { id: 10, name: 'Counter FC', tier: 1, baseOvr: 80, morale: 70, color: '#000', stadium: 50000, country: 'GER' },
+    tactic: 'Direct Counter',
+    currentCoach: { name: 'Coach C', style: 'Direct Counter', ovrBoost: 0 },
+    hasNewManagerBounce: false,
+  } as unknown as GameState;
+
+  const counterOdds = computeSupercupWinOdds(counterClubState, eligibility, 'counter');
+  const balancedOdds = computeSupercupWinOdds(counterClubState, eligibility, 'balanced');
+  assert.ok(counterOdds.winProbPct > balancedOdds.winProbPct, 'Matching Direct Counter stance should still beat Balanced');
+  // Previously balanced mapped to Tiki-Taka (-5.0 OVR opposite penalty -> ~38% odds); now Total Football neutral -> ~47%
+  assert.ok(balancedOdds.winProbPct >= 44, `Balanced stance should stay near neutral for Direct Counter clubs (got ${balancedOdds.winProbPct}%)`);
+
+  // Empirical win rate across 400 deterministic seeds should closely match displayed winProbPct
+  let wins = 0;
+  const N = 400;
+  for (let i = 0; i < N; i++) {
+    const sampleState = { ...counterClubState, year: 2030 + i } as unknown as GameState;
+    const res = resolveSupercupMatch(sampleState, eligibility, 'balanced');
+    if (res.won) wins++;
+    if (res.decidedOnPens) {
+      assert.equal(res.ourScore, res.oppScore, 'Penalty shootout matches must have tied regulation scores');
+      assert.ok(res.ourPenScore !== undefined && res.oppPenScore !== undefined);
+      assert.equal(res.won, res.ourPenScore! > res.oppPenScore!);
+    } else {
+      assert.equal(res.won, res.ourScore > res.oppScore);
+    }
+  }
+  const empiricalPct = (wins / N) * 100;
+  assert.ok(
+    Math.abs(empiricalPct - balancedOdds.winProbPct) <= 6,
+    `Empirical Supercup win rate (${empiricalPct.toFixed(1)}%) should track displayed odds (${balancedOdds.winProbPct}%)`
+  );
+});
+
+test('Director Points (DP) terminology, event cost parity, and board philosophy-demand staleTactic reset are consistent', () => {
+  const randomEventsSrc = fs.readFileSync(path.resolve('src/data/randomEvents.ts'), 'utf8');
+  assert.ok(!randomEventsSrc.includes('-100 MP'), 'Event preview must not advertise -100 MP when deducting 5 DP');
+  assert.ok(!randomEventsSrc.includes('mpCost: 100'), 'Event mpCost must match actual -5 DP deduction');
+
+  const appSrc = fs.readFileSync(path.resolve('src/App.tsx'), 'utf8');
+  assert.ok(!appSrc.includes('Management Points'), 'App.tsx should use Director Points consistently');
+  assert.ok(!appSrc.includes('(-5 MP)'), 'App.tsx event toasts should use DP not MP');
+  const demandIdx = appSrc.indexOf("pendingEvent.type === 'philosophy_demand_attack'");
+  const demandEndIdx = appSrc.indexOf("pendingEvent.type === 'agent_holdout'", demandIdx);
+  const demandSlice = appSrc.slice(demandIdx, demandEndIdx);
+  const staleResets = (demandSlice.match(/updated\.staleTactic = undefined;/g) || []).length;
+  assert.equal(staleResets, 5, 'All 5 board philosophy-demand switch choices must clear staleTactic');
+
+  const workspaceSrc = fs.readFileSync(path.resolve('src/components/WorkspaceTabs.tsx'), 'utf8');
+  assert.ok(!workspaceSrc.includes('skillPoints || 0} MP'), 'WorkspaceTabs should display DP not MP');
+
+  const seasonFinishSrc = fs.readFileSync(path.resolve('src/components/SeasonFinishModal.tsx'), 'utf8');
+  assert.ok(!seasonFinishSrc.includes('MP Available'), 'SeasonFinishModal should display DP Available');
+  assert.ok(!seasonFinishSrc.includes('Management Points'), 'SeasonFinishModal should display Director Points');
+
+  const dashHeaderSrc = fs.readFileSync(path.resolve('src/components/DashboardHeader.tsx'), 'utf8');
+  assert.ok(!dashHeaderSrc.includes('} SP'), 'DashboardHeader should display DP not SP');
+
+  const aboutSrc = fs.readFileSync(path.resolve('src/components/AboutPage.tsx'), 'utf8');
+  assert.ok(aboutSrc.includes('+28% Goals Scored'), 'AboutPage should match real PHILOSOPHIES modifiers');
+  assert.ok(aboutSrc.includes('Direct Counter'), 'AboutPage should document Direct Counter philosophy');
+});
+
+

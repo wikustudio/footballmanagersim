@@ -1743,9 +1743,9 @@ export const ClubCampus3D: React.FC<ClubCampus3DProps> = ({
               </div>
               <div className="h-5 w-[1px] bg-[#E6E3DC]" />
               <div>
-                <div className="text-[8.5px] sm:text-[9px] font-semibold text-[#6B7280]">Manager Pts</div>
+                <div className="text-[8.5px] sm:text-[9px] font-semibold text-[#6B7280]">Director Pts</div>
                 <div className="text-[11px] sm:text-xs font-extrabold text-[#18191F] tabular-nums">
-                  {skillPoints} MP
+                  {skillPoints} DP
                 </div>
               </div>
             </>

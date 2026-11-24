@@ -87,7 +87,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
   };
 
   return (
-    <div className="fixed top-3 sm:top-6 pt-safe left-1/2 -translate-x-1/2 z-[99999] pointer-events-none grid place-items-center w-full px-3 sm:px-4">
+    <div className="fixed top-3 sm:top-6 pt-safe inset-x-0 z-[99999] pointer-events-none grid place-items-center px-3 sm:px-4">
       {toasts.map((toast, index) => {
         const revIndex = toasts.length - 1 - index;
         const msg = toast.message;

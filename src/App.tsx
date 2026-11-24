@@ -2568,8 +2568,8 @@ export default function App() {
     if (points < cost) {
       showToast(
         isDe
-          ? `Erfordert ${cost} Management-Punkte (Du hast ${points} MP)!`
-          : `Requires ${cost} Management Points (You have ${points} MP)!`,
+          ? `Erfordert ${cost} Direktor-Punkte (Du hast ${points} DP)!`
+          : `Requires ${cost} Director Points (You have ${points} DP)!`,
         'warning'
       );
       return;
@@ -2613,8 +2613,8 @@ export default function App() {
     if (points < PHILOSOPHY_COST) {
       showToast(
         lang === 'de'
-          ? `Erfordert ${PHILOSOPHY_COST} Management-Punkte zum Wechseln (Du hast ${points} MP)!`
-          : `Requires ${PHILOSOPHY_COST} Management Points to adapt philosophy (You have ${points} MP)!`,
+          ? `Erfordert ${PHILOSOPHY_COST} Direktor-Punkte zum Wechseln (Du hast ${points} DP)!`
+          : `Requires ${PHILOSOPHY_COST} Director Points to adapt philosophy (You have ${points} DP)!`,
         'warning'
       );
       return;
@@ -2645,10 +2645,10 @@ export default function App() {
 
     showToast(
       isReinventingCurrent
-        ? `Tactical Evolution: Reinvented ${philosophyKey} blueprint (-${PHILOSOPHY_COST} MP)! Coach synergy preserved & tactical obsolescence cleared.`
+        ? `Tactical Evolution: Reinvented ${philosophyKey} blueprint (-${PHILOSOPHY_COST} DP)! Coach synergy preserved & tactical obsolescence cleared.`
         : (lang === 'de'
-            ? `Manager-Philosophie auf ${philosophyKey} geändert (-${PHILOSOPHY_COST} MP)! Taktische Stagnation überwunden.`
-            : `Manager Philosophy adapted to ${philosophyKey} (-${PHILOSOPHY_COST} MP)! Tactical obsolescence broken.`),
+            ? `Manager-Philosophie auf ${philosophyKey} geändert (-${PHILOSOPHY_COST} DP)! Taktische Stagnation überwunden.`
+            : `Manager Philosophy adapted to ${philosophyKey} (-${PHILOSOPHY_COST} DP)! Tactical obsolescence broken.`),
       'success'
     );
   };
@@ -3678,8 +3678,8 @@ export default function App() {
                 });
                 showToast(
                   lang === 'de'
-                    ? `Jahrhunderttalent an PSG verkauft! +${formatMoney(saleCash)}, +5 MP.`
-                    : `Generational talent sold to PSG! +${formatMoney(saleCash)}, +5 MP.`,
+                    ? `Jahrhunderttalent an PSG verkauft! +${formatMoney(saleCash)}, +5 DP.`
+                    : `Generational talent sold to PSG! +${formatMoney(saleCash)}, +5 DP.`,
                   'success'
                 );
                 setOffSeasonEvent(null);
@@ -9571,7 +9571,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           if (leagueW === 2) {
             state.skillPoints = (state.skillPoints || 0) + 1;
             state.clubImpactScore = Math.min(100, (state.clubImpactScore || 50) + 4);
-            showToast(`🔥 DERBY DOUBLE! Swept arch-rivals ${state.currentRival.name} (+1 MP, +4 Board Impact)!`, 'success');
+            showToast(`🔥 DERBY DOUBLE! Swept arch-rivals ${state.currentRival.name} (+1 DP, +4 Board Impact)!`, 'success');
           } else if (leagueL === 2) {
             state.clubImpactScore = Math.max(impactFloor, (state.clubImpactScore || 50) - 4);
             decayReasons.push(`Swept by Arch-Rivals ${state.currentRival.name} (-4 Board Impact)`);
@@ -10839,8 +10839,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       state.skillPoints = (state.skillPoints || 0) + pointsEarned;
       showToast(
         isDe
-          ? (false ? `Quotenerfüllung! ${pointsEarned} Politischer Einfluss (PE) gewonnen!` : `Erfolgreiche Saison! ${pointsEarned} Management-Punkte (MP) verdient! Nutze den Skill-Baum.`)
-          : `Season Success! Earned ${pointsEarned} Management Points (MP)! Check your Skill Tree.`,
+          ? `Erfolgreiche Saison! ${pointsEarned} Direktor-Punkte (DP) verdient! Nutze den Skill-Baum.`
+          : `Season Success! Earned ${pointsEarned} Director Points (DP)! Check your Skill Tree.`,
         'success'
       );
     }
@@ -12836,7 +12836,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.seasonsInDebt = 0;
         updated.reputation = Math.min(100, (updated.reputation || 0) + 3);
         updated.skillPoints = Math.max(0, updated.skillPoints - 5);
-        showToast(lang === 'de' ? `Hollywood ist da! (+${formatMoney(investCash)}, +3 Rep, -5 MP)` : `Hollywood is here! (+${formatMoney(investCash)}, +3 Rep, -5 MP)`, 'success');
+        showToast(lang === 'de' ? `Hollywood ist da! (+${formatMoney(investCash)}, +3 Rep, -5 DP)` : `Hollywood is here! (+${formatMoney(investCash)}, +3 Rep, -5 DP)`, 'success');
       } else {
         const newOvr = Math.min(100, updated.club.baseOvr + 1);
         updated.maxOvrCap = Math.max(updated.maxOvrCap, newOvr);
@@ -12866,7 +12866,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         updated.maxOvrCap = Math.max(updated.maxOvrCap, newOvr);
         updated.club.baseOvr = newOvr;
         updated.skillPoints = Math.max(0, updated.skillPoints - 5);
-        showToast(lang === 'de' ? 'Taktischer Schock! (+2 GES, -5 MP)' : 'Tactical Shock! (+2 OVR, -5 MP)', 'success');
+        showToast(lang === 'de' ? 'Taktischer Schock! (+2 GES, -5 DP)' : 'Tactical Shock! (+2 OVR, -5 DP)', 'success');
       } else {
         const newOvr = Math.min(100, updated.club.baseOvr + 1);
         updated.maxOvrCap = Math.max(updated.maxOvrCap, newOvr);
@@ -13291,97 +13291,92 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         );
       }
     } else if (pendingEvent.type === 'philosophy_demand_attack') {
-      const availMp = Math.max(0, updated.skillPoints || 0);
-      const mpCost = Math.min(5, availMp);
+      const availDp = Math.max(0, updated.skillPoints || 0);
+      const dpCost = Math.min(5, availDp);
       if (choiceIndex === 0) {
         updated.tactic = 'Total Football';
+        updated.staleTactic = undefined;
+        updated.consecutiveTitlesWithSameTactic = 0;
         trackEvent('tactic_chosen', { tactic: 'Total Football', context: 'board_demand' });
-        if (mpCost > 0) updated.skillPoints = availMp - mpCost;
+        if (dpCost > 0) updated.skillPoints = availDp - dpCost;
         const val = getLeagueScaledVal(tier, 15000);
         updated.sponsorIncome = (updated.sponsorIncome || 0) + val;
         showToast(
-          lang === 'de'
-            ? `Philosophie geaendert: Total Football${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Sponsorendeal bringt +${formatMoney(val)} zur Jahresbilanz!`
-            : `Philosophy switched to Total Football${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Sponsor deal brings +${formatMoney(val)} to annual revenue!`,
+          `Philosophy switched to Total Football${dpCost > 0 ? ` (-${dpCost} DP)` : ''}! Sponsor deal brings +${formatMoney(val)} to annual revenue!`,
           'success'
         );
       } else if (choiceIndex === 1) {
         updated.tactic = 'Gegenpressing';
+        updated.staleTactic = undefined;
+        updated.consecutiveTitlesWithSameTactic = 0;
         trackEvent('tactic_chosen', { tactic: 'Gegenpressing', context: 'board_demand' });
-        if (mpCost > 0) updated.skillPoints = availMp - mpCost;
-        updated.club.fanBase = adjustFans(updated.club.fanBase, getLeagueScaledFans(tier, 1000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier));
+        if (dpCost > 0) updated.skillPoints = availDp - dpCost;
+        const fanGain = getLeagueScaledFans(tier, 1000, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier);
+        updated.club.fanBase = adjustFans(updated.club.fanBase, fanGain);
         showToast(
-          lang === 'de'
-            ? `Philosophie geaendert: Gegenpressing${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! 1.000 begeisterte Fans strmen ins Stadion!`
-            : `Philosophy switched to Gegenpressing${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! 1,000 excited fans join the fanbase!`,
+          `Philosophy switched to Gegenpressing${dpCost > 0 ? ` (-${dpCost} DP)` : ''}! +${fanGain.toLocaleString('en-US')} excited fans join the fanbase!`,
           'success'
         );
       } else {
         updated.reputation = Math.max(0, updated.reputation - 3);
         showToast(
-          lang === 'de'
-            ? 'Du bleibst deiner Philosophie treu. Der Vorstand ist besorgt (-3 Ansehen).'
-            : 'You stand firm with your style. The board remains concerned (-3 Reputation).',
+          'You stand firm with your style. The board remains concerned (-3 Reputation).',
           'warning'
         );
       }
     } else if (pendingEvent.type === 'philosophy_demand_defense') {
-      const availMp = Math.max(0, updated.skillPoints || 0);
-      const mpCost = Math.min(5, availMp);
+      const availDp = Math.max(0, updated.skillPoints || 0);
+      const dpCost = Math.min(5, availDp);
       if (choiceIndex === 0) {
         updated.tactic = 'Defensive';
+        updated.staleTactic = undefined;
+        updated.consecutiveTitlesWithSameTactic = 0;
         trackEvent('tactic_chosen', { tactic: 'Defensive', context: 'board_demand' });
-        if (mpCost > 0) updated.skillPoints = availMp - mpCost;
+        if (dpCost > 0) updated.skillPoints = availDp - dpCost;
         const val = getLeagueScaledVal(tier, 10000);
         updated.budget = adjustBudget(updated.budget, val);
         showToast(
-          lang === 'de'
-            ? `Philosophie geaendert: Defensiv-Bollwerk${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Notfall-Spritze +${formatMoney(val)} gewhrt.`
-            : `Philosophy switched to Defensive Fortress${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Emergency grant +${formatMoney(val)} received.`,
+          `Philosophy switched to Defensive Fortress${dpCost > 0 ? ` (-${dpCost} DP)` : ''}! Emergency grant +${formatMoney(val)} received.`,
           'success'
         );
       } else if (choiceIndex === 1) {
         updated.tactic = 'Direct Counter';
+        updated.staleTactic = undefined;
+        updated.consecutiveTitlesWithSameTactic = 0;
         trackEvent('tactic_chosen', { tactic: 'Direct Counter', context: 'board_demand' });
-        if (mpCost > 0) updated.skillPoints = availMp - mpCost;
+        if (dpCost > 0) updated.skillPoints = availDp - dpCost;
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, 1);
         showToast(
-          lang === 'de'
-            ? `Philosophie geaendert: Direct Counter${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Team-Taktik diszipliniert (+1 GES).`
-            : `Philosophy switched to Direct Counter${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Tactical discipline boosted (+1 OVR).`,
+          `Philosophy switched to Direct Counter${dpCost > 0 ? ` (-${dpCost} DP)` : ''}! Tactical discipline boosted (+1 OVR).`,
           'success'
         );
       } else {
         updated.reputation = Math.max(0, updated.reputation - 3);
         showToast(
-          lang === 'de'
-            ? 'Du verweigerst Mauertaktik. Die Vereinsfhrung ist hochgradig nervs (-3 Ansehen).'
-            : 'You refuse defensive parking. The board is extremely nervous (-3 Reputation).',
+          'You refuse defensive parking. The board is extremely nervous (-3 Reputation).',
           'warning'
         );
       }
     } else if (pendingEvent.type === 'philosophy_demand_tikitaka') {
       if (choiceIndex === 0) {
-        const availMp = Math.max(0, updated.skillPoints || 0);
-        const mpCost = Math.min(5, availMp);
+        const availDp = Math.max(0, updated.skillPoints || 0);
+        const dpCost = Math.min(5, availDp);
         updated.tactic = 'Tiki-Taka';
+        updated.staleTactic = undefined;
+        updated.consecutiveTitlesWithSameTactic = 0;
         trackEvent('tactic_chosen', { tactic: 'Tiki-Taka', context: 'board_demand' });
-        if (mpCost > 0) updated.skillPoints = availMp - mpCost;
+        if (dpCost > 0) updated.skillPoints = availDp - dpCost;
         const val = getLeagueScaledVal(tier, 25000);
         updated.sponsorIncome = (updated.sponsorIncome || 0) + val;
         showToast(
-          lang === 'de'
-            ? `Philosophie geaendert: Tiki-Taka${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Sponsorendeal bringt +${formatMoney(val)} zur Jahresbilanz!`
-            : `Philosophy switched to Tiki-Taka${mpCost > 0 ? ` (-${mpCost} MP)` : ''}! Sponsor partnership brings +${formatMoney(val)} to annual revenue!`,
+          `Philosophy switched to Tiki-Taka${dpCost > 0 ? ` (-${dpCost} DP)` : ''}! Sponsor partnership brings +${formatMoney(val)} to annual revenue!`,
           'success'
         );
-      
-        } else {
-        updated.club.fanBase = adjustFans(updated.club.fanBase, getLeagueScaledFans(tier, 1500, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier));
+      } else {
+        const fanGain = getLeagueScaledFans(tier, 1500, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier);
+        updated.club.fanBase = adjustFans(updated.club.fanBase, fanGain);
         showToast(
-          lang === 'de'
-            ? 'Kommerz-Druck widerstanden! Die Ultras feiern dich (+1.500 Fans).'
-            : 'Corporate pressure resisted! Ultras praise your independence (+1,500 fans).',
+          `Corporate pressure resisted! Ultras praise your independence (+${fanGain.toLocaleString('en-US')} fans).`,
           'success'
         );
       }

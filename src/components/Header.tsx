@@ -286,7 +286,7 @@ export const Header: React.FC<HeaderProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-white border border-[#E6E3DC] rounded-2xl shadow-[0_20px_50px_rgba(24,25,31,0.16)] p-2.5 z-50"
+                      className="fixed left-3 right-3 top-14 w-auto sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 bg-white border border-[#E6E3DC] rounded-2xl shadow-[0_20px_50px_rgba(24,25,31,0.16)] p-2.5 z-50"
                     >
                       <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#E6E3DC] mb-1.5">
                         <span className="text-xs font-extrabold text-[#18191F]">

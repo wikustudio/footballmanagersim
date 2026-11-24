@@ -252,7 +252,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
     <div className="w-full flex flex-col min-h-screen text-[#18191F] text-left animate-fadeIn pt-6 sm:pt-8 md:pt-10 pb-20">
       {/* Top Breadcrumb & Action Navigation Bar with Generous Breathing Room */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-5 border-b border-[#E6E3DC]">
-        <div className="flex items-center gap-3.5">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <button
             onClick={onBack}
             className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#EFECE4] border border-[#E6E3DC] text-xs font-bold text-[#18191F] shadow-xs transition cursor-pointer flex items-center gap-2 group shrink-0 active:scale-95"
@@ -261,9 +261,9 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
             <i className="fa-solid fa-arrow-left text-xs text-[#6B7280] group-hover:text-[#18191F] group-hover:-translate-x-1 transition-all"></i>
             <span>{gameState ? 'Back to Career' : 'Back to Club Selection'}</span>
           </button>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[#18191F] flex items-center gap-2.5">
-              <i className="fa-solid fa-trophy text-amber-600 text-lg"></i>
+              <i className="fa-solid fa-trophy text-amber-600 text-lg shrink-0"></i>
               <span>Leaderboard &amp; Partners</span>
             </h1>
           </div>

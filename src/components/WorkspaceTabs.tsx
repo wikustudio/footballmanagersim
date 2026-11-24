@@ -574,7 +574,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                     role="listbox"
                     aria-label="Select season snapshot"
                     data-testid="season-snapshot-year-menu"
-                    className="absolute right-0 mt-1.5 w-64 rounded-2xl bg-white border border-[#E6E3DC] shadow-[0_18px_48px_rgba(24,25,31,0.16)] z-30 overflow-hidden"
+                    className="absolute right-0 mt-1.5 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-[#E6E3DC] shadow-[0_18px_48px_rgba(24,25,31,0.16)] z-30 overflow-hidden"
                   >
                     <div className="px-3 py-2 border-b border-[#E6E3DC] bg-[#F6F5F1] flex items-center justify-between">
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6B7280]">
@@ -1135,7 +1135,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                   onClick={onOpenManagerSkills}
                   className="text-[11px] font-extrabold text-[#18191F] hover:underline cursor-pointer tabular-nums"
                 >
-                  {state.skillPoints || 0} MP →
+                  {state.skillPoints || 0} DP →
                 </button>
               </div>
 
@@ -2721,7 +2721,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                 <div className="editorial-well p-2.5">
                   <div className="text-[10px] text-[#6B7280]">Next reward</div>
                   <div className="text-xs font-extrabold text-amber-700 mt-0.5">
-                    +{state.boardVision?.reward?.skillPointsBonus || 15} MP
+                    +{state.boardVision?.reward?.skillPointsBonus || 15} DP
                   </div>
                 </div>
               </div>
@@ -2740,7 +2740,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-[#18191F]">Manager Skills</h3>
                 <span className="text-[11px] font-extrabold text-[#18191F] tabular-nums">
-                  {state.skillPoints || 0} MP
+                  {state.skillPoints || 0} DP
                 </span>
               </div>
               <p className="text-[11px] text-[#6B7280] mt-1">Unlocked executive perks</p>
@@ -2751,7 +2751,7 @@ export const WorkspaceTabs: React.FC<WorkspaceTabsProps> = ({
                 <div className="editorial-well p-2.5">
                   <div className="text-[10px] text-[#6B7280]">Unspent points</div>
                   <div className="text-xs font-extrabold text-[#18191F] tabular-nums mt-0.5">
-                    {state.skillPoints || 0} MP
+                    {state.skillPoints || 0} DP
                   </div>
                 </div>
                 <div className="editorial-well p-2.5">
