@@ -150,9 +150,11 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     }
   };
 
-  // Sync the exact sum of visual userGoals (gf) and oppGoals (ga) and 3-1-0 points back to pendingSeasonState
+  const lastSyncedKeyRef = useRef<string>('');
+
+  // Sync the exact sum of visual userGoals (gf) and oppGoals (ga) and 3-1-0 points back to pendingSeasonState immutably
   useEffect(() => {
-    if (!isOpen || schedule.length === 0) return;
+    if (!isOpen || schedule.length === 0 || !onSyncRef.current) return;
 
     const totalVisualGf = schedule.reduce((sum, m) => sum + (Number(m.userGoals) || 0), 0);
     const totalVisualGa = schedule.reduce((sum, m) => sum + (Number(m.oppGoals) || 0), 0);
@@ -162,36 +164,32 @@ export const SimulatingOverlay: React.FC<SimulatingOverlayProps> = ({
     const totalPts = totalWins * 3 + totalDraws;
     const firstHalfSlice = schedule.slice(0, halfwayMatchday);
 
-    if (gameState.pendingSeasonState) {
-      gameState.pendingSeasonState.gf = totalVisualGf;
-      gameState.pendingSeasonState.ga = totalVisualGa;
-      gameState.pendingSeasonState.gd = totalVisualGf - totalVisualGa;
-      gameState.pendingSeasonState.wins = totalWins;
-      gameState.pendingSeasonState.draws = totalDraws;
-      gameState.pendingSeasonState.losses = totalLosses;
-      gameState.pendingSeasonState.pts = totalPts;
-      gameState.pendingSeasonState.schedule = schedule;
-      gameState.pendingSeasonState.matchdaySchedule = schedule;
-      if (gameState.pendingSeasonState._meta) {
-        gameState.pendingSeasonState._meta.firstHalfOutcomes = firstHalfSlice;
-      }
-    }
+    const syncKey = `${gameState.year}:${schedule.length}:${totalWins}-${totalDraws}-${totalLosses}:${totalVisualGf}-${totalVisualGa}:${halfwayMatchday}`;
+    if (lastSyncedKeyRef.current === syncKey) return;
+    lastSyncedKeyRef.current = syncKey;
 
-    if (onSyncRef.current && activePending !== gameState.pendingSeasonState) {
-      onSyncRef.current({
-        ...activePending,
-        gf: totalVisualGf,
-        ga: totalVisualGa,
-        gd: totalVisualGf - totalVisualGa,
-        wins: totalWins,
-        draws: totalDraws,
-        losses: totalLosses,
-        pts: totalPts,
-        schedule,
-        matchdaySchedule: schedule,
-      });
-    }
-  }, [isOpen, activePending, schedule, halfwayMatchday]);
+    const basePending = gameState.pendingSeasonState || activePending;
+    onSyncRef.current({
+      ...basePending,
+      gf: totalVisualGf,
+      ga: totalVisualGa,
+      gd: totalVisualGf - totalVisualGa,
+      wins: totalWins,
+      draws: totalDraws,
+      losses: totalLosses,
+      pts: totalPts,
+      schedule,
+      matchdaySchedule: schedule,
+      ...(basePending._meta
+        ? {
+            _meta: {
+              ...basePending._meta,
+              firstHalfOutcomes: firstHalfSlice,
+            },
+          }
+        : {}),
+    });
+  }, [isOpen, activePending, gameState.pendingSeasonState, gameState.year, schedule, halfwayMatchday]);
 
   // Reset index when opening or switching season half
   useEffect(() => {

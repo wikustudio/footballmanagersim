@@ -328,6 +328,19 @@ export const calculateClubLeagueHistory = (
         points = Math.round(78 + seed * 8);
       }
 
+      const deriveConsistentSeasonRecord = (pts: number, drawSeed: number, totalMatches: number = 34) => {
+        const clampedPts = Math.max(0, Math.min(totalMatches * 3, Math.round(pts)));
+        const maxWins = Math.min(totalMatches, Math.floor(clampedPts / 3));
+        const minDraws = clampedPts - maxWins * 3;
+        const maxExtraTriplets = Math.min(maxWins, Math.floor((totalMatches - maxWins - minDraws) / 2));
+        const desiredExtra = Math.min(maxExtraTriplets, Math.max(0, Math.round(drawSeed * Math.min(4, maxExtraTriplets))));
+        const w = maxWins - desiredExtra;
+        const d = minDraws + desiredExtra * 3;
+        const l = Math.max(0, totalMatches - w - d);
+        return { wins: w, draws: d, losses: l, points: w * 3 + d };
+      };
+      const moveRecord = deriveConsistentSeasonRecord(points, seed);
+
       recordsMap.set(y, {
         year: y,
         tier: moveTier,
@@ -335,16 +348,28 @@ export const calculateClubLeagueHistory = (
         ovr: Math.max(30, currentOvr + Math.round((seed2 - 0.5) * 3)),
         leagueName: lgInfo.name,
         status,
-        points,
-        wins: Math.max(3, Math.round((points - 10) / 2.7)),
-        draws: Math.round(seed * 7) + 4,
-        losses: Math.max(3, 34 - (Math.max(3, Math.round((points - 10) / 2.7)) + Math.round(seed * 7) + 4)),
+        points: moveRecord.points,
+        wins: moveRecord.wins,
+        draws: moveRecord.draws,
+        losses: moveRecord.losses,
         wonTrophy,
         trophyName: wonTrophy ? `${lgInfo.name} Trophy` : undefined,
         isManagerTenure: false
       });
       continue;
     }
+
+    const deriveConsistentSeasonRecord = (pts: number, drawSeed: number, totalMatches: number = 34) => {
+      const clampedPts = Math.max(0, Math.min(totalMatches * 3, Math.round(pts)));
+      const maxWins = Math.min(totalMatches, Math.floor(clampedPts / 3));
+      const minDraws = clampedPts - maxWins * 3;
+      const maxExtraTriplets = Math.min(maxWins, Math.floor((totalMatches - maxWins - minDraws) / 2));
+      const desiredExtra = Math.min(maxExtraTriplets, Math.max(0, Math.round(drawSeed * Math.min(4, maxExtraTriplets))));
+      const w = maxWins - desiredExtra;
+      const d = minDraws + desiredExtra * 3;
+      const l = Math.max(0, totalMatches - w - d);
+      return { wins: w, draws: d, losses: l, points: w * 3 + d };
+    };
 
     // 4. Otherwise, calculate consistent historical progression for years without explicit movements
     if (isTop) {
@@ -355,6 +380,7 @@ export const calculateClubLeagueHistory = (
       const ovrDrift = Math.round((seed - 0.5) * 2); // -1 to +1
       const ovr = Math.max(78, currentOvr + ovrDrift);
       const status: ClubSeasonRecord['status'] = positionRoll === 1 ? 'champion' : 'top4';
+      const topRecord = deriveConsistentSeasonRecord(points, seed);
 
       recordsMap.set(y, {
         year: y,
@@ -363,10 +389,10 @@ export const calculateClubLeagueHistory = (
         ovr,
         leagueName: lgInfo.name,
         status,
-        points,
-        wins: Math.round(points / 3 * 0.85) + 12,
-        draws: Math.round(seed * 6) + 3,
-        losses: Math.max(2, 34 - (Math.round(points / 3 * 0.85) + 12 + Math.round(seed * 6) + 3)),
+        points: topRecord.points,
+        wins: topRecord.wins,
+        draws: topRecord.draws,
+        losses: topRecord.losses,
         wonTrophy: positionRoll === 1 || seed2 > 0.75,
         trophyName: positionRoll === 1 ? 'League Title' : seed2 > 0.75 ? 'National Cup' : undefined,
         isManagerTenure: false
@@ -398,6 +424,7 @@ export const calculateClubLeagueHistory = (
       const points = Math.max(28, Math.min(62, Math.round(65 - position * 2.2 + (seed2 - 0.5) * 6)));
       const ovrDrift = Math.round((seed2 - 0.5) * 3);
       const ovr = Math.max(40, currentOvr + ovrDrift);
+      const midRecord = deriveConsistentSeasonRecord(points, seed);
 
       recordsMap.set(y, {
         year: y,
@@ -406,10 +433,10 @@ export const calculateClubLeagueHistory = (
         ovr,
         leagueName: lgInfo.name,
         status,
-        points,
-        wins: Math.max(5, Math.round((points - 10) / 2.7)),
-        draws: Math.round(seed * 8) + 4,
-        losses: Math.max(4, 34 - (Math.max(5, Math.round((points - 10) / 2.7)) + Math.round(seed * 8) + 4)),
+        points: midRecord.points,
+        wins: midRecord.wins,
+        draws: midRecord.draws,
+        losses: midRecord.losses,
         wonTrophy: false,
         isManagerTenure: false
       });

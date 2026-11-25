@@ -5627,7 +5627,7 @@ export const resolveDynamicEvent = (
     }
     if (effects.rep) updated.reputation = Math.max(1, Math.min(100, updated.reputation + effects.rep));
     if (effects.fans) updated.club.fanBase = Math.max(100, (updated.club.fanBase || 1000) + effects.fans);
-    if (effects.morale) updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + effects.morale));
+    if (effects.morale) updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale ?? 100) + effects.morale));
     if (effects.budget !== undefined) {
       if (isTakeoverEvent && effects.budget > 0) {
         // 1. Wipe existing negative debt first before adding the takeover windfall

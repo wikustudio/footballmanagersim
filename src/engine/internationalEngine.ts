@@ -288,7 +288,13 @@ export const calculateDirectorSynergy = (
     clues.push(`${coach.name}'s tactical system thrives with your chosen Squad Identity.`);
   } else if (clashesSquad) {
     score -= 20;
-    clues.push(`Tactical friction: ${coach.name}'s pressing demands clash with an older Veteran squad.`);
+    if (coach.archetype === 'defensive_general' && squadDirection === 'youth_pipeline') {
+      clues.push(`Tactical friction: ${coach.name}'s rigid defensive discipline stifles an inexperienced Youth Pipeline squad.`);
+    } else if (coach.archetype === 'charismatic_motivator' && squadDirection === 'defensive_fortress') {
+      clues.push(`Tactical friction: ${coach.name}'s expressive attacking flair clashes with a conservative Defensive Fortress setup.`);
+    } else {
+      clues.push(`Tactical friction: ${coach.name}'s pressing demands clash with an older Veteran squad.`);
+    }
   } else {
     score += 10;
     clues.push(`Solid working relationship between ${coach.name} and the squad profile.`);

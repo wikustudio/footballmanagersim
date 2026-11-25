@@ -1173,16 +1173,11 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (canAfford) {
+                                  if (canAfford && onSelectIdentity) {
                                     const newId = card.id;
                                     setActiveIdentity(newId);
                                     setCurrentDp(prev => Math.max(0, prev - 20));
-                                    if (onSelectIdentity) {
-                                      onSelectIdentity(newId);
-                                    } else {
-                                      state.clubIdentity = newId;
-                                      state.skillPoints = Math.max(0, (state.skillPoints || 0) - 20);
-                                    }
+                                    onSelectIdentity(newId);
                                   }
                                 }}
                                 disabled={!canAfford}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { GameState } from '../types';
-import { formatMoney } from '../data/gameConstants';
+import { formatMoney, formatNum, getLeagueScaledFans } from '../data/gameConstants';
 import { t } from '../data/translations';
 
 interface FanBondingModalProps {
@@ -18,6 +18,12 @@ export const FanBondingModal: React.FC<FanBondingModalProps> = ({ state, lang, c
   const processingRef = React.useRef(false);
   const canAfford = state.budget - cost >= -(creditLimit || 0);
   const isAlreadyDone = Boolean(state.fanBondingThisSeason);
+  const scaledFanGain = getLeagueScaledFans(
+    state.club.tier,
+    5000,
+    state.club.country || 'GER',
+    state.club.originalStartLeague || state.club.tier
+  );
 
   const handleConfirm = () => {
     if (processingRef.current || isProcessing || isAlreadyDone || !canAfford) return;
@@ -57,7 +63,7 @@ export const FanBondingModal: React.FC<FanBondingModalProps> = ({ state, lang, c
             <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">{t(lang, 'Reputation', 'Ansehen')}</div>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
-            <div className="text-amber-800 font-extrabold text-base tabular-nums mb-0.5">+5,000</div>
+            <div className="text-amber-800 font-extrabold text-base tabular-nums mb-0.5">+{formatNum(scaledFanGain)}</div>
             <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">{t(lang, 'Fans', 'Fans')}</div>
           </div>
         </div>

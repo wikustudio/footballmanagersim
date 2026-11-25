@@ -8,6 +8,7 @@ import {
   getHqScaleSpec,
 } from '../engine/campusAndBowlGeometry';
 import { formatMoney, formatNum } from '../data/gameConstants';
+import { getIncubatorCapacity } from '../engine/incubatorEngine';
 import { ClubLogo } from './ClubLogo';
 
 export type CampusSceneType =
@@ -1728,7 +1729,7 @@ export const ClubCampus3D: React.FC<ClubCampus3DProps> = ({
               <div>
                 <div className="text-[8.5px] sm:text-[9px] font-semibold text-[#6B7280]">Youth Pipeline</div>
                 <div className="text-[11px] sm:text-xs font-extrabold text-[#18191F] tabular-nums">
-                  {youthCount}/10
+                  {youthCount}/{getIncubatorCapacity(academyLevel)}
                 </div>
               </div>
             </>

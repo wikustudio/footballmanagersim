@@ -2509,6 +2509,11 @@ export const getLeagueScaledVal = (tier: number, baseLeague1K: number | number[]
   return Math.max(1, Math.floor(result));
 };
 
+export const getAcademySolidarityDividendK = (country: string = 'GER'): number => {
+  const cMult = getCountryMult(country);
+  return Math.max(150, Math.round(1500 * cMult));
+};
+
 export const calculateClubFinancials = (state: {
   club: { name: string; tier: number; baseOvr: number; stadium: number; fanBase?: number; country?: string; squadSize?: number; academyLevel?: number; medicalLevel?: number; };
   budget: number;
@@ -2762,7 +2767,7 @@ export const calculateClubFinancials = (state: {
     : 0;
 
   // Level 5 Youth Academy Solidarity Dividend (+€1.5M / yr scaled to country economy)
-  const academyDividend = !isReserve && (state.club.academyLevel || 1) >= 5 ? Math.max(150, Math.round(1500 * cMult)) : 0;
+  const academyDividend = !isReserve && (state.club.academyLevel || 1) >= 5 ? getAcademySolidarityDividendK(country) : 0;
 
   const namingRightsIncome = !isReserve && (state as any).stadiumNamingRights && ((state as any).stadiumNamingRights.yearsLeft || 0) > 0
     ? Math.max(0, Math.round(Number((state as any).stadiumNamingRights.annualPayoutK) || 0))

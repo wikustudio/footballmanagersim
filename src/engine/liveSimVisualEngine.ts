@@ -315,9 +315,9 @@ export const STADIUM_STYLE_OPTIONS: Array<{
   },
   {
     id: 'continental_bowl',
-    name: 'Continental Rounded Arena',
+    name: 'Classic German Rounded Bowl',
     shortName: 'Rounded Bowl',
-    desc: 'Smooth curved-corner modern stadium bowl with sweeping upper decks',
+    desc: 'Old-school German concrete oval with sweeping Kurven, lattice floodlight masts & steel-truss roof',
   },
   {
     id: 'open_terrace',
@@ -417,6 +417,13 @@ export const resolveClubStadiumStyle = (
   return 'english_box';
 };
 
+export type StadiumStandLayout =
+  | 'single_main'
+  | 'two_sided'
+  | 'four_open'
+  | 'enclosed_bowl'
+  | 'mega_arena';
+
 export interface StadiumArchitectureProfile {
   style: StadiumArchitectureStyle;
   styleName: string;
@@ -428,6 +435,19 @@ export interface StadiumArchitectureProfile {
   scaleT: number; // 0.0 (1,000 seats) -> 1.0 (150,000 seats)
   scaleBand: StadiumScaleBand;
   capacityTier: StadiumCapacityTier;
+  standLayout: StadiumStandLayout;
+  isAmateurGround: boolean;
+  isSemiProGround: boolean;
+  isMegaArena: boolean;
+  hasTopStand: boolean;
+  hasBottomStand: boolean;
+  hasHomeEndStand: boolean;
+  hasAwayEndStand: boolean;
+  deckCount: 1 | 2 | 3 | 4;
+  facadeHeight: number;
+  hasMainStandShedRoof: boolean;
+  hasCantileverRoof: boolean;
+  hasFacadeRibs: boolean;
   tierLabel: string;
   standDepth: number;
   tierHeight: number;
@@ -450,7 +470,9 @@ export interface StadiumArchitectureProfile {
 
 /**
  * Computes continuous & multi-bracket stadium architecture from 1,000 seats to 150,000 seats
- * across all architectural varieties (English Box, Running Track Oval, Continental Bowl, Open Terrace).
+ * across all architectural varieties (English Box, Running Track Oval, Continental Bowl, Open Terrace),
+ * progressing authentically from 1-stand amateur pitches (<5k) and 2-stand semi-pro grounds (5k-10k)
+ * up to monumental 60,000+ multi-deck mega-arenas and 100,000+ world colossi.
  */
 export const computeStadiumArchitecture = (
   capacity: number,
@@ -482,20 +504,34 @@ export const computeStadiumArchitecture = (
       ? 'regional'
       : 'village';
 
+  const isAmateurGround = clampedCapacity < 5000;
+  const isSemiProGround = clampedCapacity >= 5000 && clampedCapacity < 10000;
+  const isMegaArena = clampedCapacity >= 60000;
+
+  const hasTopStand = true;
+  const hasHomeEndStand = clampedCapacity >= 5000;
+  const hasBottomStand = clampedCapacity >= 10000;
+  const hasAwayEndStand = clampedCapacity >= 10000;
+
   const baseTierLabel =
     capacityTier === 'colossus'
       ? '100k+ Mega-Colossus'
+      : isMegaArena
+      ? '60k+ Continental Mega-Arena'
       : capacityTier === 'arena'
       ? '3-Tier Championship'
       : capacityTier === 'twin'
       ? 'Twin-Tier Broadcast'
       : capacityTier === 'regional'
-      ? 'Regional Ground'
-      : '1k–5k Community Pitch';
+      ? 'Local Semi-Pro Ground'
+      : 'Amateur Community Pitch';
 
   const styleMeta = getStadiumStyleMeta(style);
   const hasRunningTrack = style === 'olympic_track';
-  const isRoundedBowl = style === 'olympic_track' || style === 'continental_bowl';
+  const isRoundedBowl =
+    !isAmateurGround &&
+    !isSemiProGround &&
+    (style === 'olympic_track' || style === 'continental_bowl');
 
   // Pitch apron gap before first stand row: tight British walls vs wide multi-lane Olympic oval
   const standGapU =
@@ -504,7 +540,7 @@ export const computeStadiumArchitecture = (
       : style === 'english_box'
       ? 4
       : style === 'continental_bowl'
-      ? 9
+      ? 13
       : 8;
   const standGapV =
     style === 'olympic_track'
@@ -512,7 +548,7 @@ export const computeStadiumArchitecture = (
       : style === 'english_box'
       ? 4
       : style === 'continental_bowl'
-      ? 9
+      ? 12
       : 8;
 
   // Continuous scaling across 1,000 -> 150,000 seats tailored per architectural variety
@@ -533,23 +569,34 @@ export const computeStadiumArchitecture = (
       ? 0.92
       : 1.02;
 
-  // Progressive super-arena & colossus scaling so 90k-150k stadiums dwarf 40k-55k arenas authentically
-  const megaT = Math.max(0, Math.min(1, (clampedCapacity - 45000) / (150000 - 45000)));
-  const colossusT = Math.max(0, Math.min(1, (clampedCapacity - 80000) / (150000 - 80000)));
+  // Distinct scale surge at 60,000+ mega-arenas and 90,000+ colossi so major arenas visibly dwarf mid-tier grounds
+  const arenaBoostT = Math.max(0, Math.min(1, (clampedCapacity - 54000) / 14000));
+  const megaT = Math.max(0, Math.min(1, (clampedCapacity - 50000) / (150000 - 50000)));
+  const colossusT = Math.max(0, Math.min(1, (clampedCapacity - 82000) / (150000 - 82000)));
 
   const standDepth = Math.round(
-    (15 + scaleT * 60 + Math.pow(megaT, 1.15) * 48 + Math.pow(colossusT, 1.08) * 34) * depthScale
+    (14 +
+      scaleT * 52 +
+      arenaBoostT * 24 +
+      Math.pow(megaT, 1.02) * 52 +
+      Math.pow(colossusT, 1.02) * 26) *
+      depthScale
   );
   const tierHeight = Math.round(
-    (9 + scaleT * 36 + Math.pow(megaT, 1.12) * 34 + Math.pow(colossusT, 1.08) * 26) * heightMult
+    (8 +
+      scaleT * 34 +
+      arenaBoostT * 22 +
+      Math.pow(megaT, 1.02) * 38 +
+      Math.pow(colossusT, 1.02) * 24) *
+      heightMult
   );
   const outerU = Math.round(228 + standGapU + standDepth + 6);
   const outerV = Math.round(153 + standGapV + standDepth + 6);
 
   // High-density spectator grid counts so filled stands look packed shoulder-to-shoulder across 1-4 tiers
-  const sideCols = Math.round(48 + scaleT * 30 + megaT * 8); // 48 -> 86 columns along touchline
-  const sideRows = Math.round(9 + scaleT * 9 + megaT * 5); // 9 -> 23 rows deep on sidelines
-  const endCols = Math.round(6 + scaleT * 8 + megaT * 4); // 6 -> 18 rows deep behind goals
+  const sideCols = Math.round(44 + scaleT * 32 + megaT * 10); // 44 -> 86 columns along touchline
+  const sideRows = Math.round(7 + scaleT * 10 + arenaBoostT * 2 + megaT * 5); // 7 -> 24 rows deep on sidelines
+  const endCols = Math.round(6 + scaleT * 8 + megaT * 5); // 6 -> 19 rows deep behind goals
   const endRows = Math.round(28 + scaleT * 16 + megaT * 6); // 28 -> 50 columns across goal line
   const cornerCols = isRoundedBowl
     ? Math.round(28 + scaleT * 22 + megaT * 6)
@@ -558,26 +605,62 @@ export const computeStadiumArchitecture = (
     ? Math.round(8 + scaleT * 8 + megaT * 4)
     : Math.max(6, Math.round(6 + scaleT * 6 + megaT * 4));
 
-  const hasCorners = isRoundedBowl
-    ? true
-    : style === 'english_box'
-    ? clampedCapacity >= 12000
-    : clampedCapacity >= 24000;
+  const hasCorners =
+    hasBottomStand &&
+    hasAwayEndStand &&
+    (isRoundedBowl
+      ? true
+      : style === 'english_box'
+      ? clampedCapacity >= 12000
+      : clampedCapacity >= 24000);
   const hasUpperRing = clampedCapacity >= 15000;
   const hasThirdTier = clampedCapacity >= 45000;
+  const deckCount: 1 | 2 | 3 | 4 =
+    clampedCapacity >= 90000
+      ? 4
+      : clampedCapacity >= 45000
+      ? 3
+      : clampedCapacity >= 15000
+      ? 2
+      : 1;
+  const hasMainStandShedRoof = isAmateurGround && clampedCapacity >= 1800;
   const hasRoofCanopy =
-    style === 'english_box'
+    isMegaArena ||
+    (style === 'english_box'
       ? clampedCapacity >= 12000
       : style === 'open_terrace'
       ? clampedCapacity >= 45000
-      : clampedCapacity >= 28000;
-  const hasFullRoofWrap = clampedCapacity >= 80000;
+      : clampedCapacity >= 28000);
+  const hasFullRoofWrap = clampedCapacity >= 60000;
+  const hasCantileverRoof = isMegaArena || (hasRoofCanopy && clampedCapacity >= 30000);
+  const hasFacadeRibs = clampedCapacity >= 30000;
+  const facadeHeight = isAmateurGround
+    ? 0
+    : isSemiProGround
+    ? 8
+    : isMegaArena
+    ? Math.round(30 + megaT * 22 + colossusT * 10)
+    : Math.round(12 + scaleT * 12);
   const hasFloodlightPylons =
-    style === 'open_terrace'
-      ? clampedCapacity < 65000
+    isMegaArena
+      ? false
+      : isAmateurGround
+      ? clampedCapacity >= 1800
+      : style === 'open_terrace'
+      ? clampedCapacity < 60000
       : style === 'english_box'
       ? clampedCapacity < 22000
       : clampedCapacity < 45000;
+
+  const standLayout: StadiumStandLayout = isAmateurGround
+    ? 'single_main'
+    : isSemiProGround
+    ? 'two_sided'
+    : isMegaArena
+    ? 'mega_arena'
+    : hasCorners
+    ? 'enclosed_bowl'
+    : 'four_open';
 
   // Dynamic viewport fit guarantees every style (including 150k Colossus + Olympic track) fills the frame dramatically without clipping
   const maxIsoHalfWidth = outerU * 0.62 + outerV * 0.68;
@@ -594,7 +677,24 @@ export const computeStadiumArchitecture = (
     scaleT: Number(scaleT.toFixed(4)),
     scaleBand,
     capacityTier,
-    tierLabel: `${baseTierLabel} · ${styleMeta.shortName}`,
+    standLayout,
+    isAmateurGround,
+    isSemiProGround,
+    isMegaArena,
+    hasTopStand,
+    hasBottomStand,
+    hasHomeEndStand,
+    hasAwayEndStand,
+    deckCount,
+    facadeHeight,
+    hasMainStandShedRoof,
+    hasCantileverRoof,
+    hasFacadeRibs,
+    tierLabel: isAmateurGround
+      ? `${baseTierLabel} · 1-Stand`
+      : isSemiProGround
+      ? `${baseTierLabel} · 2-Stand`
+      : `${baseTierLabel} · ${styleMeta.shortName}`,
     standDepth,
     tierHeight,
     outerU,
@@ -3131,7 +3231,7 @@ export const buildActiveNotifications = (
       actionTab: 'commercial',
     });
   }
-  if (!state.stadiumNamingRights && !isReserveClub(state.club.name)) {
+  if (!state.stadiumNamingRights && !state.club.isReserve && !isReserveClub(state.club.name) && state.namingRightsSignedYear !== state.year) {
     list.push({
       id: 'naming_rights',
       title: 'Stadium Naming Rights Available',
@@ -3141,7 +3241,9 @@ export const buildActiveNotifications = (
       actionId: 'naming_rights',
     });
   }
-  const readyYouth = (state.youthPipeline || []).filter((y) => y.timer <= 0 && y.status !== 'loaned').length;
+  const readyYouth = (state.youthPipeline || []).filter(
+    (y) => (y.status === 'ready' || (typeof y.timer === 'number' && y.timer <= 0)) && y.status !== 'loaned'
+  ).length;
   if (readyYouth > 0) {
     list.push({
       id: 'youth_ready',

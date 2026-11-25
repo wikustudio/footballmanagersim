@@ -336,11 +336,13 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
       }
     }
 
-    // Determine live active card if isLive is true
+    // Determine live active card if isLive is true (include Leg 1 in 2-legged ties)
     let activeCard: 'win' | 'draw' | 'loss' | null = null;
     if (isLive) {
-      if (liveScore.me > liveScore.opp) activeCard = 'win';
-      else if (liveScore.me === liveScore.opp) activeCard = 'draw';
+      const effectiveMe = isTwoLegged && currentLeg === 2 && leg1Result ? leg1Result.me + liveScore.me : liveScore.me;
+      const effectiveOpp = isTwoLegged && currentLeg === 2 && leg1Result ? leg1Result.opp + liveScore.opp : liveScore.opp;
+      if (effectiveMe > effectiveOpp) activeCard = 'win';
+      else if (effectiveMe === effectiveOpp) activeCard = 'draw';
       else activeCard = 'loss';
     }
 
@@ -1388,7 +1390,7 @@ const DecisionDayModal: React.FC<DecisionDayModalProps> = ({
                         <div className="min-w-0">
                           <div className="font-semibold text-amber-900 text-xs flex items-center gap-1.5">
                             <span className="truncate">Masterclass Directive</span>
-                            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
+                            <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 DP</span>
                           </div>
                           <div className="text-[11px] text-amber-800 mt-0.5">+12 OVR decisive tactical blueprint</div>
                         </div>

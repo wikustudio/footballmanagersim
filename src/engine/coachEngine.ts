@@ -376,7 +376,7 @@ export const getCoachWeaknessInfo = (weakness?: string): CoachWeaknessInfo => {
     case 'Tactical Rigidity':
       return {
         name: 'Tactical Rigidity (Dogmatist)',
-        desc: 'Refuses to adapt: -3 OVR penalty if you play any tactical style other than his.',
+        desc: 'Refuses to adapt: -5 OVR & -25 Morale mutiny penalty if you play any tactical style other than his (+3 OVR if aligned).',
         icon: 'fa-lock',
         color: 'text-amber-400 bg-amber-500/15 border-amber-500/30'
       };

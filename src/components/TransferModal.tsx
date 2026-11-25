@@ -24,7 +24,7 @@ const CompactTreasury: React.FC<CompactTreasuryProps> = ({ budget, financials, s
       </div>
       <div>
         <div className="text-[10px] text-[#6B7280] font-semibold uppercase tracking-wider mb-0.5">
-          {t('Net / Match', 'Netto / Spiel')}
+          {t('Net / Season', 'Netto / Saison')}
         </div>
         <div className={`text-base sm:text-lg font-bold font-mono tabular-nums ${financials.net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
           {financials.net >= 0 ? '+' : ''}{formatMoney(financials.net)}
@@ -77,6 +77,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   const t = (en: string, de: string, es: string = en) => (lang === 'de' ? de : lang === 'es' ? es : en);
   const isWinter = state.seasonPhase === 'mid';
   const isUnderdog = (state.managerSkills || []).includes('rosinenpicker');
+  const hasTalentMagnet = state.currentCoach?.strength === 'Talent Magnet';
   const maxKeyTransfers = (state.managerSkills || []).includes('star_magnet') ? 3 : 2;
 
   const [activeTab, setActiveTab] = useState<'all' | 'signings' | 'outgoings' | 'galactico' | 'academy'>('all');
@@ -318,6 +319,9 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         {isUnderdog && (
                           <span className="text-[10px] text-amber-700 font-semibold">· 20% Underdog Off</span>
                         )}
+                        {hasTalentMagnet && (
+                          <span className="text-[10px] text-emerald-700 font-semibold">· 20% Talent Magnet</span>
+                        )}
                       </div>
                       <div className="text-[11px] text-[#6B7280] font-normal leading-snug mt-0.5">
                         {t('Solid starting quality to strengthen depth and base team OVR.', 'Solider Stammspieler zur Stärkung der Kaderbreite und Basis-GES.')}
@@ -352,6 +356,9 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         <span>{t('Sign Key Player', 'Schlüsselspieler verpflichten')}</span>
                         {isUnderdog && (
                           <span className="text-[10px] text-amber-700 font-semibold">· 20% Underdog Off</span>
+                        )}
+                        {hasTalentMagnet && (
+                          <span className="text-[10px] text-emerald-700 font-semibold">· 20% Talent Magnet</span>
                         )}
                       </div>
                       <div className="text-[11px] text-[#6B7280] font-normal leading-snug mt-0.5">
@@ -406,6 +413,9 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                       <div className="text-xs sm:text-sm font-bold text-[#18191F] flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span>{t('Sign Galactico', 'Galactico Verpflichten')}</span>
                         <span className="text-[10px] text-amber-800 font-semibold">· League 1 Exclusive</span>
+                        {hasTalentMagnet && (
+                          <span className="text-[10px] text-emerald-700 font-semibold">· 20% Talent Magnet</span>
+                        )}
                       </div>
                       <div className="text-[11px] text-[#4B5563] font-normal leading-snug mt-0.5">
                         {isMoneyball ? (

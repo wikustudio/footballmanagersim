@@ -65,7 +65,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts }) => {
   const renderFormattedMessage = (msg: string) => {
     const cleaned = cleanMessage(msg);
     // Regex to capture OVR/GES boosts or losses, money gains or losses
-    const parts = cleaned.split(/([+-]\s*€?\s*[\d.,]*\d(?:\s*(?:Mio\.|[MKkB]\b))?(?:\s*(?:OVR|GES|Budget|Fans|Einnahmen|Reputation|Rep|Ansehen|MP|Siegchance|Win|Lose|Loss|Sieg|Niederlage|Verlust|Plaetze|Seats|Kapazitaet|Capacity|Zuschauer|Morale|Moral|Youth|Jugend|Squad|Team))?)/gi);
+    const parts = cleaned.split(/([+-]\s*€?\s*[\d.,]*\d(?:\s*(?:Mio\.|[MKkB]\b))?(?:\s*(?:OVR|GES|Budget|Fans|Einnahmen|Reputation|Rep|Ansehen|DP|MP|Siegchance|Win|Lose|Loss|Sieg|Niederlage|Verlust|Plaetze|Seats|Kapazitaet|Capacity|Zuschauer|Morale|Moral|Youth|Jugend|Squad|Team))?)/gi);
 
     return parts.map((part, i) => {
       if (/^\+\s*€?\s*[\d.,]/i.test(part)) {

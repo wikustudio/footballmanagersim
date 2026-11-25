@@ -11,7 +11,11 @@ interface PrestigeModalProps {
 
 export const PrestigeModal: React.FC<PrestigeModalProps> = ({ state, onClose, onPrestigePurchase }) => {
   const isTier1 = state.club.tier === 1;
-  const hasWealth = state.budget >= 250000;
+  const upgrades = state.prestigeUpgrades || {};
+  const hasAnyUpgrade = Boolean(
+    upgrades.statueBuilt || upgrades.stadiumRenamed || upgrades.feederClubPurchased || upgrades.managerialImmortality
+  );
+  const hasWealth = state.budget >= 100000 || hasAnyUpgrade;
   const country = state.club.country || 'GER';
   const stadiumFanGain = Math.max(5000, getLeagueScaledFans(state.club.tier, 5000, country, state.club.originalStartLeague || state.club.tier));
   const immortalityFanGain = Math.max(15000, getLeagueScaledFans(state.club.tier, 15000, country, state.club.originalStartLeague || state.club.tier));
@@ -32,7 +36,7 @@ export const PrestigeModal: React.FC<PrestigeModalProps> = ({ state, onClose, on
             <i className="fa-solid fa-lock text-xl"></i>
           </div>
           <h2 className="text-lg font-bold text-[#18191F] mb-2">VIP Access Denied</h2>
-          <p className="text-xs text-[#6B7280] leading-relaxed">Reach Tier 1 and accumulate {formatMoney(250000, country)} to unlock Billionaire Prestige Investments.</p>
+          <p className="text-xs text-[#6B7280] leading-relaxed">Reach Tier 1 and accumulate {formatMoney(100000, country)} to unlock Billionaire Prestige Investments.</p>
           <button
             type="button"
             onClick={onClose}
@@ -44,8 +48,6 @@ export const PrestigeModal: React.FC<PrestigeModalProps> = ({ state, onClose, on
       </div>
     );
   }
-
-  const upgrades = state.prestigeUpgrades || {};
 
   return (
     <motion.div 

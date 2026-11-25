@@ -176,6 +176,14 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
 
   const initialSavedState = useMemo(() => {
     if (typeof window === 'undefined') return null;
+    if (isFreshInvite) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+      return null;
+    }
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -185,7 +193,7 @@ export const InternationalTournamentModal: React.FC<InternationalTournamentModal
       // ignore
     }
     return null;
-  }, [storageKey]);
+  }, [storageKey, isFreshInvite]);
 
   // Recover trophy celebration ONLY if persisted state actually recorded a completed victory summary
   const isRecoveredVictory =

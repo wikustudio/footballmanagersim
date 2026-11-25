@@ -84,8 +84,8 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     // Bug 2: handleGlobalTour has dynamic moraleChange enabled without debug if (false) bypass
     expect(appSrc).toContain('moraleChange = -15;');
     expect(appSrc).toContain('moraleChange = 30;');
-    expect(appSrc).toContain('updated.club.morale = Math.max(0, (updated.club.morale || 100) + moraleChange);');
-    expect(appSrc).toContain('updated.club.morale = Math.min(100, (updated.club.morale || 100) + moraleChange);');
+    expect(appSrc).toContain('updated.club.morale = Math.max(0, (updated.club.morale ?? 100) + moraleChange);');
+    expect(appSrc).toContain('updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + moraleChange);');
   });
 
   it('ensures resigned coach resurrection loophole is closed and handleResolveEvent has no duplicate shadowing', () => {
@@ -235,7 +235,7 @@ describe('Job Offers & Contract Vacancy UI Surgery', () => {
     // aligns lastOvr with boostedNewClubOvr, and saves state immediately
     const appSrc = fs.readFileSync('src/App.tsx', 'utf-8');
     expect(appSrc).toContain('const trueDepartingBaseOvr = adjustOvr(departingClub.baseOvr || 60, -(departingCoachBoost + departingTempBoost));');
-    expect(appSrc).toContain('(currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain || 5) : 0)');
+    expect(appSrc).toContain('(currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain ?? 5) : 0)');
     expect(appSrc).toContain('updated.lastOvr = boostedNewClubOvr;');
 
     // Verify continental qualification upgrades cup qualification (e.g. ECL -> EL) and non-destructive reputation ceiling

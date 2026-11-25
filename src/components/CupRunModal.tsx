@@ -29,7 +29,7 @@ interface CupRunModalProps {
   cupRun: { id: string; nameEn: string; nameDe: string; startRound?: 'quarter' | 'semi' | 'final'; endRound?: 'quarter' | 'semi' | 'final'; initialPlayedOpponents?: string[] };
   gameState: GameState;
   isDe: boolean;
-  onComplete: (result: {won: boolean, exitRound: string, choice?: string, rivalStats?: {w:number, l:number, d:number}, playedOpponents?: string[], winnerId?: number, winnerName?: string}) => void;
+  onComplete: (result: {won: boolean, exitRound: string, choice?: string, rivalStats?: {w:number, l:number, d:number}, playedOpponents?: string[], winnerId?: number, winnerName?: string, mpSpent?: number}) => void;
   archRivalName?: string;
 }
 
@@ -1666,7 +1666,7 @@ export const CupRunModal: React.FC<CupRunModalProps> = ({ cupRun, gameState, isD
                       <div className="min-w-0">
                         <div className="font-semibold text-amber-900 text-xs flex items-center gap-1.5">
                           <span className="truncate">Masterclass Directive</span>
-                          <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 MP</span>
+                          <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-300 tabular-nums whitespace-nowrap shrink-0 inline-flex items-center leading-normal">-5 DP</span>
                         </div>
                         <div className="text-[11px] text-amber-800 mt-0.5">+12 OVR tactical blueprint boost</div>
                       </div>

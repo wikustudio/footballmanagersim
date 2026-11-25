@@ -386,15 +386,27 @@ describe('liveSimVisualEngine', () => {
     }
 
     const trackArch = computeStadiumArchitecture(55000, 'olympic_track');
-    const smallTrackArch = computeStadiumArchitecture(2500, 'olympic_track');
-    const smallBowlArch = computeStadiumArchitecture(2500, 'continental_bowl');
+    const amateurTrackArch = computeStadiumArchitecture(2500, 'olympic_track');
+    const amateurBowlArch = computeStadiumArchitecture(2500, 'continental_bowl');
+    const smallProTrackArch = computeStadiumArchitecture(12000, 'olympic_track');
+    const smallProBowlArch = computeStadiumArchitecture(12000, 'continental_bowl');
     const boxArch = computeStadiumArchitecture(55000, 'english_box');
     expect(trackArch.hasRunningTrack).toBe(true);
     expect(boxArch.hasRunningTrack).toBe(false);
     expect(trackArch.standGapU).toBeGreaterThan(boxArch.standGapU * 4);
     expect(trackArch.tierHeight).toBeLessThan(boxArch.tierHeight);
-    expect(smallTrackArch.hasCorners).toBe(true);
-    expect(smallBowlArch.hasCorners).toBe(true);
+    // <5k amateur grounds feature an authentic single-stand grassroots layout (no enclosed concrete corners)
+    expect(amateurTrackArch.standLayout).toBe('single_main');
+    expect(amateurTrackArch.isAmateurGround).toBe(true);
+    expect(amateurTrackArch.hasTopStand).toBe(true);
+    expect(amateurTrackArch.hasBottomStand).toBe(false);
+    expect(amateurTrackArch.hasHomeEndStand).toBe(false);
+    expect(amateurTrackArch.hasAwayEndStand).toBe(false);
+    expect(amateurTrackArch.hasCorners).toBe(false);
+    expect(amateurBowlArch.hasCorners).toBe(false);
+    // 12k+ rounded & track grounds enclose full bowl corners
+    expect(smallProTrackArch.hasCorners).toBe(true);
+    expect(smallProBowlArch.hasCorners).toBe(true);
     expect(trackArch.cornerCols).toBeGreaterThanOrEqual(36);
     expect(trackArch.cornerRows).toBeGreaterThanOrEqual(11);
 

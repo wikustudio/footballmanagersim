@@ -235,15 +235,17 @@ export function computeMatchdayOvrBreakdown(
     (state.mediaPressure || 0) >= 80 && !state.pressureChoiceThisSeason ? -1.0 : 0;
 
   const getLeagueAdvantage = (myTac: string, metaTac: string) => {
-    const p = myTac === 'Catenaccio' || myTac === 'Defensive' ? 'Park the Bus' : myTac;
-    if (p === 'Tiki-Taka' && metaTac === 'Park the Bus') return 1;
-    if (p === 'Tiki-Taka' && metaTac === 'Gegenpressing') return -1;
-    if (p === 'Park the Bus' && metaTac === 'Direct Counter') return 1;
-    if (p === 'Park the Bus' && metaTac === 'Tiki-Taka') return -1;
-    if (p === 'Direct Counter' && metaTac === 'Gegenpressing') return 1;
-    if (p === 'Direct Counter' && metaTac === 'Park the Bus') return -1;
-    if (p === 'Gegenpressing' && metaTac === 'Tiki-Taka') return 1;
-    if (p === 'Gegenpressing' && metaTac === 'Direct Counter') return -1;
+    const normalizeRps = (t: string) => (t === 'Catenaccio' || t === 'Defensive' ? 'Park the Bus' : t);
+    const p = normalizeRps(myTac);
+    const m = normalizeRps(metaTac);
+    if (p === 'Tiki-Taka' && m === 'Park the Bus') return 1;
+    if (p === 'Tiki-Taka' && m === 'Gegenpressing') return -1;
+    if (p === 'Park the Bus' && m === 'Direct Counter') return 1;
+    if (p === 'Park the Bus' && m === 'Tiki-Taka') return -1;
+    if (p === 'Direct Counter' && m === 'Gegenpressing') return 1;
+    if (p === 'Direct Counter' && m === 'Park the Bus') return -1;
+    if (p === 'Gegenpressing' && m === 'Tiki-Taka') return 1;
+    if (p === 'Gegenpressing' && m === 'Direct Counter') return -1;
     return 0;
   };
   const leagueMetaAdv = getLeagueAdvantage(

@@ -422,7 +422,7 @@ export const OvrModal: React.FC<OvrModalProps> = ({ state, lang, onClose }) => {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="text-xl font-bold tabular-nums text-emerald-700">
-                    +{state.veteranRingerOvrGain || 5}
+                    +{state.veteranRingerOvrGain ?? 5}
                   </div>
                   <div className="text-[10px] font-semibold text-[#6B7280] uppercase">OVR</div>
                 </div>

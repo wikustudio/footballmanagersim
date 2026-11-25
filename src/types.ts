@@ -250,6 +250,7 @@ export interface Coach {
   promise?: 'title' | 'survival' | 'cups';
   isDeceiving?: boolean;
   isScouted?: boolean;
+  appliedOvrBoost?: number;
 }
 
 export interface BankLoan {

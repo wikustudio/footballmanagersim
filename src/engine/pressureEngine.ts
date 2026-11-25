@@ -439,6 +439,14 @@ export function evaluatePerformancePressure(
   };
 }
 
+export function computeCoachSeveranceK(coach?: { cost?: number; contractYearsLeft?: number; isReserveCoach?: boolean } | null): number {
+  if (!coach || coach.isReserveCoach) return 0;
+  const annualCost = typeof coach.cost === 'number' && Number.isFinite(coach.cost) ? coach.cost : 1500;
+  if (annualCost <= 0) return 0;
+  const yearsLeft = Math.max(1, coach.contractYearsLeft || 1);
+  return Math.max(0, Math.round(annualCost * 0.5 * yearsLeft));
+}
+
 export function buildPressureMomentOptions(
   state: GameState,
   assessment: PressureAssessment
@@ -447,9 +455,7 @@ export function buildPressureMomentOptions(
   const country = state.club?.country || 'GER';
   const hasCoach = Boolean(state.currentCoach);
   const prCostK = getLeagueScaledVal(tier, 3500, country);
-  const severanceCostK = hasCoach
-    ? Math.max(0, Math.round((state.currentCoach!.cost || 1500) * 0.5 * Math.max(1, state.currentCoach!.contractYearsLeft || 1)))
-    : 0;
+  const severanceCostK = hasCoach ? computeCoachSeveranceK(state.currentCoach) : 0;
   const isTitle = assessment.scenario === 'title_collapse';
 
   return [
@@ -552,10 +558,7 @@ export function applyPressureMomentResolution(
   } else if (choiceId === 'demand_coach_change') {
     if (updated.currentCoach) {
       const firedCoach = updated.currentCoach;
-      const severanceK = Math.max(
-        0,
-        Math.round((firedCoach.cost || 1500) * 0.5 * Math.max(1, firedCoach.contractYearsLeft || 1))
-      );
+      const severanceK = computeCoachSeveranceK(firedCoach);
       if (severanceK > 0) {
         const annualSev = Math.max(100, Math.round(severanceK / Math.max(1, firedCoach.contractYearsLeft || 1)));
         updated.severances = [
@@ -563,7 +566,8 @@ export function applyPressureMomentResolution(
           { amount: annualSev, yearsLeft: Math.max(1, firedCoach.contractYearsLeft || 1) },
         ];
       }
-      updated.club.baseOvr = safeAdjustOvr(updated.club.baseOvr, -(firedCoach.ovrBoost || 0));
+      const boostToRemove = firedCoach.appliedOvrBoost ?? firedCoach.ovrBoost ?? 0;
+      updated.club.baseOvr = safeAdjustOvr(updated.club.baseOvr, -boostToRemove);
       updated.club.ovr = updated.club.baseOvr;
       updated.currentCoach = undefined;
       updated.coachTenure = 0;

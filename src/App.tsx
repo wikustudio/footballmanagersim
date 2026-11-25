@@ -2354,7 +2354,7 @@ export default function App() {
       }
 
       if (option.moraleChange !== 0) {
-        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + option.moraleChange));
+        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale ?? 100) + option.moraleChange));
       }
 
       if (option.reputationChange) {
@@ -2372,21 +2372,31 @@ export default function App() {
 
   const handleCompleteInternationalTournament = (wonTrophy: boolean, teamName?: string, stats?: WorldCupCampaignStats) => {
     if (!gameState) return;
+    let completed = false;
     setGameState((prev) => {
       if (!prev) return prev;
-      const updated = { ...prev };
-      updated.hasBeenWorldCupInvited = true;
-      updated.internationalTournamentsPlayed = (updated.internationalTournamentsPlayed || 0) + 1;
-      updated.worldCupTournamentsPlayed = (updated.worldCupTournamentsPlayed || 0) + 1;
-
       const rawTournamentYear =
         internationalTournament?.year ||
         prev.pendingInternationalTournament?.year ||
-        updated.year;
+        prev.year;
       const tournamentYear =
         !isWorldCupYear(rawTournamentYear) && isWorldCupYear(rawTournamentYear - 1)
           ? rawTournamentYear - 1
           : rawTournamentYear;
+
+      // Idempotency guard: prevent double-counting trophies, matches, or career points on duplicate completion
+      if ((prev.worldCupCampaigns || []).some((c) => c.year === tournamentYear)) {
+        if (!prev.pendingInternationalTournament) return prev;
+        const cleared = { ...prev, pendingInternationalTournament: null };
+        latestGameStateRef.current = cleared;
+        return cleared;
+      }
+
+      completed = true;
+      const updated = { ...prev };
+      updated.hasBeenWorldCupInvited = true;
+      updated.internationalTournamentsPlayed = (updated.internationalTournamentsPlayed || 0) + 1;
+      updated.worldCupTournamentsPlayed = (updated.worldCupTournamentsPlayed || 0) + 1;
 
       if (stats) {
         updated.worldCupMatchesPlayed = (updated.worldCupMatchesPlayed || 0) + stats.matchesPlayed;
@@ -2418,13 +2428,7 @@ export default function App() {
           ...(stats.tournamentWinner ? { tournamentWinner: stats.tournamentWinner } : {}),
         };
 
-        if (!updated.worldCupCampaigns) updated.worldCupCampaigns = [];
-        const existingIdx = updated.worldCupCampaigns.findIndex(c => c.year === tournamentYear);
-        if (existingIdx >= 0) {
-          updated.worldCupCampaigns[existingIdx] = campaignRecord;
-        } else {
-          updated.worldCupCampaigns.push(campaignRecord);
-        }
+        updated.worldCupCampaigns = [...(updated.worldCupCampaigns || []), campaignRecord];
       }
 
       if (wonTrophy) {
@@ -2490,10 +2494,12 @@ export default function App() {
       return updated;
     });
 
-    if (wonTrophy) {
-      showToast(`WORLD CHAMPION! Lifted the World Cup with ${teamName}! (+1 Trophy, +5,000 Career Pts, +25 Rep)`, 'success');
-    } else {
-      showToast('International tournament campaign concluded.', 'info');
+    if (completed) {
+      if (wonTrophy) {
+        showToast(`WORLD CHAMPION! Lifted the World Cup with ${teamName}! (+1 Trophy, +5,000 Career Pts, +25 Rep)`, 'success');
+      } else {
+        showToast('International tournament campaign concluded.', 'info');
+      }
     }
     setInternationalTournament(null);
 
@@ -2917,6 +2923,9 @@ export default function App() {
     const initialClubOvr = params.coach
       ? adjustOvr(selectedClub.baseOvr, params.coach.ovrBoost || 0)
       : selectedClub.baseOvr;
+    const initialCoachWithApplied = params.coach
+      ? { ...params.coach, appliedOvrBoost: initialClubOvr - selectedClub.baseOvr }
+      : undefined;
 
     const newState: GameState = {
       managerName: params.managerName,
@@ -2950,7 +2959,7 @@ export default function App() {
       ownership: 'standard',
       
       
-      currentCoach: params.coach,
+      currentCoach: initialCoachWithApplied,
       coachTenure: 0,
       hasNewManagerBounce: !!params.coach,
       maxOvrCap,
@@ -3243,16 +3252,31 @@ export default function App() {
       const updated = { ...prev, club: { ...prev.club } };
       const wasEjected = !updated.currentCoach;
       if (wasEjected) {
-        updated.currentCoach = { ...targetCoach, contractYearsLeft: newTotalYears };
+        const preRenewOvr = updated.club.baseOvr;
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, targetCoach.ovrBoost);
+        updated.club.ovr = updated.club.baseOvr;
+        const actualRenewBoost = updated.club.baseOvr - preRenewOvr;
+        updated.currentCoach = {
+          ...targetCoach,
+          contractYearsLeft: newTotalYears,
+          appliedOvrBoost: actualRenewBoost,
+          extendedThisSeason: true,
+        } as any;
         updated.lastOvr = updated.club.baseOvr;
+        updated.ovrHistory = recordOvrHistoryEntry(
+          updated.ovrHistory,
+          updated.year,
+          actualRenewBoost,
+          `Renewed Head Coach: ${targetCoach.name}`
+        );
       } else {
         updated.currentCoach = {
           ...updated.currentCoach,
-          contractYearsLeft: newTotalYears
-        };
+          contractYearsLeft: newTotalYears,
+          extendedThisSeason: true,
+        } as any;
       }
-      updated.budget -= renewCost;
+      updated.budget = adjustBudget(updated.budget, -renewCost);
       if (updated.pendingSeasonFinishData) {
         const updatedFinishCoach = updated.pendingSeasonFinishData.coachAtStartOfSim
           ? { ...updated.pendingSeasonFinishData.coachAtStartOfSim, contractYearsLeft: newTotalYears }
@@ -3351,7 +3375,8 @@ export default function App() {
         if (!prev || !prev.currentCoach) return prev;
         const updated = { ...prev, club: { ...prev.club } };
         const preExpireOvr = updated.club.baseOvr;
-        updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+        const boostToRemove = updated.currentCoach.appliedOvrBoost ?? updated.currentCoach.ovrBoost ?? 0;
+        updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -boostToRemove);
         updated.club.ovr = updated.club.baseOvr;
         updated.ovrHistory = recordOvrHistoryEntry(
           updated.ovrHistory,
@@ -3758,10 +3783,11 @@ export default function App() {
     
     // Align transfer costs with the state economy margins (margins are typically 3-5 Stars/year)
     const heritageMult = gameState.clubIdentity === 'heritage' ? 2.0 : 1.0;
+    const talentMagnetMult = gameState.currentCoach?.strength === 'Talent Magnet' ? 0.8 : 1.0;
     return {
       stadium: Math.floor(getLeagueScaledVal(tier, 2500, country) * (1.0)),
-      bidReg: Math.floor(getLeagueScaledVal(tier, 15000, country) * clMult * discountMult * counterMult * eliteMult * heritageMult),
-      bidKey: Math.floor(getLeagueScaledVal(tier, 45000, country) * clMult * discountMult * counterMult * eliteMult),
+      bidReg: Math.floor(getLeagueScaledVal(tier, 15000, country) * clMult * discountMult * counterMult * eliteMult * heritageMult * talentMagnetMult),
+      bidKey: Math.floor(getLeagueScaledVal(tier, 45000, country) * clMult * discountMult * counterMult * eliteMult * talentMagnetMult),
       youth: Math.floor(getLeagueScaledVal(tier, 800, country) * (1.0)),
       sponsor: Math.floor(getLeagueScaledVal(tier, 1500, country)),
       academy: Math.floor(getLeagueScaledVal(tier, 1500, country) * Math.pow(1.5, gameState.club.academyLevel || 1) * (gameState.archetype === 'scout' ? 0.65 : 1.0)),
@@ -3791,8 +3817,7 @@ export default function App() {
     const hasTalentMagnet = gameState.currentCoach?.strength === 'Talent Magnet';
     const isCursed = gameState.currentCoach?.strength === 'Cursed';
     const isChaos = gameState.currentCoach?.strength === 'Chaos Magnet';
-    const rawCost = getActionCosts().bidReg;
-    const cost = hasTalentMagnet ? Math.round(rawCost * 0.8) : rawCost;
+    const cost = getActionCosts().bidReg;
     if (!canAffordWithCreditLimit(cost)) return;
 
     const extraRisk = ((gameState.regTransfersThisSeason || 0) + (gameState.keyTransfersThisSeason || 0)) * 0.05;
@@ -3856,7 +3881,7 @@ export default function App() {
         isFlop ? 'Regular Transfer Flop' : 'Regular Squad Signing'
       );
       if (moraleChange !== 0) {
-        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + moraleChange));
+        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale ?? 100) + moraleChange));
       }
       
       updated.club.squadSize = (updated.club.squadSize || 24) + 1;
@@ -3903,6 +3928,15 @@ export default function App() {
       return;
     }
 
+    if (gameState.clubIdentity === 'moneyball') {
+      showToast('Moneyball Syndicate policy prohibits Key Player signings.', 'warning');
+      return;
+    }
+    if ((gameState.club.morale ?? 100) < 40) {
+      showToast('Squad morale is too low (< 40%). High-profile players refuse to sign.', 'error');
+      return;
+    }
+
     if ((gameState.club.squadSize || 24) >= 50) {
       showToast(lang === 'de' ? 'Kader ist voll! (Max. 50 Spieler)' : 'Squad is full! (Max 50 players)', 'error');
       return;
@@ -3911,8 +3945,7 @@ export default function App() {
     const hasTalentMagnet = gameState.currentCoach?.strength === 'Talent Magnet';
     const isCursed = gameState.currentCoach?.strength === 'Cursed';
     const isChaos = gameState.currentCoach?.strength === 'Chaos Magnet';
-    const rawCost = getActionCosts().bidKey;
-    const cost = hasTalentMagnet ? Math.round(rawCost * 0.8) : rawCost;
+    const cost = getActionCosts().bidKey;
     if (!canAffordWithCreditLimit(cost)) return;
 
     const extraRisk = ((gameState.regTransfersThisSeason || 0) + (gameState.keyTransfersThisSeason || 0)) * 0.05;
@@ -3962,6 +3995,9 @@ export default function App() {
       } else if (!isWin && (prev.keyTransfersThisSeason || 0) >= maxKeyTransfers) {
         return prev;
       }
+      if (prev.clubIdentity === 'moneyball' || (prev.club.morale ?? 100) < 40) {
+        return prev;
+      }
       const updated = { ...prev, club: { ...prev.club } };
       updated.budget = adjustBudget(updated.budget, -cost);
       updated.marqueeSignedThisSeason = true;
@@ -3984,7 +4020,7 @@ export default function App() {
         isFlop ? 'Star Transfer Flop' : 'Star Player Signing'
       );
       if (moraleChange !== 0) {
-        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale || 100) + moraleChange));
+        updated.club.morale = Math.max(0, Math.min(100, (updated.club.morale ?? 100) + moraleChange));
       }
       
       updated.club.squadSize = (updated.club.squadSize || 24) + 1;
@@ -4024,14 +4060,21 @@ export default function App() {
       showToast(lang === 'de' ? 'Maximal 1 Galactico-Transfer pro Saison erlaubt!' : 'Maximum 1 Galactico transfer allowed per season!', 'warning');
       return;
     }
+    if (gameState.clubIdentity === 'moneyball') {
+      showToast('Moneyball Syndicate policy prohibits Galactico signings.', 'warning');
+      return;
+    }
+    if ((gameState.club.morale ?? 100) < 40) {
+      showToast('Squad morale is too low (< 40%). Galactico stars refuse to sign.', 'error');
+      return;
+    }
     if ((gameState.club.squadSize || 24) >= 50) {
       showToast(lang === 'de' ? 'Kader ist voll! (Max. 50 Spieler)' : 'Squad is full! (Max 50 players)', 'error');
       return;
     }
 
     const hasTalentMagnet = gameState.currentCoach?.strength === 'Talent Magnet';
-    const rawCost = getActionCosts().bidKey * 2;
-    const cost = hasTalentMagnet ? Math.round(rawCost * 0.8) : rawCost;
+    const cost = getActionCosts().bidKey * 2;
     if (!canAffordWithCreditLimit(cost)) return;
     let ovrGain = hasTalentMagnet ? 5 : 4;
     if (gameState.clubIdentity === 'galactico') {
@@ -4043,7 +4086,7 @@ export default function App() {
 
     setGameState((prev) => {
       if (!prev) return prev;
-      if ((prev.galacticosThisSeason || 0) >= 1) {
+      if ((prev.galacticosThisSeason || 0) >= 1 || prev.clubIdentity === 'moneyball' || (prev.club.morale ?? 100) < 40) {
           return prev;
       }
       const updated = { ...prev, club: { ...prev.club } };
@@ -4055,6 +4098,8 @@ export default function App() {
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
       updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      const galacticoFanGain = Math.round(5000 * (updated.clubIdentity === 'galactico' ? 1.5 : 1.0));
+      updated.club.fanBase = adjustFans(updated.club.fanBase, galacticoFanGain);
       updated.ovrHistory = recordOvrHistoryEntry(
         updated.ovrHistory,
         updated.year,
@@ -4102,15 +4147,16 @@ export default function App() {
       }
       const updated = { ...prev, club: { ...prev.club } };
       updated.loansThisSeason = (updated.loansThisSeason || 0) + 1;
-      updated.activeLoanOvrBoost = (updated.activeLoanOvrBoost || 0) + ovrGain;
       const preLoanOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrGain);
+      const appliedLoanDelta = updated.club.baseOvr - preLoanOvr;
+      updated.activeLoanOvrBoost = (updated.activeLoanOvrBoost || 0) + appliedLoanDelta;
       updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
       updated.ovrHistory = recordOvrHistoryEntry(
         updated.ovrHistory,
         updated.year,
-        updated.club.baseOvr - preLoanOvr,
+        appliedLoanDelta,
         isFlop ? 'Loan Player Flop' : 'Loan Player Integrated'
       );
       updated.club.squadSize = (updated.club.squadSize || 24) + 1;
@@ -4118,8 +4164,10 @@ export default function App() {
       return updated;
     });
 
+    if (wasDoubleClicked) return;
+
     if (isFlop) {
-      showToast(lang === 'de' ? `Leihspieler enttaeuscht. Team-Chemie gestrt (GES -1).` : `Loan player flopped. Team chemistry disturbed (OVR -1).`, 'error');
+      showToast(lang === 'de' ? `Leihspieler enttäuscht. Team-Chemie gestört (GES -1).` : `Loan player flopped. Team chemistry disturbed (OVR -1).`, 'error');
     } else {
       showToast(lang === 'de' ? `Leihspieler integriert. GES +${ovrGain}!` : `Loan player integrated. OVR +${ovrGain}!`, 'success');
     }
@@ -4234,7 +4282,7 @@ export default function App() {
           totalYears: years,
           yearsLeft: years,
           loanType: (years === 25 ? 'bond' : 'bank') as 'bond' | 'bank',
-          interestRate: years === 25 ? 2.8 : 4.5,
+          interestRate: selectedOpt.annualRatePct,
           totalPaidK: 0
         },
       };
@@ -4824,23 +4872,25 @@ export default function App() {
     }
 
     const legend = pickVeteranRinger(gameState.club.country || 'GER', gameState.year, gameState.club.id || 0);
+    const projectedRingerGain = adjustOvr(gameState.club.baseOvr, 5) - gameState.club.baseOvr;
     setGameState((prev) => {
       if (!prev || prev.veteranRingerSignedThisSeason || (prev.club.squadSize || 24) >= 50) return prev;
       const newOvr = adjustOvr(prev.club.baseOvr, 5);
+      const actualRingerGain = newOvr - prev.club.baseOvr;
       const nextRingerState = {
         ...prev,
         budget: adjustBudget(prev.budget, -econ.signingFeeK),
         transferSpend: (prev.transferSpend || 0) + econ.signingFeeK,
         veteranRingerSignedThisSeason: true,
         veteranRingerActive: true,
-        veteranRingerOvrGain: 5,
+        veteranRingerOvrGain: actualRingerGain,
         veteranRingerName: legend.name,
         veteranRingerWageK: econ.annualWageBurdenK,
         maxOvrCap: Math.max(prev.maxOvrCap || 0, newOvr),
         ovrHistory: recordOvrHistoryEntry(
           prev.ovrHistory,
           prev.year,
-          newOvr - prev.club.baseOvr,
+          actualRingerGain,
           `Veteran Ringer: ${legend.name}`
         ),
         club: {
@@ -4855,7 +4905,7 @@ export default function App() {
     });
 
     setPlayerRevealData({
-      ovr: 5,
+      ovr: projectedRingerGain,
       cost: econ.signingFeeK,
       isStar: true,
       name: legend.name,
@@ -5189,12 +5239,22 @@ export default function App() {
       updated.facilitySpend = (updated.facilitySpend || 0) + cost;
       updated.globalToursThisSeason = (updated.globalToursThisSeason || 0) + 1;
       if (isFlop) {
-        updated.club.morale = Math.max(0, (updated.club.morale || 100) + moraleChange);
+        updated.club.morale = Math.max(0, (updated.club.morale ?? 100) + moraleChange);
       } else {
-        updated.club.morale = Math.min(100, (updated.club.morale || 100) + moraleChange);
+        updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + moraleChange);
       }
+      const preTourOvr = updated.club.baseOvr;
       updated.club.baseOvr = adjustOvr(updated.club.baseOvr, ovrChange);
+      updated.club.ovr = updated.club.baseOvr;
       updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
+      if (updated.club.baseOvr !== preTourOvr) {
+        updated.ovrHistory = recordOvrHistoryEntry(
+          updated.ovrHistory,
+          updated.year,
+          updated.club.baseOvr - preTourOvr,
+          isFlop ? 'Pre-Season Tour Fatigue' : 'Pre-Season Tour Surge'
+        );
+      }
       updated.club.fanBase = adjustFans(updated.club.fanBase, totalFans);
       latestGameStateRef.current = updated;
       return updated;
@@ -5237,7 +5297,7 @@ export default function App() {
           ? 'Domestic Tactical Lab completed (+6 Morale, +1 OVR)!'
           : 'Domestic Tactical Lab completed (+6 Morale).';
       } else if (type === 'spain') {
-        updated.club.morale = Math.min(100, (updated.club.morale || 100) + 12);
+        updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + 12);
         let gotSquadOvr = false;
         if (Math.random() < 0.45) {
           updated.club.baseOvr = adjustOvr(updated.club.baseOvr, 1);
@@ -5266,7 +5326,7 @@ export default function App() {
         if (gotYouthOvr) parts.push('+1 Youth Prospect OVR');
         completedToast = `Warm-Weather Camp Marbella completed (${parts.join(', ')})!`;
       } else if (type === 'dubai') {
-        updated.club.morale = Math.min(100, (updated.club.morale || 100) + 20);
+        updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + 20);
         updated.reputation = Math.min(100, (updated.reputation || 0) + 2);
         const fanGain = getLeagueScaledFans(updated.club.tier, 2500, updated.club.country || 'GER', updated.club.originalStartLeague || updated.club.tier);
         updated.club.fanBase = adjustFans(updated.club.fanBase, fanGain);
@@ -6073,7 +6133,7 @@ export default function App() {
         committed = true;
         const next = { ...prev, budget: prev.budget - cost, facilitySpend: (prev.facilitySpend || 0) + cost };
         next.teamBondingThisSeason = true;
-        next.club = { ...next.club, morale: Math.min(100, (next.club.morale || 100) + boostAmt) };
+        next.club = { ...next.club, morale: Math.min(100, (next.club.morale ?? 100) + boostAmt) };
         latestGameStateRef.current = next;
         return next;
       });
@@ -6797,6 +6857,9 @@ export default function App() {
     const boostedNewClubOvr = incumbentCoach
       ? adjustOvr(targetBaseOvr, incumbentCoach.ovrBoost || 0)
       : targetBaseOvr;
+    const incumbentCoachWithApplied = incumbentCoach
+      ? { ...incumbentCoach, appliedOvrBoost: boostedNewClubOvr - targetBaseOvr }
+      : undefined;
     const resolvedNewClub: Club = {
       ...newClub,
       tier: targetTier,
@@ -6841,11 +6904,11 @@ export default function App() {
         // 1. Preserve departing club so it NEVER drops its tier or OVR!
         const prevIdx = newDb.findIndex(c => (departingClub.id != null && (c.id === departingClub.id || String(c.id) === String(departingClub.id))) || c.name.toLowerCase().trim() === departingClub.name.toLowerCase().trim());
         if (prevIdx !== -1) {
-          const departingCoachBoost = currentSnap.currentCoach?.ovrBoost || 0;
+          const departingCoachBoost = currentSnap.currentCoach?.appliedOvrBoost ?? currentSnap.currentCoach?.ovrBoost ?? 0;
           const departingTempBoost =
             (currentSnap.activeLoanOvrBoost || 0) +
             (currentSnap.youthChampOvrBoost || 0) +
-            (currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain || 5) : 0);
+            (currentSnap.veteranRingerActive ? (currentSnap.veteranRingerOvrGain ?? 5) : 0);
           const trueDepartingBaseOvr = adjustOvr(departingClub.baseOvr || 60, -(departingCoachBoost + departingTempBoost));
           newDb[prevIdx] = {
             ...newDb[prevIdx],
@@ -6933,7 +6996,7 @@ export default function App() {
       }
 
       updated.budget = startingBudget;
-      updated.currentCoach = incumbentCoach;
+      updated.currentCoach = incumbentCoachWithApplied;
       updated.coachTenure = 0;
       updated.hasNewManagerBounce = !!incumbentCoach;
       updated.seasonsInDebt = 0;
@@ -7429,13 +7492,22 @@ export default function App() {
         if (state.currentCoach && (state.trophyDrought || 0) >= 1 && !isTacticalSynergy(state.currentCoach.style, state.tactic)) {
           // 20% chance if there's a tactical mismatch and no trophies last year
           if (Math.random() < 0.20) {
-            state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
+            const preMidResignOvr = state.club.baseOvr;
+            const midBoostToRemove = state.currentCoach.appliedOvrBoost ?? state.currentCoach.ovrBoost ?? 0;
+            state.club.baseOvr = adjustOvr(state.club.baseOvr, -midBoostToRemove);
+            state.club.ovr = state.club.baseOvr;
             const coachName = state.currentCoach.name;
             const coachStyle = state.currentCoach.style;
+            state.ovrHistory = recordOvrHistoryEntry(
+              state.ovrHistory,
+              state.year,
+              state.club.baseOvr - preMidResignOvr,
+              `Mid-Season Coach Resignation: ${coachName}`
+            );
             state.currentCoach = undefined;
             state.coachTenure = 0;
             state.hasNewManagerBounce = false;
-            state.club.morale = Math.max(0, (state.club.morale || 100) - 20);
+            state.club.morale = Math.max(0, (state.club.morale ?? 100) - 20);
             state.midSeasonResignedCoach = { name: coachName, style: coachStyle };
           }
         }
@@ -8027,7 +8099,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // The Tactical Mutiny
     if (state.currentCoach && !isTacticalSynergy(state.currentCoach.style, state.tactic)) {
       if (state.currentCoach.weakness === 'Tactical Rigidity') {
-        state.club.morale = Math.max(0, (state.club.morale || 100) - 25);
+        state.club.morale = Math.max(0, (state.club.morale ?? 100) - 25);
         philosophyOvrBonus -= 5;
         tacticalSynergyText = ' (Tactical Mutiny! Squad violently rejects the conflicting philosophy: -25 Morale, -5 OVR!)';
       }
@@ -8070,14 +8142,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // TACTICAL WHEEL: LEAGUE META IMPACT
     const getLeagueAdvantage = (myTac: string, metaTac: string) => {
       const p = myTac === 'Catenaccio' || myTac === 'Defensive' ? 'Park the Bus' : myTac;
-      if (p === 'Tiki-Taka' && metaTac === 'Park the Bus') return 1;
-      if (p === 'Tiki-Taka' && metaTac === 'Gegenpressing') return -1;
-      if (p === 'Park the Bus' && metaTac === 'Direct Counter') return 1;
-      if (p === 'Park the Bus' && metaTac === 'Tiki-Taka') return -1;
-      if (p === 'Direct Counter' && metaTac === 'Gegenpressing') return 1;
-      if (p === 'Direct Counter' && metaTac === 'Park the Bus') return -1;
-      if (p === 'Gegenpressing' && metaTac === 'Tiki-Taka') return 1;
-      if (p === 'Gegenpressing' && metaTac === 'Direct Counter') return -1;
+      const m = metaTac === 'Catenaccio' || metaTac === 'Defensive' ? 'Park the Bus' : metaTac;
+      if (p === 'Tiki-Taka' && m === 'Park the Bus') return 1;
+      if (p === 'Tiki-Taka' && m === 'Gegenpressing') return -1;
+      if (p === 'Park the Bus' && m === 'Direct Counter') return 1;
+      if (p === 'Park the Bus' && m === 'Tiki-Taka') return -1;
+      if (p === 'Direct Counter' && m === 'Gegenpressing') return 1;
+      if (p === 'Direct Counter' && m === 'Park the Bus') return -1;
+      if (p === 'Gegenpressing' && m === 'Tiki-Taka') return 1;
+      if (p === 'Gegenpressing' && m === 'Direct Counter') return -1;
       return 0;
     };
 
@@ -8199,7 +8272,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     }
     if (state.glassCeilingCursed) {
-      state.club.morale = Math.max(0, (state.club.morale || 100) - 3);
+      state.club.morale = Math.max(0, (state.club.morale ?? 100) - 3);
     }
 
     // --- DECISION DAY EVENT (100% Guaranteed if in Top 2 or Relegation Battle) ---
@@ -9566,7 +9639,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           rivalSeasonW += leagueW;
           rivalSeasonD += leagueD;
           rivalSeasonL += leagueL;
-          state.club.morale = Math.max(0, Math.min(100, (state.club.morale || 100) + moraleShift));
+          state.club.morale = Math.max(0, Math.min(100, (state.club.morale ?? 100) + moraleShift));
 
           if (leagueW === 2) {
             state.skillPoints = (state.skillPoints || 0) + 1;
@@ -10111,20 +10184,27 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     // so temporary loanees or a 1-year ringer never trigger false permanent decay on the remaining squad!
     if (state.youthChampOvrBoost) {
       state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.youthChampOvrBoost);
+      state.club.ovr = state.club.baseOvr;
       state.youthChampOvrBoost = 0;
     }
-    if (state.activeLoanOvrBoost && state.activeLoanOvrBoost > 0) {
-      state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.activeLoanOvrBoost);
+    if (state.activeLoanOvrBoost && state.activeLoanOvrBoost !== 0) {
+      const loanRevert = state.activeLoanOvrBoost;
+      state.club.baseOvr = adjustOvr(state.club.baseOvr, -loanRevert);
+      state.club.ovr = state.club.baseOvr;
       decayReasons.push(
-        isDe
-          ? `Leihspieler kehren zu Stammvereinen zurück (-${state.activeLoanOvrBoost} GES)`
-          : `Loan players returned to parent clubs (-${state.activeLoanOvrBoost} OVR)`
+        loanRevert > 0
+          ? isDe
+            ? `Leihspieler kehren zu Stammvereinen zurück (-${loanRevert} GES)`
+            : `Loan players returned to parent clubs (-${loanRevert} OVR)`
+          : isDe
+          ? `Leih-Flop verlässt den Kader (+${Math.abs(loanRevert)} GES wiederhergestellt)`
+          : `Disruptive loanee returned to parent club (+${Math.abs(loanRevert)} OVR restored)`
       );
       state.activeLoanOvrBoost = 0;
     }
     if (state.veteranRingerActive) {
       const ringerName = state.veteranRingerName || 'Veteran Ringer';
-      const ringerDrop = state.veteranRingerOvrGain || 5;
+      const ringerDrop = state.veteranRingerOvrGain ?? 5;
       state.club.baseOvr = adjustOvr(state.club.baseOvr, -ringerDrop);
       state.club.ovr = state.club.baseOvr;
       state.club.squadSize = Math.max(18, (state.club.squadSize || 24) - 1);
@@ -10357,7 +10437,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
       // Elite Infrastructure Demands
       if (state.club.tier <= 2 && (state.club.medicalLevel || 1) < 4 && cArch === 'award_winner') {
-        state.club.morale = Math.max(0, (state.club.morale || 100) - 10);
+        state.club.morale = Math.max(0, (state.club.morale ?? 100) - 10);
         decayReasons.push(`Elite Manager Frustration: ${state.currentCoach.name} demands Level 4+ Medical Facilities (-10 Morale).`);
       }
       
@@ -10380,17 +10460,24 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           coachResigned = true;
           isCoachPoached = true;
           const remainingYrs = Math.max(1, state.currentCoach.contractYearsLeft || 1);
-          coachBuyoutFeeK = Math.round((state.currentCoach.cost || 2500) * Math.min(3, Math.max(1.5, remainingYrs)));
-          coachResignReason = isDe
-            ? `einer Ausstiegsklausel eines Top-Rivalen (${formatMoney(coachBuyoutFeeK)} Abfindung erhalten)`
-            : `a rival powerhouse triggering his release clause (${formatMoney(coachBuyoutFeeK)} buyout compensation paid to your club)`;
+          const coachAnnualCost = typeof state.currentCoach.cost === 'number' && Number.isFinite(state.currentCoach.cost)
+            ? state.currentCoach.cost
+            : 2500;
+          coachBuyoutFeeK = !state.currentCoach.isReserveCoach && coachAnnualCost > 0
+            ? Math.round(coachAnnualCost * Math.min(3, Math.max(1.5, remainingYrs)))
+            : 0;
+          coachResignReason = coachBuyoutFeeK > 0
+            ? (isDe
+                ? `einer Ausstiegsklausel eines Top-Rivalen (${formatMoney(coachBuyoutFeeK)} Abfindung erhalten)`
+                : `a rival powerhouse triggering his release clause (${formatMoney(coachBuyoutFeeK)} buyout compensation paid to your club)`)
+            : 'a rival club luring him away from his internal youth contract';
         }
       }
 
       // Steep Coach Weakness Penalties
       if (state.currentCoach.weakness === 'Morale Drain') {
         const moraleLoss = 18;
-        state.club.morale = Math.max(0, (state.club.morale || 100) - moraleLoss);
+        state.club.morale = Math.max(0, (state.club.morale ?? 100) - moraleLoss);
         decayReasons.push(isDe ? `Diktatorischer Führungsstil (${state.currentCoach.name}): -${moraleLoss} Moral!` : `Ruthless regime of Coach ${state.currentCoach.name}: -${moraleLoss} Squad Morale!`);
         if (Math.random() < 0.25) {
           state.club.baseOvr = Math.max(10, state.club.baseOvr - 1);
@@ -10431,7 +10518,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           if (state.currentCoach.hiddenAttributes) {
             const { manManagement, boardAlignment, youthNurturing } = state.currentCoach.hiddenAttributes;
             if (manManagement >= 16) {
-              state.club.morale = Math.min(100, (state.club.morale || 100) + 6);
+              state.club.morale = Math.min(100, (state.club.morale ?? 100) + 6);
               decayReasons.push(isDe ? `Psychologisches Fingerspitzengefühl (${state.currentCoach.name}): Kabine bleibt geeint (+6 Moral)!` : `Masterful Man-Management (${state.currentCoach.name}): Dressing room kept unified (+6 Morale)!`);
             }
             if (boardAlignment >= 16) {
@@ -10462,7 +10549,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           buyoutFeeK: coachBuyoutFeeK,
         };
         const preResignOvr = state.club.baseOvr;
-        state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
+        const resignBoostToRemove = state.currentCoach.appliedOvrBoost ?? state.currentCoach.ovrBoost ?? 0;
+        state.club.baseOvr = adjustOvr(state.club.baseOvr, -resignBoostToRemove);
         state.ovrHistory = recordOvrHistoryEntry(
           state.ovrHistory,
           completedSeasonYear,
@@ -10482,7 +10570,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         setTimeout(() => {
           showToast(
             isCoachPoached
-              ? `BREAKING: Head Coach ${departedCoachName} (${departedBoost >= 0 ? `+${departedBoost}` : departedBoost} OVR) was poached by a rival! +${formatMoney(coachBuyoutFeeK)} buyout received.`
+              ? (coachBuyoutFeeK > 0
+                  ? `BREAKING: Head Coach ${departedCoachName} (${departedBoost >= 0 ? `+${departedBoost}` : departedBoost} OVR) was poached by a rival! +${formatMoney(coachBuyoutFeeK)} buyout received.`
+                  : `BREAKING: Head Coach ${departedCoachName} (${departedBoost >= 0 ? `+${departedBoost}` : departedBoost} OVR) was poached by a rival club.`)
               : `BREAKING: Head Coach ${departedCoachName} resigned due to ${coachResignReason}.`,
             'warning'
           );
@@ -10492,7 +10582,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         // never leaves a ghost coach with 0 contract years giving free OVR boosts forever!
         expiredCoachToOffer = JSON.parse(JSON.stringify(state.currentCoach));
         const preExpOvr = state.club.baseOvr;
-        state.club.baseOvr = adjustOvr(state.club.baseOvr, -state.currentCoach.ovrBoost);
+        const expBoostToRemove = state.currentCoach.appliedOvrBoost ?? state.currentCoach.ovrBoost ?? 0;
+        state.club.baseOvr = adjustOvr(state.club.baseOvr, -expBoostToRemove);
         state.ovrHistory = recordOvrHistoryEntry(
           state.ovrHistory,
           completedSeasonYear,
@@ -10505,7 +10596,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     } else {
       // No coach mechanic: Mass departures & morale collapse
-      state.club.morale = Math.max(0, (state.club.morale || 100) - 35);
+      state.club.morale = Math.max(0, (state.club.morale ?? 100) - 35);
       const preNoCoachOvr = state.club.baseOvr;
       state.club.baseOvr = Math.max(1, state.club.baseOvr - 5);
       state.ovrHistory = recordOvrHistoryEntry(
@@ -10823,7 +10914,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
 
     if (wonTrophy) {
       // Restore Immunity Shields upon winning hardware!
-      const maxShields = 2 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0);
+      const maxShields = Math.min(8, 3 + (state.prestigeUpgrades?.statueBuilt ? 1 : 0) + (state.prestigeUpgrades?.managerialImmortality ? 3 : 0));
       if (state.immunityShields < maxShields) {
         state.immunityShields = Math.min(maxShields, (state.immunityShields || 0) + 1);
       }
@@ -10890,7 +10981,11 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       'Elite Cup', 'Americas Elite Cup', 'North American Elite Cup', 'Asian Elite Cup'
     ].includes(t.name)) || [];
     const uniqueClubsCl = new Set(allClWins.map(t => t.clubName));
-    if (trophiesThisYear.cl && uniqueClubsCl.size === 3 && allClWins.length === 3) {
+    if (
+      trophiesThisYear.cl &&
+      uniqueClubsCl.size === 3 &&
+      allClWins.filter(t => t.clubName === state.club.name).length === 1
+    ) {
       showToast(isDe ? ' LEGENDR: Du hast den Elite Cup mit 3 verschiedenen Vereinen gewonnen!' : ' LEGENDARY: You have won the Champions Cup with 3 different clubs!', 'success');
     }
 
@@ -10904,7 +10999,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
     if (state.clubIdentity === 'wonderkid' && state.club.baseOvr > league.avgOvr) {
       wonderkidAutoSaleK = getLeagueScaledVal(seasonLeague, 18000, state.club.country);
       state.budget = adjustBudget(state.budget, wonderkidAutoSaleK);
+      const preWkTaxOvr = state.club.baseOvr;
       state.club.baseOvr = adjustOvr(state.club.baseOvr, -2);
+      state.club.ovr = state.club.baseOvr;
+      state.ovrHistory = recordOvrHistoryEntry(
+        state.ovrHistory,
+        completedSeasonYear,
+        state.club.baseOvr - preWkTaxOvr,
+        'Wonderkid Factory Auto-Sale'
+      );
       decayReasons.push(`Board auto-sold top prospect to balance books (+${formatMoney(wonderkidAutoSaleK)}, -2 OVR).`);
     }
 
@@ -11552,7 +11655,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       if (state.stockHistory.length > 50) state.stockHistory = state.stockHistory.slice(-50);
     }
 
-    if (state.boardVision) {
+    if (state.boardVision && !isSackedRelegation && !sackedJobOffer) {
       // FIX: Use the captured values instead of the wiped state values (and include Wonderkid auto-sale if triggered this season)
       const actualNetTransferProfit = Math.max(0, (prevTransferIncome + wonderkidAutoSaleK) - prevTransferSpend);
       const reachedAnyCupFinalThisSeason = Boolean(
@@ -11631,7 +11734,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         }
         state.boardVision = generateBoardVision(state.club, state.year, visionResult.updatedVision);
       }
-    } else {
+    } else if (!isSackedRelegation && !sackedJobOffer) {
       state.boardVision = generateBoardVision(state.club, state.year);
     }
 
@@ -12142,7 +12245,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           return; // Do NOT popEvent()
         }
         if (String(pendingEvent.id || '').startsWith('proactive_poach_')) {
-          updated.club.morale = Math.min(100, (updated.club.morale || 80) + 3);
+          updated.club.morale = Math.min(100, (updated.club.morale ?? 80) + 3);
           updated.lastPoachDeclinedYear = (updated.year || 2026) - 1;
           latestGameStateRef.current = updated;
           setGameState(updated);
@@ -13018,7 +13121,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       if (choiceIndex === 0) {
         if (canAffordWithCreditLimit(talkCost)) {
            updated.budget = adjustBudget(updated.budget, -(talkCost));
-           updated.club.morale = Math.min(100, (updated.club.morale || 100) + 15);
+           updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + 15);
            showToast(lang === 'de' ? `Gesprche erfolgreich! Moral +15%.` : `Talks successful! Morale +15%.`, 'success');
         } else {
            updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -2);
@@ -15089,7 +15192,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       if (choiceIndex === 0) {
         updated.club.baseOvr = adjustOvr(updated.club.baseOvr, 1);
         updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
-        updated.club.morale = Math.max(0, (updated.club.morale || 100) - 20);
+        updated.club.morale = Math.max(0, (updated.club.morale ?? 100) - 20);
         showToast(lang === 'de' ? `Konsolen weg! (+1 GES, Moral sinkt)` : `Consoles confiscated! (+1 OVR, Morale drop)`, 'success');
       } else {
         updated.budget = adjustBudget(updated.budget, val);
@@ -15128,7 +15231,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       const val = pendingEvent.saleVal || getLeagueScaledVal(tier, 4000);
       if (choiceIndex === 0) {
         updated.budget = adjustBudget(updated.budget, val);
-        updated.club.morale = Math.min(100, (updated.club.morale || 100) + 10);
+        updated.club.morale = Math.min(100, (updated.club.morale ?? 100) + 10);
         showToast(lang === 'de' ? `Kuchenverkauf rettet Finanzen (+${formatMoney(val)}).` : `Bake sale helps finances (+${formatMoney(val)}).`, 'success');
       } else {
         updated.reputation = Math.min(100, updated.reputation + 2);
@@ -16105,17 +16208,18 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               const updated = { ...prev, club: { ...prev.club }, severances: [...(prev.severances || [])] };
 
               updated.budget = adjustBudget(updated.budget, -coach.cost);
-              updated.currentCoach = coach;
               updated.coachTenure = 0;
               updated.hasNewManagerBounce = true;
               const preHireOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, coach.ovrBoost); // Apply new boost
               updated.club.ovr = updated.club.baseOvr;
+              const actualHireBoost = updated.club.baseOvr - preHireOvr;
+              updated.currentCoach = { ...coach, appliedOvrBoost: actualHireBoost };
               updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
               updated.ovrHistory = recordOvrHistoryEntry(
                 updated.ovrHistory,
                 updated.year,
-                updated.club.baseOvr - preHireOvr,
+                actualHireBoost,
                 `Appointed Head Coach: ${coach.name}`
               );
               if (coach.strength === 'Youth Focus' && !coach.isReserveCoach && (updated.club.academyLevel || 1) < 5 && (updated.academyUpgradedThisSeason || 0) === 0) {
@@ -16195,7 +16299,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               
               // Remove old coach boost
               const preFireOvr = updated.club.baseOvr;
-              updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+              const fireBoostToRemove = updated.currentCoach.appliedOvrBoost ?? updated.currentCoach.ovrBoost ?? 0;
+              updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -fireBoostToRemove);
               updated.club.ovr = updated.club.baseOvr;
               updated.ovrHistory = recordOvrHistoryEntry(
                 updated.ovrHistory,
@@ -16204,7 +16309,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 `Dismissed Head Coach: ${updated.currentCoach.name}`
               );
               const hasMutualConsent = (updated.managerSkills || []).includes('mutual_consent');
-              if (!hasMutualConsent && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
+              if (!hasMutualConsent && (updated.currentCoach.cost || 0) > 0 && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
                  updated.severances.push({ amount: updated.currentCoach.cost, yearsLeft: updated.currentCoach.contractYearsLeft });
               }
               updated.currentCoach = undefined;
@@ -16212,7 +16317,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               updated.hasNewManagerBounce = false;
               updated.firedCoachesCount = (updated.firedCoachesCount || 0) + 1;
               updated.reputation = Math.max(1, (updated.reputation || 50) - 5);
-              updated.club.morale = Math.max(0, (updated.club.morale || 100) - 15);
+              updated.club.morale = Math.max(0, (updated.club.morale ?? 100) - 15);
               latestGameStateRef.current = updated;
               return updated;
             });
@@ -16264,17 +16369,18 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               hired = true;
               const updated = { ...prev, club: { ...prev.club }, severances: [...(prev.severances || [])] };
               updated.budget = adjustBudget(updated.budget, -coach.cost);
-              updated.currentCoach = coach;
               updated.coachTenure = 0;
               updated.hasNewManagerBounce = true;
               const preHireDossierOvr = updated.club.baseOvr;
               updated.club.baseOvr = adjustOvr(updated.club.baseOvr, coach.ovrBoost);
               updated.club.ovr = updated.club.baseOvr;
+              const actualHireDossierBoost = updated.club.baseOvr - preHireDossierOvr;
+              updated.currentCoach = { ...coach, appliedOvrBoost: actualHireDossierBoost };
               updated.maxOvrCap = Math.max(updated.maxOvrCap || 0, updated.club.baseOvr);
               updated.ovrHistory = recordOvrHistoryEntry(
                 updated.ovrHistory,
                 updated.year,
-                updated.club.baseOvr - preHireDossierOvr,
+                actualHireDossierBoost,
                 `Appointed Head Coach: ${coach.name}`
               );
               if (coach.strength === 'Youth Focus' && !coach.isReserveCoach && (updated.club.academyLevel || 1) < 5 && (updated.academyUpgradedThisSeason || 0) === 0) {
@@ -16309,7 +16415,8 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               if (!prev || !prev.currentCoach) return prev;
               const updated = { ...prev, club: { ...prev.club }, severances: [...(prev.severances || [])] };
               const preFireDossierOvr = updated.club.baseOvr;
-              updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -updated.currentCoach.ovrBoost);
+              const fireDossierBoostToRemove = updated.currentCoach.appliedOvrBoost ?? updated.currentCoach.ovrBoost ?? 0;
+              updated.club.baseOvr = adjustOvr(updated.club.baseOvr, -fireDossierBoostToRemove);
               updated.club.ovr = updated.club.baseOvr;
               updated.ovrHistory = recordOvrHistoryEntry(
                 updated.ovrHistory,
@@ -16318,7 +16425,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 `Dismissed Head Coach: ${updated.currentCoach.name}`
               );
               const hasMutualConsent = (updated.managerSkills || []).includes('mutual_consent');
-              if (!hasMutualConsent && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
+              if (!hasMutualConsent && (updated.currentCoach.cost || 0) > 0 && updated.currentCoach.contractYearsLeft && updated.currentCoach.contractYearsLeft > 0) {
                  updated.severances.push({ amount: updated.currentCoach.cost, yearsLeft: updated.currentCoach.contractYearsLeft });
               }
               updated.currentCoach = undefined;
@@ -16326,7 +16433,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
               updated.hasNewManagerBounce = false;
               updated.firedCoachesCount = (updated.firedCoachesCount || 0) + 1;
               updated.reputation = Math.max(1, (updated.reputation || 50) - 5);
-              updated.club.morale = Math.max(0, (updated.club.morale || 100) - 15);
+              updated.club.morale = Math.max(0, (updated.club.morale ?? 100) - 15);
               latestGameStateRef.current = updated;
               return updated;
             });
@@ -16711,14 +16818,25 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           onClose={() => setShowClubProfileModal(false)}
           onOpenWorldCupHistory={() => setShowWorldCupHistory(true)}
           onSelectIdentity={(identity) => {
+            const latest = latestGameStateRef.current || gameState;
+            if (!latest || latest.clubIdentity === identity) return;
+            if ((latest.skillPoints || 0) < 20) {
+              showToast('You need 20 Director Points (DP) to enact a new club identity.', 'error');
+              return;
+            }
+            let updatedIdentity = false;
             setGameState((prev) => {
-              if (!prev) return prev;
-              return {
+              if (!prev || prev.clubIdentity === identity || (prev.skillPoints || 0) < 20) return prev;
+              updatedIdentity = true;
+              const next = {
                 ...prev,
                 clubIdentity: identity,
                 skillPoints: Math.max(0, (prev.skillPoints || 0) - 20),
               };
+              latestGameStateRef.current = next;
+              return next;
             });
+            if (!updatedIdentity) return;
             showToast(`Macro Club Identity updated to ${identity.toUpperCase()} (-20 DP)!`, 'success');
           }}
         />

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { GameState, Language, Club } from '../types';
-import { formatMoney, sanitizePlayerName, getAcademyCallUpCap, getAcademyScoutCap, getLeagueScaledVal, calculateClubFinancials } from '../data/gameConstants';
+import { formatMoney, sanitizePlayerName, getAcademyCallUpCap, getAcademyScoutCap, getLeagueScaledVal, calculateClubFinancials, getAcademySolidarityDividendK } from '../data/gameConstants';
 import { t as tr } from '../data/translations';
 import { YouthChampionshipModal } from './YouthChampionshipModal';
 import { getIncubatorCapacity, calculateTrainingCompensationK, getSeniorIntegrationOdds } from '../engine/incubatorEngine';
@@ -165,7 +165,7 @@ export const YouthModal: React.FC<YouthModalProps> = ({
               </span>
               <span className="text-[#C7C4BC]" aria-hidden="true">·</span>
               <span className={academyLvl >= 5 ? 'text-sky-700 font-semibold' : 'text-[#9A9890]'}>
-                L5 {formatMoney(getLeagueScaledVal(state.club.tier || 1, 1500, state.club.country || 'GER'), state.club.country)} {t('Dividend/yr', 'Dividende/J')}
+                L5 {formatMoney(getAcademySolidarityDividendK(state.club.country || 'GER'), state.club.country)} {t('Dividend/yr', 'Dividende/J')}
               </span>
             </div>
           </div>
