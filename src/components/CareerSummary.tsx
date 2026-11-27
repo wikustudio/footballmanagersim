@@ -13,7 +13,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { GameState, Language, WorldCupCampaignHistoryRecord } from '../types';
+import { Club, GameState, Language, WorldCupCampaignHistoryRecord } from '../types';
 import { NATIONAL_TEAMS } from '../engine/internationalEngine';
 import { getContinentalCupNames } from '../utils/regionHelpers';
 import { getTrophyImage, getTrophyFilter } from '../utils/trophyHelpers';
@@ -50,6 +50,7 @@ ChartJS.register(
 interface CareerSummaryProps {
   state: GameState;
   lang: Language;
+  clubsDb?: Club[];
   onReset: () => void;
   onContinueEndless?: () => void;
   onShowToast: (msg: string, type: 'info' | 'success' | 'warning' | 'error') => void;
@@ -66,6 +67,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
   globalHighscores,
   state,
   lang,
+  clubsDb,
   onReset,
   onShowToast,
   onClose,
@@ -78,6 +80,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
   const effectiveModActive = isModActive !== undefined
     ? isModActive
     : (typeof window !== 'undefined' && localStorage.getItem('fms_real_mod_active') === 'true');
+  const activeClubsDb = clubsDb && clubsDb.length > 0 ? clubsDb : ALL_CLUBS;
   const resolveCareerClub = (h: { clubId?: number; clubName?: string; country?: string; color?: string; logo?: string; fallbackLogo?: string }) =>
     resolveHistoryClubDisplay(
       {
@@ -88,7 +91,8 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
         logo: h.logo,
         fallbackLogo: h.fallbackLogo,
       },
-      effectiveModActive
+      effectiveModActive,
+      clubsDb
     );
   const resolvedCurrentClub = resolveHistoryClubDisplay(
     {
@@ -267,11 +271,11 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
       seasons: number;
       matches: number;
       wins: number;
-      trophyCounts: { cl: number; el: number; ecl: number; cwc: number; bl: number; lower: number; dfb: number; reg: number };
+      trophyCounts: { cl: number; el: number; ecl: number; cwc: number; bl: number; lower: number; dfb: number; efl: number; reg: number; supercup: number };
     }
   > = {};
 
-  const totalTrophyCounts = { cl: 0, el: 0, ecl: 0, cwc: 0, bl: 0, lower: 0, dfb: 0, reg: 0, wc: 0 };
+  const totalTrophyCounts = { cl: 0, el: 0, ecl: 0, cwc: 0, bl: 0, lower: 0, dfb: 0, efl: 0, reg: 0, supercup: 0, wc: 0 };
   history.forEach((h) => {
     if (h.trophiesThisYear) {
       totalTrophyCounts.cl += h.trophiesThisYear.cl || 0;
@@ -281,6 +285,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
       totalTrophyCounts.bl += h.trophiesThisYear.bl || 0;
       totalTrophyCounts.lower += h.trophiesThisYear.lower || 0;
       totalTrophyCounts.dfb += h.trophiesThisYear.dfb || 0;
+      totalTrophyCounts.efl += h.trophiesThisYear.efl || 0;
       totalTrophyCounts.reg += h.trophiesThisYear.reg || 0;
       totalTrophyCounts.wc += h.trophiesThisYear.wc || 0;
     }
@@ -297,7 +302,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
         seasons: 0,
         matches: 0,
         wins: 0,
-        trophyCounts: { cl: 0, el: 0, ecl: 0, cwc: 0, bl: 0, lower: 0, dfb: 0, reg: 0 },
+        trophyCounts: { cl: 0, el: 0, ecl: 0, cwc: 0, bl: 0, lower: 0, dfb: 0, efl: 0, reg: 0, supercup: 0 },
       };
     }
     const club = clubStats[resolvedClubName];
@@ -314,7 +319,28 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
       club.trophyCounts.bl += h.trophiesThisYear.bl || 0;
       club.trophyCounts.lower += h.trophiesThisYear.lower || 0;
       club.trophyCounts.dfb += h.trophiesThisYear.dfb || 0;
+      club.trophyCounts.efl += h.trophiesThisYear.efl || 0;
       club.trophyCounts.reg += h.trophiesThisYear.reg || 0;
+    }
+  });
+
+  // Attribute Supercup wins to total and per-club trophy cabinets
+  (state.supercupHistory || []).forEach((sc) => {
+    if (!sc || !sc.won) return;
+    totalTrophyCounts.supercup += 1;
+    const matchedTrophy = (state.trophyHistory || []).find(
+      (th) => th.year === sc.year && th.name === sc.cupName
+    );
+    const histForYear = history.find((h) => h.year === sc.year) || history.find((h) => h.year === sc.year - 1);
+    const rawClubName = sc.clubName || matchedTrophy?.clubName || histForYear?.clubName || state.club.name;
+    const resolvedScClub = resolveCareerClub({
+      clubId: sc.clubId ?? histForYear?.clubId,
+      clubName: rawClubName,
+      country: histForYear?.country || state.club.country,
+    });
+    const key = resolvedScClub.name || rawClubName;
+    if (clubStats[key]) {
+      clubStats[key].trophyCounts.supercup += 1;
     }
   });
 
@@ -1017,6 +1043,32 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                         </div>
                       )}
 
+                      {totalTrophyCounts.efl > 0 && (
+                        <div className="relative" title="League Cup">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center z-10">
+                            <i className="fas fa-award text-emerald-800 text-xs"></i>
+                          </div>
+                          {totalTrophyCounts.efl > 1 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-[#18191F] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-white z-20 tabular-nums">
+                              x{totalTrophyCounts.efl}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {totalTrophyCounts.supercup > 0 && (
+                        <div className="relative" title="Supercup">
+                          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-300 flex items-center justify-center z-10">
+                            <i className="fas fa-shield-alt text-amber-700 text-xs"></i>
+                          </div>
+                          {totalTrophyCounts.supercup > 1 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-[#18191F] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-white z-20 tabular-nums">
+                              x{totalTrophyCounts.supercup}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {totalTrophyCounts.lower > 0 && (
                         <div className="relative" title="Lower League Title">
                           <div className="w-8 h-8 rounded-lg bg-[#EFECE4] border border-[#E6E3DC] flex items-center justify-center z-10">
@@ -1319,7 +1371,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                   );
                   const hasKnownNextTier = sameClubNext || isCurrentClubLast;
                   const nextTierVal = sameClubNext ? (nextH.tier || tier) : (isCurrentClubLast ? (state.club?.tier || tier) : tier);
-                  const maxCountryTier = getMaxTier(country);
+                  const maxCountryTier = getMaxTier(country, activeClubsDb);
                   const isPromo = !isChamp && tier > 1 && (
                     h.status === 'P' ||
                     (hasKnownNextTier ? nextTierVal < tier : h.pos <= 2)
@@ -1434,6 +1486,8 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                 const domCount =
                   (c.trophyCounts.bl || 0) +
                   (c.trophyCounts.dfb || 0) +
+                  (c.trophyCounts.efl || 0) +
+                  (c.trophyCounts.supercup || 0) +
                   (c.trophyCounts.lower || 0) +
                   (c.trophyCounts.reg || 0);
                 const intlCount =
@@ -1442,7 +1496,7 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                   (c.trophyCounts.ecl || 0) + 
                   (c.trophyCounts.cwc || 0);
 
-                const matchClub = ALL_CLUBS.find(club => club.name === c.name);
+                const matchClub = activeClubsDb.find(club => club.name === c.name) || ALL_CLUBS.find(club => club.name === c.name);
                 const clubCountry = c.country || matchClub?.country || 'GER';
                 const clubLeagueTitle = getLeagueInfo(1, clubCountry).name;
                 const clubCupTitle = getDomesticCupInfo(clubCountry, 1, c.name, matchClub?.id).name || 'National Cup';
@@ -1600,6 +1654,34 @@ export const CareerSummary: React.FC<CareerSummaryProps> = ({
                                 )}
                               </div>
                               <div className="text-[9px] text-[#4B5563] text-center mt-1 font-semibold max-w-[70px] truncate">{clubCupTitle}</div>
+                            </div>
+                          )}
+
+                          {c.trophyCounts.efl > 0 && (
+                            <div className="relative group flex flex-col items-center">
+                              <div className="w-9 h-9 flex items-center justify-center relative" title="League Cup">
+                                <i className="fas fa-award text-xl text-emerald-700"></i>
+                                {c.trophyCounts.efl > 1 && (
+                                  <span className="absolute -bottom-1 -right-1 bg-[#18191F] text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-md shadow-xs tabular-nums">
+                                    x{c.trophyCounts.efl}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[9px] text-[#4B5563] text-center mt-1 font-semibold max-w-[70px] truncate">League Cup</div>
+                            </div>
+                          )}
+
+                          {c.trophyCounts.supercup > 0 && (
+                            <div className="relative group flex flex-col items-center">
+                              <div className="w-9 h-9 flex items-center justify-center relative" title="Supercup">
+                                <i className="fas fa-shield-alt text-xl text-amber-600"></i>
+                                {c.trophyCounts.supercup > 1 && (
+                                  <span className="absolute -bottom-1 -right-1 bg-[#18191F] text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-md shadow-xs tabular-nums">
+                                    x{c.trophyCounts.supercup}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[9px] text-[#4B5563] text-center mt-1 font-semibold max-w-[70px] truncate">Supercup</div>
                             </div>
                           )}
 

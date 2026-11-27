@@ -364,6 +364,16 @@ export const generateBoardVision = (
             type: 'zero_debt'
           });
         }
+      } else if (currentAcademyLvl >= 5) {
+        // Academy already at maximum Level 5: mandate fiscal prudence rather than an already-completed upgrade objective
+        objectives.push({
+          id: 'obj_zero_debt',
+          desc: `Sustain elite academy operations: Complete all ${durationYears} seasons debt-free`,
+          targetValue: durationYears,
+          currentValue: 0,
+          unit: 'Seasons Safe',
+          type: 'zero_debt'
+        });
       } else {
         // Established club: Upgrades strictly bounded so targetValue - currentAcademyLvl <= 2 in a 2-year plan (never 3!).
         // In 2 years: strictly max 2 upgrades. In 3 years: max 2 upgrades. In 5 years: max 3 upgrades.
@@ -407,7 +417,7 @@ export const generateBoardVision = (
       const targetCampaigns = durationYears === 2 ? 1 : durationYears === 5 ? 3 : 2;
 
       title = durationYears === 2
-        ? '2-Year European Sprint'
+        ? '2-Year Continental Sprint'
         : durationYears === 5
         ? '5-Year Continental Ascent'
         : 'Continental Breakthrough';
@@ -415,8 +425,8 @@ export const generateBoardVision = (
       description = durationYears === 2
         ? 'Fast-track this club into continental football within 2 seasons and compete in cup competitions.'
         : durationYears === 5
-        ? 'Establish this club as a permanent continental powerhouse across a 5-year European campaign.'
-        : 'Take the club into regular continental contention. We want European / international nights under the floodlights.';
+        ? 'Establish this club as a permanent continental powerhouse across a 5-year international campaign.'
+        : 'Take the club into regular continental contention. We want continental / international nights under the floodlights.';
 
       objectives = [
         {
@@ -683,7 +693,7 @@ export const updateBoardVisionSeasonEnd = (
         break;
 
       case 'continental_final':
-        if (params.madeCupFinal || params.trophiesWon?.cl || params.trophiesWon?.el || params.trophiesWon?.ecl || params.trophiesWon?.cwc || params.trophiesWon?.dfb || params.trophiesWon?.reg) {
+        if (params.madeCupFinal || params.trophiesWon?.cl || params.trophiesWon?.el || params.trophiesWon?.ecl || params.trophiesWon?.cwc || params.trophiesWon?.dfb || params.trophiesWon?.efl || params.trophiesWon?.reg) {
           obj.currentValue = Math.min(obj.targetValue, obj.currentValue + 1);
         }
         break;

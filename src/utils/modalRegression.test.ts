@@ -1077,10 +1077,12 @@ describe('Modal Regression & Interaction Integrity Suite', () => {
       expect(workspaceSrc).toContain('snapshotStats.winRateExact.toFixed(1)');
       expect(workspaceSrc).not.toContain('snapshotStats.winRate.toFixed(1)');
 
-      // 4. ClubCampus3D fallback maxSquadSize defaults to 50 and SeasonHistoryTable counts CWC & WC honours
+      // 4. ClubCampus3D fallback maxSquadSize defaults to 50 and SeasonHistoryTable delegates CWC & WC trophy counting to trophyCollection.ts
+      const trophyCollectionSrc = fs.readFileSync('src/utils/trophyCollection.ts', 'utf-8');
       expect(campusSrc).toContain('maxSquadSize = 50');
-      expect(historySrc).toContain('counts.cwc += (h.trophiesThisYear?.cwc || 0)');
-      expect(historySrc).toContain('counts.wc += (h.trophiesThisYear?.wc || 0)');
+      expect(historySrc).toContain('computeTrophyCollection(state.history, state.supercupHistory)');
+      expect(trophyCollectionSrc).toContain('counts.cwc += Number(t.cwc) || 0');
+      expect(trophyCollectionSrc).toContain('counts.wc += Number(t.wc) || 0');
 
       // 5. CoachDossierModal onRenew and WinterCampModal onFireCoach target explicit CoachMarketModal tabs
       expect(appSrc).toContain("onRenew={() => {\n            setCoachMarketTab('staff');");

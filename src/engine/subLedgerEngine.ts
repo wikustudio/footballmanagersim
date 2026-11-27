@@ -26,8 +26,11 @@ export function calculateAcademySubLedger(state: GameState): AcademyRoiReport {
   const history = state.academySpendHistory || [];
   const currentYear = state.year || 2026;
 
-  // Filter to 3-year rolling window
-  const windowRecords = history.filter(h => h.year >= currentYear - 3);
+  // Filter to latest 3-season rolling window
+  const windowRecords = [...history]
+    .filter(h => h.year >= currentYear - 3)
+    .sort((a, b) => b.year - a.year)
+    .slice(0, 3);
 
   // If no history exists yet, seed with current year's baseline
   let rollingSpend3YrK = windowRecords.reduce((sum, r) => sum + r.spendK, 0);

@@ -2244,10 +2244,15 @@ export default function App() {
             ...(prev.trophyHistory || []),
           ]
         : prev.trophyHistory;
+      const recordedSupercup: SupercupResult = {
+        ...result,
+        clubId: result.clubId ?? prev.club.id,
+        clubName: result.clubName ?? prev.club.name,
+      };
       const updated: GameState = {
         ...prev,
         supercupPlayedYear: prev.year,
-        supercupHistory: [result, ...(prev.supercupHistory || [])].slice(0, 30),
+        supercupHistory: [recordedSupercup, ...(prev.supercupHistory || [])].slice(0, 30),
         budget: adjustBudget(prev.budget, result.prizeK),
         reputation: result.won ? Math.min(100, (prev.reputation || 50) + 2) : prev.reputation,
         club: {
@@ -8963,6 +8968,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           if (approxPos === 1) {
             trophiesThisYear.lower = 1;
             state.totals.trophies += 1;
+            state.totals.domTrophies += 1;
           }
 
           // Reserve Club Cap-Out Penalty: Lose 30% OVR as top players transfer out!
@@ -8973,6 +8979,15 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           if (parentClub) {
              (state as any).pendingReservePromo = parentClub.id;
           }
+
+          const reserveChampType: ModalType =
+            seasonTier === 2
+              ? 'b2_champions'
+              : seasonTier === 3
+              ? 'l3_champions'
+              : seasonTier === 4
+              ? 'reg_champions'
+              : 'ob_champions';
 
           modalToTrigger = {
             title:
@@ -8986,7 +9001,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             message: isDe
               ? `${state.club.name} beendet die Saison auf Platz ${approxPos}! Als B-Team (Zweitvertretung) ist der Aufstieg in die ${targetName} reglementarisch gesperrt. Ihr verbleibt in der ${ceilingName}.\n\n KADER-ABFLUSS (-30% GES / -${ovrLoss} OVR): Da der Aufstieg verwehrt wurde, wechseln eure besten Talente zu den Profis oder in hhere Ligen!`
               : `${state.club.name} finished ${approxPos === 1 ? '1st' : '2nd'}! As a B-team (Reserve), League ${seasonLeague} is your hard ceiling. Promotion to ${targetName} denied. You remain in ${ceilingName}.\n\n SQUAD DRAIN (-30% OVR / -${ovrLoss} OVR): Due to promotion denial, your top talents transferred to first-team football or upper-tier clubs!`,
-            type: approxPos === 1 ? (seasonTier === 2 ? 'b2_champions' : 'l3_champions') : 'warning',
+            type: approxPos === 1 ? reserveChampType : 'warning',
           };
         } else {
           nextTier = Math.max(1, seasonLeague - 1);
@@ -8996,6 +9011,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
           if (approxPos === 1) {
             trophiesThisYear.lower = 1;
             state.totals.trophies += 1;
+            state.totals.domTrophies += 1;
           }
 
           if (nextTier === 1) {
@@ -9367,6 +9383,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                     } else if (cup.id === 'efl' && seasonTier === 1 && !euroNextSeason) {
                         euroNextSeason = 'ECL';
                     }
+                    const isGiantKill = seasonTier >= 3 && cup.id === 'dfb';
                     const domCupMove: UniverseMovement = {
                         id: `user-cup-${cup.id}-${completedSeasonYear}-${Date.now()}`,
                         year: completedSeasonYear,
@@ -9381,7 +9398,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                         toLeagueName: 'Champions',
                         type: 'cup_champion',
                         pos: 1,
-                        reason: `${cup.nameEn} Winners · Domestic Triumph`,
+                        reason: isGiantKill
+                            ? `Giant-Killing Sensation · Tier ${seasonTier} underdogs conquer ${cup.nameEn}!`
+                            : `${cup.nameEn} Winners · Domestic Triumph`,
                         isUserClub: true,
                     };
                     state.universeMovements = [domCupMove, ...(state.universeMovements || [])];
@@ -9402,7 +9421,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                             toLeagueName: 'Champions',
                             type: 'cup_champion',
                             pos: 1,
-                            reason: `${cup.nameEn} Winners · Regional Glory`,
+                            reason: seasonTier >= 3
+                                ? `Giant-Killing Sensation · Tier ${seasonTier} underdogs conquer ${cup.nameEn}!`
+                                : `${cup.nameEn} Winners · Regional Glory`,
                             isUserClub: true,
                         };
                         state.universeMovements = [regCupMove, ...(state.universeMovements || [])];
@@ -9428,33 +9449,12 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
                 else if (cup.id === 'el') { prize = Math.round(getLeagueScaledVal(1, 30000, state.club.country) * regionalPrizeMult); repBonus = 0; }
                 else if (cup.id === 'ecl') { prize = Math.round(getLeagueScaledVal(1, 15000, state.club.country) * regionalPrizeMult); repBonus = 0; }
                 else if (cup.id === 'dfb') { prize = getLeagueScaledVal(seasonTier, 4320, state.club.country); repBonus = 0; }
-                else if (cup.id === 'lower' || cup.id === 'efl') { prize = Math.max(50, getLeagueScaledVal(seasonTier, 600, state.club.country)); repBonus = 3; }
+                else if (cup.id === 'efl') { prize = Math.max(50, getLeagueScaledVal(seasonTier, 600, state.club.country)); repBonus = 0; }
+                else if (cup.id === 'lower') { prize = Math.max(50, getLeagueScaledVal(seasonTier, 600, state.club.country)); repBonus = 0; }
                 else if (cup.id === 'reg') { prize = getLeagueScaledVal(seasonTier, 150, state.club.country); repBonus = 0; }
                 
                 if (cup.id === 'cl') {
                     state.clWins = (state.clWins || 0) + 1;
-                }
-
-                // Giant-Killing Cinderella Recognition
-                if (seasonTier >= 3 && (cup.id === 'dfb' || cup.id === 'reg')) {
-                    const giantKillMove: UniverseMovement = {
-                        id: `sim-giantkill-${state.club.id}-${completedSeasonYear}-${Date.now()}`,
-                        year: completedSeasonYear,
-                        clubId: state.club.id,
-                        clubName: state.club.name,
-                        clubColor: state.club.color,
-                        clubLogo: state.club.logo,
-                        country: state.club.country || 'GER',
-                        fromTier: seasonTier,
-                        toTier: seasonTier,
-                        fromLeagueName: cup.nameEn,
-                        toLeagueName: 'Champions',
-                        type: 'cup_champion',
-                        pos: 1,
-                        reason: `Giant-Killing Sensation · Tier ${seasonTier} underdogs conquer ${cup.nameEn}!`,
-                        isUserClub: true
-                    };
-                    state.universeMovements = [giantKillMove, ...(state.universeMovements || [])];
                 }
                 
                 showToast(
@@ -10333,9 +10333,21 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
       }
     }
     if ((trophiesThisYear.lower || 0) > 0) {
-      const alreadyHasLower = state.trophyHistory.some((t: any) => t.year === completedSeasonYear && t.name === 'Lower League Title' && t.clubName === state.club.name);
+      const lowerTrophyLabel = league?.name ? `${league.name} Title` : 'Lower League Title';
+      const alreadyHasLower = state.trophyHistory.some(
+        (t: any) =>
+          t.year === completedSeasonYear &&
+          (t.name === lowerTrophyLabel || t.name === 'Lower League Title') &&
+          t.clubName === state.club.name
+      );
       if (!alreadyHasLower) {
-        state.trophyHistory.unshift({ year: completedSeasonYear, clubName: state.club.name, name: 'Lower League Title', logo: state.club.logo, color: state.club.color });
+        state.trophyHistory.unshift({
+          year: completedSeasonYear,
+          clubName: state.club.name,
+          name: lowerTrophyLabel,
+          logo: state.club.logo,
+          color: state.club.color,
+        });
       }
     }
 
@@ -15368,7 +15380,14 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         const completedCupYear = lastSeasonEntry?.year ?? Math.max(updated.startYear || 2026, updated.year - 1);
         const completedCupTier = lastSeasonEntry?.tier ?? updated.club.tier;
 
-        const cupInfo = getDomesticCupInfo(updated.club.country || 'GER', completedCupTier, updated.club.name);
+        const isRegionalTier = (updated.club.country || 'GER') === 'TUR' ? completedCupTier === 3 : completedCupTier >= 4;
+        const cupKey: 'reg' | 'dfb' = isRegionalTier ? 'reg' : 'dfb';
+        const cupInfo = getDomesticCupInfo(
+          updated.club.country || 'GER',
+          isRegionalTier ? Math.max(4, completedCupTier) : completedCupTier,
+          updated.club.name,
+          updated.club.id
+        );
         const actualCupName = cupInfo.name;
 
         if (!updated.trophies) updated.trophies = [];
@@ -15380,9 +15399,6 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         if (!alreadyInHistoryFinal) {
           updated.trophyHistory.unshift({ year: completedCupYear, clubName: updated.club.name, name: actualCupName, logo: updated.club.logo, color: updated.club.color });
         }
-
-        const isRegionalTier = (updated.club.country || 'GER') === 'TUR' ? completedCupTier === 3 : completedCupTier >= 4;
-        const cupKey: 'reg' | 'dfb' = isRegionalTier ? 'reg' : 'dfb';
         
         if (updated.history && updated.history.length > 0) {
           const lastSeason = { ...updated.history[updated.history.length - 1] };
@@ -15404,7 +15420,9 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             toLeagueName: 'Champions',
             type: 'cup_champion',
             pos: 1,
-            reason: `${actualCupName} Winners · Domestic Triumph`,
+            reason: isRegionalTier
+              ? `${actualCupName} Winners · Regional Glory`
+              : `${actualCupName} Winners · Domestic Triumph`,
             isUserClub: true,
         };
         updated.universeMovements = [cupMove, ...(updated.universeMovements || [])];
@@ -15576,6 +15594,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
         <CareerSummary
           state={gameState}
           lang={lang}
+          clubsDb={clubsDb}
           isModActive={isModActive}
           onReset={handleResetGame}
           onShowToast={showToast}
@@ -15700,6 +15719,7 @@ if (state.totals === undefined) state.totals = { matches: 0, wins: 0, draws: 0, 
             <CareerSummary
               state={gameState}
               lang={lang}
+              clubsDb={clubsDb}
               isModActive={isModActive}
               onReset={handleResetGame}
               onShowToast={showToast}

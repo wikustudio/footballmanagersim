@@ -216,7 +216,9 @@ export function evaluatePerformancePressure(
     ovrGap >= 5 ||
     ((state.consecutiveTitles || 0) >= 1 && tier === 1);
 
-  const isRelegationDanger = actualRank >= 15;
+  const maxCountryTier = getMaxTier(country, clubsDb);
+  const canRelegate = maxCountryTier > 1 && tier < maxCountryTier;
+  const isRelegationDanger = canRelegate && actualRank >= 15;
   const isSeriousTitleCollapse =
     isTitleContenderExpectation &&
     (actualRank >= 6 ||

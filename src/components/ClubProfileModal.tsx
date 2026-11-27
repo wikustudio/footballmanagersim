@@ -110,9 +110,10 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
       state.year || 2026,
       state.history,
       state.clubLeagueHistories,
-      state.universeMovements
+      state.universeMovements,
+      clubsDb
     );
-  }, [resolvedClub, state.startYear, state.year, state.history, state.clubLeagueHistories, state.universeMovements]);
+  }, [resolvedClub, state.startYear, state.year, state.history, state.clubLeagueHistories, state.universeMovements, clubsDb]);
 
   const { minHistoryTier, maxHistoryTier } = useMemo(() => {
     const tiers = leagueHistory.map((r) => r.tier || 1);
@@ -441,18 +442,30 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                   ? 'J2 League'
                   : (rawLeagueName || `Tier ${safeTier}`);
 
-                const isChamp = activeRecord?.position === 1;
-                const isPromoRecord = !isChamp && safeTier > 1 && (
-                  (activeIdx < leagueHistory.length - 1 && (leagueHistory[activeIdx + 1].tier || 1) < safeTier) ||
-                  activeRecord?.position <= 2
+                const nextTierInHistory = activeIdx < leagueHistory.length - 1
+                  ? Math.min(maxAllowedTier, Math.max(1, leagueHistory[activeIdx + 1]?.tier || 1))
+                  : undefined;
+                const recStatus = activeRecord?.status;
+                const isChamp = activeRecord?.position === 1 || recStatus === 'champion';
+                const champActuallyPromoted = safeTier > 1 && (
+                  nextTierInHistory !== undefined
+                    ? nextTierInHistory < safeTier
+                    : !resolvedClub.isReserve && (state.club.id === resolvedClub.id ? state.club.tier < safeTier : true)
                 );
-                const isPromoted = !isChamp && safeTier > 1 && (isPromoRecord || activeRecord?.position <= 3);
-                const isTop4 = !isChamp && safeTier === 1 && activeRecord?.position <= 4;
-                const isRelegated = !isChamp && (
-                  (activeIdx < leagueHistory.length - 1 && (leagueHistory[activeIdx + 1].tier || 1) > safeTier) ||
-                  (activeRecord?.position >= 16 && safeTier < getMaxTier(clubCountry, clubsDb))
+                const isPromoted = !isChamp && safeTier > 1 && (
+                  recStatus === 'promoted' ||
+                  (nextTierInHistory !== undefined && nextTierInHistory < safeTier) ||
+                  (recStatus === undefined && nextTierInHistory === undefined && activeRecord?.position <= 2)
                 );
-                const isSafe = !isChamp && !isPromoted && !isTop4 && !isRelegated && (activeRecord?.position >= 13 && activeRecord?.position <= 15);
+                const isTop4 = !isChamp && safeTier === 1 && (recStatus === 'top4' || activeRecord?.position <= 4);
+                const isRelegated = !isChamp && safeTier < maxAllowedTier && (
+                  recStatus === 'relegated' ||
+                  (nextTierInHistory !== undefined && nextTierInHistory > safeTier) ||
+                  (recStatus === undefined && nextTierInHistory === undefined && activeRecord?.position >= 17)
+                );
+                const isSafe = !isChamp && !isPromoted && !isTop4 && !isRelegated && (
+                  recStatus === 'safe' || (activeRecord?.position >= 13 && activeRecord?.position <= 16)
+                );
 
                 let statusBadgeText = isDe ? 'Mittelfeld' : 'Mid-Table';
                 let statusBadgeStyle = 'bg-[#EFECE4] text-[#4B5563] border-[#E6E3DC]';
@@ -460,18 +473,23 @@ export const ClubProfileModal: React.FC<ClubProfileModalProps> = ({ state, lang,
                   if (safeTier === 1) {
                     statusBadgeText = isDe ? 'Meister 🏆' : 'League Champions 🏆';
                     statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
-                  } else {
+                  } else if (champActuallyPromoted) {
                     statusBadgeText = isDe ? `Meister & Aufstieg 🏆 ⬆` : `Tier ${safeTier} Champions & Promoted 🏆 ⬆`;
                     statusBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                  } else {
+                    statusBadgeText = isDe ? `Tier ${safeTier} Meister 🏆` : `Tier ${safeTier} Champions 🏆`;
+                    statusBadgeStyle = 'bg-amber-50 text-amber-800 border-amber-200';
                   }
                 } else if (isPromoted) {
-                  const targetTier = Math.max(1, safeTier - 1);
+                  const targetTier = nextTierInHistory !== undefined && nextTierInHistory < safeTier
+                    ? nextTierInHistory
+                    : Math.max(1, safeTier - 1);
                   const targetLeague = getLeagueInfo(targetTier, clubCountry);
                   const targetName = targetLeague?.tag || `Tier ${targetTier}`;
                   statusBadgeText = isDe ? `Aufstieg in ${targetName} ⬆` : `Promoted to ${targetName} ⬆`;
                   statusBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                 } else if (isTop4) {
-                  statusBadgeText = isDe ? 'Top 4 / Europa' : 'Top 4 / Continental';
+                  statusBadgeText = isDe ? 'Top 4 / Kontinental' : 'Top 4 / Continental';
                   statusBadgeStyle = 'bg-sky-50 text-sky-700 border-sky-200';
                 } else if (isRelegated) {
                   statusBadgeText = isDe ? 'Abstieg' : 'Relegated';

@@ -1056,13 +1056,13 @@ export function getAllUniverseMovements(
 
   // Continental & World Cup Templates for complete historical & ongoing coverage
   const CONTINENTAL_CUP_TEMPLATES = [
-    { key: 'cl', name: 'Champions Cup', region: 'UEFA', matcher: /champion.*cup|euro.*champion/i, defaultCountry: 'ESP', reason: 'Champions Cup Winners · European Crown' },
+    { key: 'cl', name: 'Champions Cup', region: 'UEFA', matcher: /^(?:uefa\s+|euro\s+)?champions\s+(?:cup|league)$/i, defaultCountry: 'ESP', reason: 'Champions Cup Winners · European Crown' },
     { key: 'el', name: 'Euro Cup', region: 'UEFA', matcher: /^euro.*cup|europa/i, defaultCountry: 'ITA', reason: 'Euro Cup Winners · European Glory' },
-    { key: 'ecl', name: 'Euro Challenge Cup', region: 'UEFA', matcher: /challenge.*cup|conference/i, defaultCountry: 'GRE', reason: 'Euro Challenge Cup Winners · Continental Glory' },
+    { key: 'ecl', name: 'Euro Challenge Cup', region: 'UEFA', matcher: /^(?:euro\s+challenge\s+cup|(?:uefa\s+)?conference\s+league)$/i, defaultCountry: 'GRE', reason: 'Euro Challenge Cup Winners · Continental Glory' },
     { key: 'cwc', name: 'Global Club Cup', region: 'WORLD', matcher: /global.*club|world.*club|cwc/i, defaultCountry: 'ENG', reason: 'Global Club Cup Winners · World Club Champions' },
     { key: 'libertadores', name: 'Copa Libertadores', region: 'CONMEBOL', matcher: /libertadores/i, defaultCountry: 'BRA', reason: 'Copa Libertadores Winners · Kings of South America' },
     { key: 'sudamericana', name: 'Copa Sudamericana', region: 'CONMEBOL', matcher: /sudamericana/i, defaultCountry: 'ARG', reason: 'Copa Sudamericana Winners · Continental Glory' },
-    { key: 'concacaf', name: 'Concacaf Champions Cup', region: 'CONCACAF', matcher: /concacaf/i, defaultCountry: 'MEX', reason: 'Concacaf Champions Cup Winners · Kings of North America' },
+    { key: 'concacaf', name: 'Concacaf Champions Cup', region: 'CONCACAF', matcher: /concacaf|north american.*champion/i, defaultCountry: 'MEX', reason: 'Concacaf Champions Cup Winners · Kings of North America' },
     { key: 'leagues', name: 'Leagues Challenge', region: 'CONCACAF', matcher: /leagues.*challenge|leagues.*cup/i, defaultCountry: 'USA', reason: 'Leagues Challenge Winners · North American Triumph' },
     { key: 'afc', name: 'AFC Champions League', region: 'AFC', matcher: /afc|asian.*champion/i, defaultCountry: 'JPN', reason: 'AFC Champions League Winners · Kings of Asia' },
   ];

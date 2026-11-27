@@ -16,6 +16,7 @@ import { ClubLogo } from './ClubLogo';
 import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 import { CompetitionKind } from '../utils/competitionLogos';
 import { CompetitionLogo } from './CompetitionLogo';
+import { computeTrophyCollection } from '../utils/trophyCollection';
 
 interface SeasonHistoryTableProps {
   state: GameState;
@@ -56,53 +57,34 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
   }, [state?.isNewSeasonRender, state?.history?.length]);
 
   const { cl: clName, el: elName, ecl: eclName } = getContinentalCupNames(state.club.country || 'GER');
-  const domesticCupName = getDomesticCupInfo(
+  const nationalCupName = getDomesticCupInfo(
     state.club.country || 'GER',
-    state.club.tier || 1,
+    1,
     state.club.name,
     state.club.id
   ).name;
+  const regionalCupName =
+    getDomesticCupInfo(
+      state.club.country || 'GER',
+      4,
+      state.club.name,
+      state.club.id
+    ).name || 'Regional Cup';
   const topFlightName = getLeagueInfo(1, state.club.country || 'GER').name;
 
-  // Compute Trophy Cabinet strip counts across career history (including Club World Cup & World Cup)
-  const trophyCounts = React.useMemo(() => {
-    const counts = {
-      league: 0,
-      cup: 0,
-      cl: 0,
-      el: 0,
-      ecl: 0,
-      cwc: 0,
-      wc: 0,
-      supercup: (state.supercupHistory || []).filter((s) => s.won).length,
-    };
-    (state.history || []).forEach((h) => {
-      counts.league += (h.trophiesThisYear?.bl || 0) + (h.trophiesThisYear?.lower || 0);
-      counts.cup += (h.trophiesThisYear?.dfb || 0) + (h.trophiesThisYear?.reg || 0) + (h.trophiesThisYear?.efl || 0);
-      counts.cl += (h.trophiesThisYear?.cl || 0);
-      counts.el += (h.trophiesThisYear?.el || 0);
-      counts.ecl += (h.trophiesThisYear?.ecl || 0);
-      counts.cwc += (h.trophiesThisYear?.cwc || 0);
-      counts.wc += (h.trophiesThisYear?.wc || 0);
-    });
-    return counts;
-  }, [state.history, state.supercupHistory]);
+  // Compute Trophy Cabinet strip counts across career history (strictly separating top-flight vs lower-tier silverware)
+  const trophyCounts = React.useMemo(
+    () => computeTrophyCollection(state.history, state.supercupHistory),
+    [state.history, state.supercupHistory]
+  );
 
-  const computedTotalTrophies =
-    trophyCounts.league +
-    trophyCounts.cup +
-    trophyCounts.cl +
-    trophyCounts.el +
-    trophyCounts.ecl +
-    trophyCounts.cwc +
-    trophyCounts.wc +
-    trophyCounts.supercup;
-
-  const totalTrophies = Math.max(computedTotalTrophies, state.totals?.trophies || 0);
-
-  const domesticTrophiesCount = trophyCounts.league + trophyCounts.cup + trophyCounts.supercup;
-  const intlTrophiesCount =
-    trophyCounts.cl + trophyCounts.el + trophyCounts.ecl + trophyCounts.cwc + trophyCounts.wc;
+  const totalTrophies = Math.max(trophyCounts.total, state.totals?.trophies || 0);
+  const domesticTrophiesCount = trophyCounts.domesticTotal;
+  const intlTrophiesCount = trophyCounts.internationalTotal;
+  const showLowerTierHonours =
+    (state.club.tier || 1) > 1 ||
+    trophyCounts.lowerLeague > 0 ||
+    trophyCounts.regionalCup > 0;
 
   const clubCountry = state.club.country || 'GER';
   const currentClubHeaderResolved = resolveHistoryClubDisplay(
@@ -156,7 +138,8 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
     trophiesObj?: TrophiesObj,
     countryContext?: string,
     clubName?: string,
-    clubId?: number
+    clubId?: number,
+    seasonTier?: number
   ) => {
     if (!trophiesObj) return null;
     const country = countryContext || state.club.country || 'GER';
@@ -226,7 +209,11 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
       icons.push(<i key={`efl-${i}`} className="fas fa-medal text-sky-600 text-[10px]" title="League Cup" />);
     }
     for (let i = 0; i < (trophiesObj.lower || 0); i++) {
-      icons.push(<i key={`lower-${i}`} className="fas fa-trophy text-slate-600 text-[10px]" title="Lower League Title" />);
+      const lowerTitle =
+        seasonTier && seasonTier > 1
+          ? `${getLeagueInfo(seasonTier, country).name} Title`
+          : 'Lower League Title';
+      icons.push(<i key={`lower-${i}`} className="fas fa-trophy text-slate-600 text-[10px]" title={lowerTitle} />);
     }
     for (let i = 0; i < (trophiesObj.reg || 0); i++) {
       icons.push(<i key={`reg-${i}`} className="fas fa-shield-halved text-amber-700 text-[10px]" title={getDomesticCupInfo(country, 4, clubName, clubId).name || 'Regional Cup'} />);
@@ -417,14 +404,14 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
             }> = [
               {
                 label: topFlightName || 'League',
-                count: trophyCounts.league,
+                count: trophyCounts.topLeague,
                 icon: 'fa-trophy',
                 tone: 'text-amber-600',
                 kind: 'league',
               },
               {
-                label: domesticCupName || 'Cup',
-                count: trophyCounts.cup,
+                label: nationalCupName || 'Cup',
+                count: trophyCounts.nationalCup,
                 icon: 'fa-award',
                 tone: 'text-amber-700',
                 kind: 'cup',
@@ -473,6 +460,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
             return items.map((item, i) => (
               <div
                 key={i}
+                data-testid={`trophy-strip-tile-${i}`}
                 className={`rounded-xl border px-2 py-1.5 text-center ${
                   item.count > 0
                     ? 'bg-amber-50/90 border-amber-200/90'
@@ -499,6 +487,58 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
             ));
           })()}
         </div>
+
+        {showLowerTierHonours && (
+          <div
+            data-testid="lower-tier-trophy-strip"
+            className="grid grid-cols-2 gap-1.5 mt-1.5"
+          >
+            <div
+              data-testid="trophy-strip-lower-league"
+              className={`rounded-xl border px-2.5 py-1.5 flex items-center justify-between gap-2 ${
+                trophyCounts.lowerLeague > 0
+                  ? 'bg-amber-50/90 border-amber-200/90'
+                  : 'bg-[#FAF9F6] border-[#E6E3DC] opacity-85'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <i
+                  className={`fas fa-trophy text-[11px] shrink-0 ${
+                    trophyCounts.lowerLeague > 0 ? 'text-amber-600' : 'text-[#9CA3AF]'
+                  }`}
+                />
+                <span className="text-[10px] font-semibold text-[#4B5563] truncate">
+                  Lower Div Titles
+                </span>
+              </div>
+              <span className="text-[11px] font-black text-[#18191F] tabular-nums shrink-0">
+                {trophyCounts.lowerLeague}
+              </span>
+            </div>
+            <div
+              data-testid="trophy-strip-regional-cup"
+              className={`rounded-xl border px-2.5 py-1.5 flex items-center justify-between gap-2 ${
+                trophyCounts.regionalCup > 0
+                  ? 'bg-amber-50/90 border-amber-200/90'
+                  : 'bg-[#FAF9F6] border-[#E6E3DC] opacity-85'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <i
+                  className={`fas fa-shield-halved text-[11px] shrink-0 ${
+                    trophyCounts.regionalCup > 0 ? 'text-amber-700' : 'text-[#9CA3AF]'
+                  }`}
+                />
+                <span className="text-[10px] font-semibold text-[#4B5563] truncate">
+                  {regionalCupName}
+                </span>
+              </div>
+              <span className="text-[11px] font-black text-[#18191F] tabular-nums shrink-0">
+                {trophyCounts.regionalCup}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Column Headers (Campaign Archive) */}
@@ -832,7 +872,7 @@ export const SeasonHistoryTable: React.FC<SeasonHistoryTableProps> = ({
                     <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider mr-1">
                       {isDe ? 'Honours:' : 'Honours:'}
                     </span>
-                    {renderTrophyIcons(h.trophiesThisYear, h.country, displayName, rowId)}
+                    {renderTrophyIcons(h.trophiesThisYear, h.country, displayName, rowId, h.tier)}
                   </div>
                 )}
               </div>

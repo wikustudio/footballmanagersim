@@ -174,84 +174,97 @@ export const TrophyModal: React.FC<TrophyModalProps> = React.memo(({
     const l4Name = getLeagueInfo(4, country).name;
     const l5Name = getLeagueInfo(5, country).name;
 
+    const region = getRegion(country);
     const crownStr = isBl
-      ? country === 'POR'
+      ? isModActive && country === 'POR'
         ? 'Primeira Liga • Campeão Nacional 🏆'
-        : country === 'ESP'
+        : isModActive && country === 'ESP'
         ? 'La Liga • Campeón de España 🏆'
-        : country === 'FRA'
+        : isModActive && country === 'FRA'
         ? 'Ligue 1 • Champion de France 🏆'
-        : country === 'ENG'
+        : isModActive && country === 'ENG'
         ? 'Premier League • Champions of England 🏆'
-        : country === 'ECU'
+        : isModActive && country === 'ECU'
         ? 'LigaPro Serie A • Campeón Nacional 🏆'
-        : isDe && country === 'GER'
-        ? 'German First Division • Champion 🏆'
-        : `${l1Name} Champions 🏆`
+        : `${l1Name} • Champions 🏆`
       : isB2
-      ? country === 'ENG'
+      ? isModActive && country === 'ENG'
         ? 'EFL Championship • Champions 🏆'
-        : country === 'ESP'
+        : isModActive && country === 'ESP'
         ? 'La Liga Hypermotion • Campeón 🏆'
-        : country === 'FRA'
+        : isModActive && country === 'FRA'
         ? 'Ligue 2 • Champion 🏆'
-        : country === 'ECU'
+        : isModActive && country === 'ECU'
         ? 'LigaPro Serie B • Campeón 🏆'
-        : isDe && country === 'GER'
-        ? 'German Second Division • Champion 🏆'
-        : `${l2Name} Champions 🏆`
+        : `${l2Name} • Champions 🏆`
       : isL3
-      ? country === 'ENG'
+      ? isModActive && country === 'ENG'
         ? 'EFL League One • Champions 🏆'
-        : country === 'ESP'
+        : isModActive && country === 'ESP'
         ? 'Primera Federación • Campeón 🏆'
-        : country === 'FRA'
+        : isModActive && country === 'FRA'
         ? 'National 1 • Champion 🏆'
-        : country === 'ECU'
+        : isModActive && country === 'ECU'
         ? 'Segunda Categoría • Campeón 🏆'
-        : isDe && country === 'GER'
-        ? '3. Liga • Meister 🏆'
-        : `${l3Name} Champions 🏆`
+        : `${l3Name} • Champions 🏆`
       : isReg
-      ? country === 'ENG'
+      ? isModActive && country === 'ENG'
         ? 'EFL League Two • Champions 🏆'
-        : country === 'ESP'
+        : isModActive && country === 'ESP'
         ? 'Segunda Federación • Campeón 🏆'
-        : country === 'FRA'
+        : isModActive && country === 'FRA'
         ? 'National 2 • Champion 🏆'
-        : country === 'ECU'
+        : isModActive && country === 'ECU'
         ? 'Segunda Cat. Provincial • Campeón 🏆'
-        : isDe && country === 'GER'
-        ? 'Regionalliga • Meister 🏆'
-        : `${l4Name} Champions 🏆`
+        : `${l4Name} • Champions 🏆`
       : isOb
-      ? country === 'ENG'
-        ? 'National League • Champions 🏆'
-        : country === 'ESP'
-        ? 'Tercera Federación • Campeón 🏆'
-        : country === 'FRA'
-        ? 'National 3 • Champion 🏆'
-        : country === 'ECU'
-        ? 'Torneo Amateur • Campeón 🏆'
-        : isDe && country === 'GER'
-        ? 'Oberliga • Meister 🏆'
-        : `${l5Name} Champions 🏆`
+      ? (() => {
+          const parsedLeague = title
+            .replace(/\s*\([^)]*\)\s*!?\s*$/i, '')
+            .replace(/\s+(CHAMPIONS|MEISTER)!?\s*$/i, '')
+            .trim();
+          if (parsedLeague && parsedLeague.toLowerCase() !== l5Name.toLowerCase()) {
+            const titleCase = parsedLeague
+              .toLowerCase()
+              .replace(/(^|[\s/-])([a-z])/g, (_, sep, ch) => `${sep}${ch.toUpperCase()}`);
+            return `${titleCase} • Champions 🏆`;
+          }
+          return isModActive && country === 'ENG'
+            ? 'National League • Champions 🏆'
+            : isModActive && country === 'ESP'
+            ? 'Tercera Federación • Campeón 🏆'
+            : isModActive && country === 'FRA'
+            ? 'National 3 • Champion 🏆'
+            : isModActive && country === 'ECU'
+            ? 'Torneo Amateur • Campeón 🏆'
+            : `${l5Name} • Champions 🏆`;
+        })()
       : type === 'cl_champions'
-      ? country === 'USA'
-        ? (isDe ? 'Koenige Nordamerikas' : 'Kings of CONCACAF')
-        : country === 'ECU'
+      ? region === 'CONCACAF'
+        ? (isDe ? 'Koenige Nordamerikas' : 'Kings of North America')
+        : region === 'CONMEBOL'
         ? (isDe ? 'Suedamerikas Koenige' : 'Kings of South America')
+        : region === 'AFC'
+        ? (isDe ? 'Koenige Asiens' : 'Kings of Asia')
         : isDe
         ? 'Europas Koenige'
         : 'Kings of Europe'
       : isBronze
-      ? isDe
-        ? country === 'POR' ? 'Taça Distrital Sieger' : country === 'ESP' ? 'Copa RFEF Sieger' : country === 'FRA' ? 'Coupe de Ligue Sieger' : country === 'ENG' ? 'FA Trophy Sieger' : 'Landespokalsieger'
-        : country === 'POR' ? 'Taça Distrital Winners' : country === 'ESP' ? 'Copa RFEF Winners' : country === 'FRA' ? 'Coupe de Ligue Winners' : country === 'ENG' ? 'FA Trophy Winners' : 'Regional Cup Winner'
+      ? isModActive
+        ? country === 'POR'
+          ? 'Taça Distrital Winners'
+          : country === 'ESP'
+          ? 'Copa RFEF Winners'
+          : country === 'FRA'
+          ? 'Coupe de Ligue Winners'
+          : country === 'ENG'
+          ? 'FA Trophy Winners'
+          : country === 'GER'
+          ? 'Landespokal Winners'
+          : 'Regional Cup Winners'
+        : 'Regional Cup Winners'
       : type === 'promotion'
       ? (isDe ? 'Aufstieg gesichert ↑' : 'Promotion Achieved ↑')
-      : isDe
-      ? `${getDomesticCupInfo(country, 1, clubName, clubId).name} Sieger`
       : `${getDomesticCupInfo(country, 1, clubName, clubId).name} Winners`;
 
     const gradFrom = isBl

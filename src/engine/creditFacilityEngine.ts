@@ -34,8 +34,8 @@ export interface LoanQuote {
 export function getLoanProgress(loan?: BankLoan): LoanProgress | null {
   if (!loan || loan.principal <= 0 || loan.yearsLeft <= 0) return null;
 
-  const totalYears = loan.totalYears || 15;
   const yearsLeft = loan.yearsLeft;
+  const totalYears = Math.max(1, loan.totalYears || 15, yearsLeft);
   const yearsPaid = Math.max(0, totalYears - yearsLeft);
 
   // If initialPrincipal was not saved, recover it from the remaining principal:
@@ -66,7 +66,7 @@ export function getLoanProgress(loan?: BankLoan): LoanProgress | null {
     annualPayment: loan.annualPayment,
     earlyPayoffCost,
     loanType: loan.loanType || 'bank',
-    interestRate: loan.interestRate || (loan.totalYears >= 20 ? 3.0 : 4.5),
+    interestRate: loan.interestRate || (totalYears >= 25 ? 2.8 : totalYears >= 20 ? 3.0 : 4.5),
     isNearingPayoff: yearsLeft <= 2
   };
 }

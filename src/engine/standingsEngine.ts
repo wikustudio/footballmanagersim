@@ -694,6 +694,7 @@ export interface DeterministicDivisionTableParams {
   relegatedPeerIds?: Set<number | string>;
   relegatedPeerNames?: Set<string>;
   isModActive?: boolean;
+  maxCountryTier?: number;
 }
 
 const getSeasonalPeerStrengthScore = (
@@ -757,6 +758,7 @@ export const buildDeterministicDivisionTable = (
     relegatedPeerIds,
     relegatedPeerNames,
     isModActive = false,
+    maxCountryTier: explicitMaxCountryTier,
   } = params;
 
   const effectiveMd = Math.max(0, Math.min(totalMatchdays, playedMatchdays));
@@ -1165,7 +1167,7 @@ export const buildDeterministicDivisionTable = (
   });
 
   const maxPlayoffRank = ['ENG', 'ESP', 'ITA', 'USA', 'FRA', 'SCO'].includes(country) ? 6 : 3;
-  const maxCountryTier = getMaxTier(country);
+  const maxCountryTier = explicitMaxCountryTier ?? Math.max(getMaxTier(country), tier);
   rows.forEach((r, idx) => {
     r.pos = idx + 1;
     r.isPromotionZone = tier > 1 ? idx < Math.max(2, maxPlayoffRank) : idx < 4;

@@ -7,6 +7,7 @@ import { ALL_CLUBS } from '../data/clubsData';
 import { ClubLogo } from './ClubLogo';
 import { resolveHistoryClubDisplay } from '../utils/modSafeguards';
 import { getPressureLevelMeta } from '../engine/pressureEngine';
+import { classifyTrophyHistoryName } from '../utils/trophyCollection';
 
 interface DashboardHeaderProps {
   state: GameState;
@@ -139,9 +140,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   // Calculate club trophy collection
   const clubTrophyCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { cl: 0, cwc: 0, el: 0, ecl: 0, bl: 0, dfb: 0, lower: 0, reg: 0 };
+    const counts: Record<string, number> = { cl: 0, cwc: 0, el: 0, ecl: 0, bl: 0, dfb: 0, efl: 0, supercup: 0, lower: 0, reg: 0 };
     const currentName = state.club.name;
     const effectiveName = clubName;
+    const targetNames = new Set([currentName, effectiveName, defaultClub?.name].filter(Boolean).map(n => n!.toLowerCase().trim()));
 
     (state.history || []).forEach((h) => {
       if (
@@ -156,15 +158,27 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           counts.ecl += h.trophiesThisYear.ecl || 0;
           counts.bl += h.trophiesThisYear.bl || 0;
           counts.dfb += h.trophiesThisYear.dfb || 0;
+          counts.efl += h.trophiesThisYear.efl || 0;
           counts.lower += h.trophiesThisYear.lower || 0;
           counts.reg += h.trophiesThisYear.reg || 0;
         }
       }
     });
 
+    (state.supercupHistory || []).forEach((sc) => {
+      if (!sc || !sc.won) return;
+      const matchedTrophy = (state.trophyHistory || []).find(
+        (th) => th.year === sc.year && th.name === sc.cupName
+      );
+      const scClubName = (sc.clubName || matchedTrophy?.clubName || '').toLowerCase().trim();
+      const sameId = sc.clubId != null && state.club.id != null && String(sc.clubId) === String(state.club.id);
+      if (sameId || (scClubName && targetNames.has(scClubName)) || (!sc.clubId && !scClubName)) {
+        counts.supercup += 1;
+      }
+    });
+
     const historyTrophiesSum = Object.values(counts).reduce((a: number, b: number) => a + b, 0);
     if (historyTrophiesSum === 0 && (state.trophyHistory || []).length > 0) {
-      const targetNames = new Set([currentName, effectiveName, defaultClub?.name].filter(Boolean).map(n => n!.toLowerCase().trim()));
       (state.trophyHistory || []).forEach((t) => {
         const resolvedTrophyClub = t.clubName
           ? resolveHistoryClubDisplay({ name: t.clubName, country: clubCountry }, isModActive, clubsDb, !isModActive)
@@ -173,21 +187,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         const rLower = (resolvedTrophyClub?.name || '').toLowerCase().trim();
         const sameId = resolvedTrophyClub?.id != null && state.club.id != null && String(resolvedTrophyClub.id) === String(state.club.id);
         if (sameId || targetNames.has(tLower) || (rLower && targetNames.has(rLower))) {
-          const norm = (t.name || '').toLowerCase();
-          if (norm.includes('elite') || norm.includes('cl') || norm.includes('champions league') || norm.includes('libertadores')) counts.cl += 1;
-          else if (norm.includes('global') || norm.includes('cwc') || norm.includes('world')) counts.cwc += 1;
-          else if (norm.includes('europa') || norm.includes('sudamericana') || norm.includes('euro cup')) counts.el += 1;
-          else if (norm.includes('challenge') || norm.includes('conference') || norm.includes('recopa')) counts.ecl += 1;
-          else if (norm.includes('top league') || norm.includes('meister') || norm.includes('champions')) counts.bl += 1;
-          else if (norm.includes('cup') || norm.includes('pokal')) counts.dfb += 1;
-          else if (norm.includes('lower')) counts.lower += 1;
-          else if (norm.includes('reg')) counts.reg += 1;
+          const bucket = classifyTrophyHistoryName(t.name);
+          if (bucket && bucket in counts) counts[bucket] += 1;
         }
       });
     }
 
     return counts;
-  }, [state.history, state.trophyHistory, clubName, state.club.name, state.club.id, clubCountry, isModActive, clubsDb, defaultClub?.name]);
+  }, [state.history, state.supercupHistory, state.trophyHistory, clubName, state.club.name, state.club.id, clubCountry, isModActive, clubsDb, defaultClub?.name]);
 
   const totalClubSilverware = (Object.values(clubTrophyCounts) as number[]).reduce((a, b) => a + b, 0);
   const { cl: clTitle, el: elTitle, ecl: eclTitle } = getContinentalCupNames(clubCountry);
@@ -196,12 +203,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const topLeagueTitle = getLeagueInfo(1, clubCountry).name;
 
   const trophyItems = [
-    { id: 'cwc', count: clubTrophyCounts.cwc, title: 'Club World Cup', icon: 'fa-globe text-yellow-400', color: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300' },
+    { id: 'cwc', count: clubTrophyCounts.cwc, title: 'Global Club Cup', icon: 'fa-globe text-yellow-400', color: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300' },
     { id: 'cl', count: clubTrophyCounts.cl, title: clTitle, icon: 'fa-star text-yellow-300', color: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-200' },
     { id: 'el', count: clubTrophyCounts.el, title: elTitle, icon: 'fa-trophy text-orange-400', color: 'border-orange-500/30 bg-orange-500/10 text-orange-300' },
     { id: 'ecl', count: clubTrophyCounts.ecl, title: eclTitle, icon: 'fa-trophy text-emerald-400', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
     { id: 'bl', count: clubTrophyCounts.bl, title: topLeagueTitle, icon: 'fa-trophy text-amber-400', color: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
     { id: 'dfb', count: clubTrophyCounts.dfb, title: domesticCupTitle, icon: 'fa-award text-slate-200', color: 'border-slate-400/30 bg-slate-400/10 text-slate-200' },
+    { id: 'efl', count: clubTrophyCounts.efl, title: 'League Cup', icon: 'fa-award text-emerald-300', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+    { id: 'supercup', count: clubTrophyCounts.supercup, title: 'Supercup', icon: 'fa-shield-alt text-amber-300', color: 'border-amber-400/30 bg-amber-400/10 text-amber-200' },
     { id: 'lower', count: clubTrophyCounts.lower, title: isDe ? 'Untere Liga' : 'Lower Div', icon: 'fa-medal text-zinc-300', color: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300' },
     { id: 'reg', count: clubTrophyCounts.reg, title: regionalCupTitle, icon: 'fa-shield-halved text-amber-600', color: 'border-amber-700/30 bg-amber-700/10 text-amber-400' },
   ].filter((t) => t.count > 0);

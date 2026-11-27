@@ -388,8 +388,20 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
       }
     }
 
+    // Cross-reference state.supercupHistory for any Supercup won this season
+    const wonSupercupThisYear = (state.supercupHistory || []).find((sc) => sc && sc.year === sYear && sc.won);
+    if (wonSupercupThisYear && !list.some((item) => item.type === 'supercup')) {
+      list.push({
+        type: 'supercup',
+        name: wonSupercupThisYear.cupName || 'Supercup',
+        logo: getTrophyImage('supercup', country, effectiveModActive),
+        color: 'text-amber-400',
+        badge: 'Supercup',
+      });
+    }
+
     return list;
-  }, [seasonData.trophiesThisYear, country, t1League, league, cupInfo, state.cupRunResults, seasonData.year, state.year, effectiveModActive]);
+  }, [seasonData.trophiesThisYear, country, t1League, league, cupInfo, state.cupRunResults, state.supercupHistory, seasonData.year, state.year, effectiveModActive]);
 
   // Attendance Metrics
   const avgAttendance =
@@ -1611,7 +1623,7 @@ export const SeasonFinishModal: React.FC<SeasonFinishModalProps> = React.memo(({
                           const isUserPromoted = r.isUser && seasonData.tier > 1 && (seasonData.pos <= 2 || nextTier < seasonData.tier);
                           const isUserChamp = r.isUser && seasonData.pos === 1;
                           const isPromo = (seasonData.tier > 1 && i < 2) || isUserPromoted;
-                          const isPlayoff = !isUserPromoted && seasonData.tier > 1 && ((['ENG', 'ESP', 'ITA', 'USA', 'FRA'].includes(country) && i >= 2 && i < 6) || i === 2);
+                          const isPlayoff = !isUserPromoted && seasonData.tier > 1 && ((['ENG', 'ESP', 'ITA', 'USA', 'FRA', 'SCO'].includes(country) && i >= 2 && i < 6) || i === 2);
                           const numRelegationSpots = (country === 'TUR' && seasonData.tier === 3) ? 2 : 3;
                           const isManagerSackingZone = (isTier1Only || isBottomTier) && (i >= tableData.length - numRelegationSpots);
                           const isRelegationPlayoff = !isBottomTier && !isTier1Only && (i === tableData.length - numRelegationSpots);

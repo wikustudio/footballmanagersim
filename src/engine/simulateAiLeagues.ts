@@ -1269,10 +1269,12 @@ function* simulateAiLeaguesGen(
   const conmebolT1 = tier1AiClubs.filter(
     (c) => CONMEBOL_COUNTRIES.includes(c.country || 'BRA')
   );
+  let conmebolClChamp: Club | undefined;
   if (conmebolT1.length > 0) {
     const scoredConmebol = conmebolT1
       .map((c) => ({ club: c, score: c.baseOvr + rand(-5, 5) }))
       .sort((a, b) => b.score - a.score);
+    conmebolClChamp = scoredConmebol[0]?.club;
 
     const userWonLib =
       isUserConmebol &&
@@ -1498,9 +1500,9 @@ function* simulateAiLeaguesGen(
     // Global Club Cup (World Club Championship)
     const userWonCwc = userWon.has('cwc') || Array.from(userWon).some((w) => w.includes('world') || w.includes('global'));
     if (!userWonCwc) {
-      // Contest between top UEFA champion and top CONMEBOL champion
+      // Contest between top UEFA champion and actual CONMEBOL Copa Libertadores winner
       const uefaChamp = scoredUefa[0]?.club;
-      const conmebolChamp = conmebolT1[0];
+      const conmebolChamp = conmebolClChamp || conmebolT1[0];
       const worldChamp = (Math.random() < 0.65 && uefaChamp) ? uefaChamp : (conmebolChamp || uefaChamp);
       if (worldChamp) {
         generatedMovements.push({
@@ -1631,28 +1633,62 @@ function* simulateAiLeaguesGen(
       const refCountry = champ?.country || userCountry;
 
       let leagueName = 'Cup';
+      let dedupeMatcher: RegExp | null = null;
       if (cw.cupId === 'cwc') {
         leagueName = 'Global Club Cup';
+        dedupeMatcher = /global.*club|world.*club|cwc/i;
       } else if (cw.cupId === 'efl') {
-        leagueName = 'English League Cup';
+        const normRef = normalizeCountryCode(refCountry);
+        leagueName = normRef === 'ENG'
+          ? 'English League Cup'
+          : normRef === 'SCO'
+          ? 'Scottish League Cup'
+          : normRef === 'POR'
+          ? 'Portuguese League Cup'
+          : normRef === 'JPN'
+          ? 'Japanese League Cup'
+          : 'League Cup';
       } else if (cw.cupId === 'reg') {
         leagueName = 'Regional Cup';
       } else if (cw.cupId === 'dfb') {
         const isCan = refCountry === 'CAN' || (champ && isCanadianMLSClub(champ.name, champ.id, champ.country)) || (userClubObj && isCanadianMLSClub(userClubObj.name, userClubObj.id, userClubObj.country));
         leagueName = isCan ? 'Canadian Championship' : (getDomesticCupInfo(refCountry, champ?.tier || 1, champ?.name, champ?.id).name || 'National Cup');
       } else if (cw.cupId === 'cl' || cw.cupId === 'el' || cw.cupId === 'ecl') {
-        const isNonUefa = CONMEBOL_COUNTRIES.includes(refCountry) || CONCACAF_COUNTRIES.includes(refCountry) || AFC_COUNTRIES.includes(refCountry) || ['RSA', 'NGA'].includes(refCountry);
-        if (isNonUefa) {
-          const contNames = getContinentalCupNames(refCountry);
+        const normRef = normalizeCountryCode(refCountry);
+        if (CONMEBOL_COUNTRIES.includes(normRef)) {
+          const contNames = getContinentalCupNames(normRef);
           leagueName = contNames[cw.cupId as 'cl' | 'el' | 'ecl'];
+          dedupeMatcher = cw.cupId === 'cl' ? /libertadores/i : cw.cupId === 'el' ? /sudamericana/i : /recopa/i;
+        } else if (CONCACAF_COUNTRIES.includes(normRef)) {
+          leagueName = cw.cupId === 'cl'
+            ? 'Concacaf Champions Cup'
+            : cw.cupId === 'el'
+            ? 'Leagues Challenge'
+            : 'North American Challenge Cup';
+          dedupeMatcher = cw.cupId === 'cl' ? /concacaf|north american.*champion/i : cw.cupId === 'el' ? /leagues/i : /north american.*challenge/i;
+        } else if (AFC_COUNTRIES.includes(normRef)) {
+          leagueName = cw.cupId === 'cl'
+            ? 'AFC Champions League'
+            : cw.cupId === 'el'
+            ? 'Asian Cup'
+            : 'Asian Challenge Cup';
+          dedupeMatcher = cw.cupId === 'cl' ? /afc|asian.*champion/i : cw.cupId === 'el' ? /afc cup|asian cup/i : /asian.*challenge/i;
         } else {
           const uefaNames: Record<string, string> = { cl: 'Champions Cup', el: 'Euro Cup', ecl: 'Euro Challenge Cup' };
           leagueName = uefaNames[cw.cupId] || 'Champions Cup';
+          dedupeMatcher = cw.cupId === 'cl'
+            ? /^(?:uefa\s+|euro\s+)?champions\s+(?:cup|league)$/i
+            : cw.cupId === 'el'
+            ? /^euro.*cup|europa/i
+            : /^(?:euro\s+challenge\s+cup|(?:uefa\s+)?conference\s+league)$/i;
         }
       }
 
       // Erase any randomly generated AI winner for this specific cup
-      const randIdx = generatedMovements.findIndex(m => m.type === 'cup_champion' && m.fromLeagueName === leagueName);
+      const randIdx = generatedMovements.findIndex(m =>
+        m.type === 'cup_champion' &&
+        (m.fromLeagueName === leagueName || (dedupeMatcher ? dedupeMatcher.test(m.fromLeagueName || '') : false))
+      );
       if (randIdx !== -1) generatedMovements.splice(randIdx, 1);
 
       if (champ) {

@@ -62,7 +62,7 @@ export const generateTransferSaga = (
       playerPos: pos,
       playerOvr,
       suitorClub: 'Continental Powerhouse',
-      narrative: `A European giant has submitted a formal notice to trigger the release clause for your star ${pos}, ${playerName} (${playerOvr} OVR). The board is leaving the final decision in your hands.`,
+      narrative: `A continental powerhouse has submitted a formal notice to trigger the release clause for your star ${pos}, ${playerName} (${playerOvr} OVR). The board is leaving the final decision in your hands.`,
       options
     };
   } else if (sagaType === 'rival_bidding_war') {

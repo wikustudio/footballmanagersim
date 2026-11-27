@@ -1,6 +1,7 @@
 import { Club, ClubSeasonRecord, SeasonHistory, UniverseMovement } from '../types';
 import { getLeagueInfo, getMaxTier, normalizeCountryCode } from '../data/gameConstants';
 import { ALL_CLUBS } from '../data/clubsData';
+import { getContinentalCupNames } from '../utils/regionHelpers';
 
 // Simple deterministic hash function for consistent season progression per club & year
 const hashSeed = (str: string, seed: number): number => {
@@ -51,7 +52,8 @@ export const calculateClubLeagueHistory = (
   currentYear: number,
   managerHistory?: SeasonHistory[],
   existingHistories?: Record<string | number, ClubSeasonRecord[]>,
-  universeMovements?: UniverseMovement[]
+  universeMovements?: UniverseMovement[],
+  clubsDb?: Club[]
 ): ClubSeasonRecord[] => {
   const clubKey = String(club.id || club.name);
 
@@ -61,7 +63,7 @@ export const calculateClubLeagueHistory = (
   const maxCountryTier = isJapan
     ? 2
     : Math.max(
-        getMaxTier(country),
+        getMaxTier(country, clubsDb),
         club.tier || 1,
         ...(existingHistories?.[clubKey]?.map(r => r.tier || 1) || []),
         ...(managerHistory?.filter(m => m.clubId === club.id || (club.name && m.clubName?.toLowerCase().trim() === club.name.toLowerCase().trim())).map(m => m.tier || 1) || []),
@@ -128,14 +130,15 @@ export const calculateClubLeagueHistory = (
         }
 
         const t = managedSeason.trophiesThisYear;
+        const contNames = getContinentalCupNames(managedSeason.country || country);
         const wonAny = Boolean(t?.cl || t?.el || t?.ecl || t?.cwc || t?.bl || t?.lower || t?.dfb || t?.efl || t?.reg || managedSeason.pos === 1);
-        const tName = (t?.cl || 0) > 0 ? 'Champions League'
+        const tName = (t?.cl || 0) > 0 ? contNames.cl
           : (t?.bl || 0) > 0 ? 'League Title'
           : (t?.lower || 0) > 0 || managedSeason.pos === 1 ? `${lgInfo.name} Champions`
           : (t?.dfb || 0) > 0 ? 'Domestic Cup'
-          : (t?.el || 0) > 0 ? 'Europa League'
-          : (t?.ecl || 0) > 0 ? 'Conference League'
-          : (t?.cwc || 0) > 0 ? 'Club World Cup'
+          : (t?.el || 0) > 0 ? contNames.el
+          : (t?.ecl || 0) > 0 ? contNames.ecl
+          : (t?.cwc || 0) > 0 ? 'Global Club Cup'
           : (t?.efl || 0) > 0 ? 'League Cup'
           : (t?.reg || 0) > 0 ? 'Regional Cup'
           : undefined;
@@ -261,14 +264,15 @@ export const calculateClubLeagueHistory = (
       }
 
       const t = managedSeason.trophiesThisYear;
+      const contNames = getContinentalCupNames(managedSeason.country || country);
       const wonAny = Boolean(t?.cl || t?.el || t?.ecl || t?.cwc || t?.bl || t?.lower || t?.dfb || t?.efl || t?.reg || managedSeason.pos === 1);
-      const tName = (t?.cl || 0) > 0 ? 'Champions League'
+      const tName = (t?.cl || 0) > 0 ? contNames.cl
         : (t?.bl || 0) > 0 ? 'League Title'
         : (t?.lower || 0) > 0 || managedSeason.pos === 1 ? `${lgInfo.name} Champions`
         : (t?.dfb || 0) > 0 ? 'Domestic Cup'
-        : (t?.el || 0) > 0 ? 'Europa League'
-        : (t?.ecl || 0) > 0 ? 'Conference League'
-        : (t?.cwc || 0) > 0 ? 'Club World Cup'
+        : (t?.el || 0) > 0 ? contNames.el
+        : (t?.ecl || 0) > 0 ? contNames.ecl
+        : (t?.cwc || 0) > 0 ? 'Global Club Cup'
         : (t?.efl || 0) > 0 ? 'League Cup'
         : (t?.reg || 0) > 0 ? 'Regional Cup'
         : undefined;

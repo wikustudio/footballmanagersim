@@ -2264,7 +2264,7 @@ export function buildChampionsAlmanac(
             short: 'CONCACAF',
             pool: concacafTopClubs,
             histMap: HISTORICAL_CONCACAF_WINNERS,
-            matcher: /concacaf/i,
+            matcher: /concacaf|north american.*champion/i,
           }
         : region === 'AFC'
         ? {
@@ -2281,7 +2281,7 @@ export function buildChampionsAlmanac(
             short: 'CHAMPIONS CUP',
             pool: uefaTopClubs,
             histMap: HISTORICAL_CHAMPIONS_CUP_WINNERS,
-            matcher: /champions cup|champions league/i,
+            matcher: /^(?:uefa\s+|euro\s+)?champions\s+(?:cup|league)$/i,
           };
 
     let contWinnerId: number | undefined;
@@ -2631,7 +2631,8 @@ export function buildChampionsAlmanac(
             (t: any) =>
               Number(t?.year) === yr &&
               typeof t?.name === 'string' &&
-              /world cup|weltmeister/i.test(t.name)
+              /world cup|weltmeister/i.test(t.name) &&
+              !/club/i.test(t.name)
           )
         : undefined;
 

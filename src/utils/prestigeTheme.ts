@@ -1,4 +1,5 @@
 import { getRegion } from './regionHelpers';
+import { normalizeCountryCode } from '../data/gameConstants';
 
 export interface PrestigeTheme {
   id: string;
@@ -33,10 +34,11 @@ export const getCompetitionTheme = (
   country: string = 'GER',
   ddType?: 'title' | 'relegation' | 'promotion_playoff' | string
 ): PrestigeTheme => {
+  const normCountry = normalizeCountryCode(country || 'GER');
   const normType = (type || '').toLowerCase().trim();
   const normDdType = (ddType || '').toLowerCase().trim();
   const norm = `${normType} ${normDdType}`.trim();
-  const region = getRegion(country);
+  const region = getRegion(normCountry);
 
   // 1. Decision Day - League Championship / Title Decider (Prestige 5 - Grandest Gold)
   if (ddType === 'title' || normType === 'title' || normDdType === 'title') {
@@ -349,12 +351,15 @@ export const getCompetitionTheme = (
 
   // 8. Tournaments - Secondary League Cup (EFL / Carabao / League Cup)
   if (normType === 'efl' || norm.includes('league cup') || norm.includes('carabao')) {
+    const eflSubtitle = normCountry === 'ENG'
+      ? 'League Cup • Road to Wembley'
+      : 'League Cup • Road to the Final';
     return {
       id: 'efl',
       prestigeLevel: 4,
       prestigeStars: '★★★★☆',
       badgeLabel: { en: 'League Cup', de: 'League Cup' },
-      competitionTypeLabel: { en: 'League Cup • Road to Wembley', de: 'League Cup • Road to Wembley' },
+      competitionTypeLabel: { en: eflSubtitle, de: eflSubtitle },
       iconClass: 'fa-trophy',
       iconBoxBg: 'bg-gradient-to-br from-emerald-500 via-teal-600 to-green-600 text-white shadow-sm',
       cardBorder: 'border-emerald-200',
@@ -397,35 +402,46 @@ export const getCompetitionTheme = (
     norm.includes('copa ecuador') ||
     norm.includes('copa mx') ||
     norm.includes('türkiye kupası') ||
-    (!isCl && !isEl && !isEcl && !norm.includes('regional') && !norm.includes('grassroots') && !norm.includes('euro') && !norm.includes('asian') && !norm.includes('challenge') && (normType.includes('cup') || normDdType.includes('cup')))
+    (!isCl && !isEl && !isEcl && !norm.includes('supercup') && !norm.includes('super cup') && !norm.includes('regional') && !norm.includes('grassroots') && !norm.includes('euro') && !norm.includes('asian') && !norm.includes('challenge') && (normType.includes('cup') || normDdType.includes('cup')))
   ) {
     const domesticName =
-      country === 'ECU' ? 'Copa Ecuador'
-      : (country === 'CAN' || norm.includes('voyageurs') || norm.includes('canadian championship')) ? 'Voyageurs Cup'
-      : country === 'USA' ? 'U.S. Open Cup'
-      : country === 'BRA' ? 'Copa do Brasil'
-      : country === 'ARG' ? 'Copa Argentina'
-      : country === 'COL' ? 'Copa Colombia'
-      : country === 'MEX' ? 'Copa MX'
-      : country === 'ENG' ? 'FA Cup'
-      : country === 'ESP' ? 'Copa del Rey'
-      : country === 'ITA' ? 'Coppa Italia'
-      : country === 'FRA' ? 'Coupe de France'
-      : country === 'POR' ? 'Taça de Portugal'
-      : country === 'TUR' ? 'Türkiye Kupası'
-      : country === 'GER' ? 'DFB-Pokal'
-      : country === 'AUT' ? 'ÖFB-Cup'
-      : country === 'SUI' ? 'Schweizer Cup'
-      : country === 'POL' ? 'Puchar Polski'
-      : country === 'DEN' ? 'DBU Pokalen'
-      : country === 'NOR' ? 'Norgesmesterskapet'
-      : country === 'SWE' ? 'Svenska Cupen'
-      : country === 'SCO' ? 'Scottish Cup'
-      : country === 'WAL' ? 'Welsh Cup'
-      : country === 'AUS' ? 'Australia Cup'
-      : country === 'JPN' ? "Emperor's Cup"
-      : country === 'IDN' ? 'Piala Indonesia'
-      : country === 'IND' ? 'Super Cup'
+      normCountry === 'ECU' ? 'Copa Ecuador'
+      : (normCountry === 'CAN' || norm.includes('voyageurs') || norm.includes('canadian championship')) ? 'Voyageurs Cup'
+      : normCountry === 'USA' ? 'U.S. Open Cup'
+      : normCountry === 'BRA' ? 'Copa do Brasil'
+      : normCountry === 'ARG' ? 'Copa Argentina'
+      : normCountry === 'COL' ? 'Copa Colombia'
+      : normCountry === 'MEX' ? 'Copa MX'
+      : normCountry === 'ENG' ? 'FA Cup'
+      : normCountry === 'ESP' ? 'Copa del Rey'
+      : normCountry === 'ITA' ? 'Coppa Italia'
+      : normCountry === 'FRA' ? 'Coupe de France'
+      : normCountry === 'POR' ? 'Taça de Portugal'
+      : normCountry === 'TUR' ? 'Türkiye Kupası'
+      : normCountry === 'GER' ? 'DFB-Pokal'
+      : normCountry === 'AUT' ? 'ÖFB-Cup'
+      : normCountry === 'SUI' ? 'Schweizer Cup'
+      : normCountry === 'POL' ? 'Puchar Polski'
+      : normCountry === 'DEN' ? 'DBU Pokalen'
+      : normCountry === 'NOR' ? 'Norgesmesterskapet'
+      : normCountry === 'SWE' ? 'Svenska Cupen'
+      : normCountry === 'SCO' ? 'Scottish Cup'
+      : normCountry === 'WAL' ? 'Welsh Cup'
+      : normCountry === 'AUS' ? 'Australia Cup'
+      : normCountry === 'JPN' ? "Emperor's Cup"
+      : normCountry === 'IDN' ? 'Piala Indonesia'
+      : normCountry === 'IND' ? 'National Super Cup'
+      : normCountry === 'SVK' ? 'Slovak Cup'
+      : normCountry === 'PER' ? 'Copa Bicentenario'
+      : normCountry === 'KOR' ? 'Korea Cup'
+      : normCountry === 'BOL' ? 'Copa Bolivia'
+      : normCountry === 'PAR' ? 'Copa Paraguay'
+      : normCountry === 'CHI' ? 'Copa Chile'
+      : normCountry === 'CRO' ? 'Croatian Cup'
+      : normCountry === 'GRE' ? 'Greek Football Cup'
+      : normCountry === 'NED' ? 'KNVB Cup'
+      : normCountry === 'BEL' ? 'Belgian Cup'
+      : normCountry === 'URU' ? 'Copa AUF Uruguay'
       : 'National Cup';
 
     return {

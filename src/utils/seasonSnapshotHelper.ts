@@ -271,6 +271,12 @@ export const resolveSeasonSnapshotView = ({
     const rec = inferHistoryRecord(lastHist, totalMds || 34);
     if (rec.playedCount > 0) {
       const rawPct = (rec.w / rec.playedCount) * 100;
+      const lastHistTier = lastHist.tier || currentTier;
+      const lastHistCountry = lastHist.country || currentCountry;
+      const lastHistLeague =
+        getLeagueInfo(lastHistTier, lastHistCountry)?.name ||
+        lastHist.leagueTag ||
+        currentLeague;
       return {
         isHistorical: false,
         historyIndex: null,
@@ -293,7 +299,7 @@ export const resolveSeasonSnapshotView = ({
           'W' | 'D' | 'L'
         >,
         playedCount: rec.playedCount,
-        subtitle: `Last yr #${lastHist.pos} · ${currentLeague}`,
+        subtitle: `Last yr #${lastHist.pos} · ${lastHistLeague}`,
       };
     }
   }

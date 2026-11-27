@@ -881,6 +881,8 @@ export interface StadiumNamingRightsDeal {
 export interface SupercupResult {
   year: number;
   cupName: string;
+  clubId?: number;
+  clubName?: string;
   opponentName: string;
   opponentId: number;
   opponentColor: string;

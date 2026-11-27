@@ -1,4 +1,5 @@
 import { Club, GameState } from '../types';
+import { normalizeCountryCode } from '../data/gameConstants';
 
 export interface TrophyHunterMilestone {
   id: string;
@@ -26,27 +27,32 @@ export interface TrophyHunterSummary {
  */
 export const evaluateTrophyHunterMilestones = (state: GameState): TrophyHunterSummary => {
   const history = Array.isArray(state.history) ? state.history : [];
+  const historyTrophySum = history.reduce((sum, h) => {
+    const t = h.trophiesThisYear || {};
+    return (
+      sum +
+      (t.bl || 0) +
+      (t.b2 || 0) +
+      (t.l3 || 0) +
+      (t.lower || 0) +
+      (t.dfb || 0) +
+      (t.efl || 0) +
+      (t.reg || 0) +
+      (t.cl || 0) +
+      (t.el || 0) +
+      (t.ecl || 0) +
+      (t.cwc || 0) +
+      (t.supercup || 0) +
+      (t.wc || 0)
+    );
+  }, 0);
+  const supercupHistoryWins = Array.isArray(state.supercupHistory)
+    ? state.supercupHistory.filter((sc) => sc?.won).length
+    : 0;
+  const historyAlreadyCountedSupercups = history.reduce((sum, h) => sum + (h.trophiesThisYear?.supercup || 0), 0);
   const totalTrophies = Math.max(
     state.totals?.trophies ?? 0,
-    history.reduce((sum, h) => {
-      const t = h.trophiesThisYear || {};
-      return (
-        sum +
-        (t.bl || 0) +
-        (t.b2 || 0) +
-        (t.l3 || 0) +
-        (t.lower || 0) +
-        (t.dfb || 0) +
-        (t.efl || 0) +
-        (t.reg || 0) +
-        (t.cl || 0) +
-        (t.el || 0) +
-        (t.ecl || 0) +
-        (t.cwc || 0) +
-        (t.supercup || 0) +
-        (t.wc || 0)
-      );
-    }, 0)
+    historyTrophySum + Math.max(0, supercupHistoryWins - historyAlreadyCountedSupercups)
   );
 
   const worldCupWins = state.worldCupTrophies || state.internationalTrophies || 0;
@@ -62,7 +68,7 @@ export const evaluateTrophyHunterMilestones = (state: GameState): TrophyHunterSu
     const wonTopContinental = (t.cl || 0) > 0;
 
     if (wonTopFlight) {
-      titleCountries.add((h.country || state.club?.country || 'GER').toUpperCase());
+      titleCountries.add(normalizeCountryCode(h.country || state.club?.country || 'GER'));
     }
     if (wonTopFlight && wonDomesticCup && wonTopContinental) {
       trebleCount += 1;

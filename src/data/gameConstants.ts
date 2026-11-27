@@ -450,12 +450,13 @@ export const getAcademyScoutCap = (academyLevel: number = 1): number => {
 };
 
 export const getDomesticCupInfo = (country: string = 'GER', tier: number = 1, clubName?: string, clubId?: number) => {
+  const normCountry = normalizeCountryCode(country);
   const isRegional = tier >= 4;
   let name = isRegional ? 'Regional Cup' : 'National Cup';
   let logo = '';
   
-  const isCanadian = isCanadianMLSClub(clubName, clubId, country);
-  const effectiveCountry = isCanadian ? 'CAN' : country;
+  const isCanadian = isCanadianMLSClub(clubName, clubId, normCountry);
+  const effectiveCountry = isCanadian ? 'CAN' : normCountry;
 
   if (!isRegional) {
     if (effectiveCountry === 'ENG') { name = 'FA Cup'; logo = ''; }
@@ -468,16 +469,16 @@ export const getDomesticCupInfo = (country: string = 'GER', tier: number = 1, cl
     else if (effectiveCountry === 'ECU') { name = 'Copa Ecuador'; logo = ''; }
     else if (effectiveCountry === 'GER') { name = 'DFB-Pokal'; }
     else if (effectiveCountry === 'BRA') { name = 'Copa do Brasil'; logo = ''; }
-    else if (country === 'ARG') { name = 'Copa Argentina'; logo = ''; }
-    else if (country === 'MEX') { name = 'Copa MX'; logo = ''; }
-    else if (country === 'COL') { name = 'Copa Colombia'; logo = ''; }
-    else if (country === 'SCO') { name = 'Scottish Cup'; logo = ''; }
-    else if (country === 'AUT') { name = 'Austrian Cup'; logo = ''; }
-    else if (country === 'SUI') { name = 'Swiss Cup'; logo = ''; }
-    else if (country === 'POL') { name = 'Polish Cup'; logo = ''; }
-    else if (country === 'JPN') { name = "Emperor's Cup"; logo = ''; }
-    else if (country === 'AUS') { name = 'Australia Cup'; logo = ''; }
-    else if (country === 'WAL') { name = 'Welsh Cup'; logo = ''; }
+    else if (effectiveCountry === 'ARG') { name = 'Copa Argentina'; logo = ''; }
+    else if (effectiveCountry === 'MEX') { name = 'Copa MX'; logo = ''; }
+    else if (effectiveCountry === 'COL') { name = 'Copa Colombia'; logo = ''; }
+    else if (effectiveCountry === 'SCO') { name = 'Scottish Cup'; logo = ''; }
+    else if (effectiveCountry === 'AUT') { name = 'Austrian Cup'; logo = ''; }
+    else if (effectiveCountry === 'SUI') { name = 'Swiss Cup'; logo = ''; }
+    else if (effectiveCountry === 'POL') { name = 'Polish Cup'; logo = ''; }
+    else if (effectiveCountry === 'JPN') { name = "Emperor's Cup"; logo = ''; }
+    else if (effectiveCountry === 'AUS') { name = 'Australia Cup'; logo = ''; }
+    else if (effectiveCountry === 'WAL') { name = 'Welsh Cup'; logo = ''; }
     else if (effectiveCountry === 'TUR') { name = 'Türkiye Kupası'; logo = '🇹🇷'; }
     else if (effectiveCountry === 'DEN') { name = 'DBU Pokalen'; logo = '🇩🇰'; }
     else if (effectiveCountry === 'NOR') { name = 'NM Cupen'; logo = '🇳🇴'; }
@@ -538,6 +539,24 @@ export const getFAInfo = (country: string = 'GER') => {
       stadiumFinal: 'Wembley Stadium, London',
     };
   }
+  if (code === 'SCO') {
+    return {
+      name: 'SFA',
+      full: 'Scottish Football Association',
+      cup: 'Scottish Cup',
+      cupLogo: '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+      stadiumFinal: 'Hampden Park, Glasgow',
+    };
+  }
+  if (code === 'WAL') {
+    return {
+      name: 'FAW',
+      full: 'Football Association of Wales',
+      cup: 'Welsh Cup',
+      cupLogo: '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+      stadiumFinal: 'Rodney Parade, Newport',
+    };
+  }
   if (code === 'ITA') {
     return {
       name: 'FIGC',
@@ -554,6 +573,96 @@ export const getFAInfo = (country: string = 'GER') => {
       cup: 'Coupe de France',
       cupLogo: '🇫🇷',
       stadiumFinal: 'Stade de France, Paris',
+    };
+  }
+  if (code === 'BRA') {
+    return {
+      name: 'CBF',
+      full: 'Confederação Brasileira de Futebol',
+      cup: 'Copa do Brasil',
+      cupLogo: '🇧🇷',
+      stadiumFinal: 'Estádio do Maracanã, Rio de Janeiro',
+    };
+  }
+  if (code === 'ARG') {
+    return {
+      name: 'AFA',
+      full: 'Asociación del Fútbol Argentino',
+      cup: 'Copa Argentina',
+      cupLogo: '🇦🇷',
+      stadiumFinal: 'Estadio Malvinas Argentinas, Mendoza',
+    };
+  }
+  if (code === 'COL') {
+    return {
+      name: 'FCF',
+      full: 'Federación Colombiana de Fútbol',
+      cup: 'Copa Colombia',
+      cupLogo: '🇨🇴',
+      stadiumFinal: 'Estadio El Campín, Bogotá',
+    };
+  }
+  if (code === 'MEX') {
+    return {
+      name: 'FMF',
+      full: 'Federación Mexicana de Fútbol',
+      cup: 'Copa MX',
+      cupLogo: '🇲🇽',
+      stadiumFinal: 'Estadio Azteca, Mexico City',
+    };
+  }
+  if (code === 'CAN') {
+    return {
+      name: 'Canada Soccer',
+      full: 'Canadian Soccer Association',
+      cup: 'Voyageurs Cup',
+      cupLogo: '🇨🇦',
+      stadiumFinal: 'BMO Field, Toronto',
+    };
+  }
+  if (code === 'POL') {
+    return {
+      name: 'PZPN',
+      full: 'Polski Związek Piłki Nożnej',
+      cup: 'Polish Cup',
+      cupLogo: '🇵🇱',
+      stadiumFinal: 'PGE Narodowy, Warsaw',
+    };
+  }
+  if (code === 'AUT') {
+    return {
+      name: 'ÖFB',
+      full: 'Österreichischer Fußball-Bund',
+      cup: 'Austrian Cup',
+      cupLogo: '🇦🇹',
+      stadiumFinal: 'Wörthersee Stadion, Klagenfurt',
+    };
+  }
+  if (code === 'SUI') {
+    return {
+      name: 'SFV',
+      full: 'Schweizerischer Fussballverband',
+      cup: 'Swiss Cup',
+      cupLogo: '🇨🇭',
+      stadiumFinal: 'Stadion Wankdorf, Bern',
+    };
+  }
+  if (code === 'AUS') {
+    return {
+      name: 'Football Australia',
+      full: 'Football Australia',
+      cup: 'Australia Cup',
+      cupLogo: '🇦🇺',
+      stadiumFinal: 'AAMI Park, Melbourne',
+    };
+  }
+  if (code === 'JPN') {
+    return {
+      name: 'JFA',
+      full: 'Japan Football Association',
+      cup: "Emperor's Cup",
+      cupLogo: '🇯🇵',
+      stadiumFinal: 'Japan National Stadium, Tokyo',
     };
   }
   if (code === 'ECU') {

@@ -74,7 +74,9 @@ const GENERIC_FIRST: Record<string, string[]> = {
   PAR: ['Roque', 'Oscar', 'Angel', 'Gustavo', 'Miguel', 'Julio', 'Justo', 'Derlis', 'Richard', 'Lucas', 'Fabian', 'Antony'],
   CHI: ['Alexis', 'Arturo', 'Claudio', 'Gary', 'Eduardo', 'Charles', 'Mauricio', 'Jean', 'Jorge', 'Humberto', 'Matias', 'Esteban'],
   CRO: ['Luka', 'Ivan', 'Mateo', 'Mario', 'Domagoj', 'Andrej', 'Marcelo', 'Dejan', 'Ante', 'Josip', 'Borna', 'Lovro', 'Bojan', 'Stipe'],
-  GRE: ['Konstantinos', 'Georgios', 'Dimitrios', 'Ioannis', 'Nikolaos', 'Panagiotis', 'Vasileios', 'Christos', 'Alexandros', 'Anastasios', 'Sokratis', 'Angelos']
+  GRE: ['Konstantinos', 'Georgios', 'Dimitrios', 'Ioannis', 'Nikolaos', 'Panagiotis', 'Vasileios', 'Christos', 'Alexandros', 'Anastasios', 'Sokratis', 'Angelos'],
+  NED: ['Ronald', 'Erik', 'Arne', 'Louis', 'Frank', 'Ruud', 'Giovanni', 'Phillip', 'Peter', 'Willem', 'Jeroen', 'Henk', 'Pascal', 'Dick'],
+  BEL: ['Vincent', 'Philippe', 'Hein', 'Marc', 'Michel', 'Felice', 'Wouter', 'Karel', 'Carl', 'Georges', 'Francky', 'Bram', 'Yves', 'Thierry']
 };
 
 const GENERIC_LAST: Record<string, string[]> = {
@@ -106,7 +108,15 @@ const GENERIC_LAST: Record<string, string[]> = {
   IDN: ['Sjafri', 'Sakti', 'Husaini', 'Darmawan', 'Nurdjaman', 'Santoso', 'Putro', 'Maizar', 'Nurdiantoro', 'Pamungkas', 'Setiawan', 'Dollo', 'Hartadi', 'Tumena', 'Tjong', 'Pahabol', 'Tuhuteru', 'Salampessy', 'Pattinama', 'Wanggai'],
   IND: ['Jamil', 'Miranda', 'Pereira', 'Sen', 'Rahim Nabi', 'Bhattacharya', 'Ghosh', 'Colaco', 'Reddy', 'Gawli', 'Medeira', 'Fernandes', 'Singhto', 'Kashyap', 'Chhetri', 'Bhutia', 'Dias', 'Lawrence', 'Pradhan', 'D\'Souza'],
   SVK: ['Novák', 'Horváth', 'Kováč', 'Varga', 'Tóth', 'Nagy', 'Baláž', 'Molnár', 'Szabó', 'Lukáč', 'Kozák', 'Weiss', 'Hamšík', 'Škriniar', 'Dubravka'],
-  PER: ['Quispe', 'Flores', 'Rodríguez', 'Sánchez', 'García', 'Rojas', 'Díaz', 'Torres', 'López', 'Gonzales', 'Paredes', 'Farfán', 'Guerrero', 'Cueva', 'Gallese']
+  PER: ['Quispe', 'Flores', 'Rodríguez', 'Sánchez', 'García', 'Rojas', 'Díaz', 'Torres', 'López', 'Gonzales', 'Paredes', 'Farfán', 'Guerrero', 'Cueva', 'Gallese'],
+  KOR: ['Kim', 'Lee', 'Park', 'Choi', 'Jung', 'Kang', 'Cho', 'Yoon', 'Jang', 'Lim', 'Han', 'Shin', 'Seo', 'Kwon', 'Hwang'],
+  BOL: ['Soria', 'Baldivieso', 'Villegas', 'Sánchez', 'Chávez', 'Vaca', 'Rojas', 'Justiniano', 'Saucedo', 'Bejarano', 'Flores', 'Arce', 'Gutiérrez', 'Quinteros'],
+  PAR: ['Arce', 'Garnero', 'Almeida', 'Cardozo', 'Gamarra', 'Ayala', 'Benítez', 'Cáceres', 'Romero', 'Gómez', 'Valdez', 'Almirón', 'Ortiz', 'Sanabria'],
+  CHI: ['Pellegrini', 'Borghi', 'Salas', 'Sierra', 'Vidal', 'Bravo', 'Medel', 'Sánchez', 'Aránguiz', 'Vargas', 'Díaz', 'Valdivia', 'Fuentes', 'Reyes'],
+  CRO: ['Dalić', 'Kovač', 'Tudor', 'Bilić', 'Bjelica', 'Modrić', 'Rakitić', 'Perišić', 'Brozović', 'Kramarić', 'Vida', 'Lovren', 'Jurić', 'Leko'],
+  GRE: ['Papadopoulos', 'Nikolaidis', 'Karagounis', 'Zagorakis', 'Charisteas', 'Donis', 'Dellas', 'Anastasiou', 'Samaras', 'Mitroglou', 'Torosidis', 'Fortounis', 'Georgiou', 'Vasilakis'],
+  NED: ['Koeman', 'ten Hag', 'Slot', 'van Gaal', 'de Boer', 'van Nistelrooy', 'van Bronckhorst', 'Cocu', 'Bosz', 'Jansen', 'van Bommel', 'Hiddink', 'Advocaat', 'Cruijff'],
+  BEL: ['Kompany', 'Clement', 'Vanhaezebrouck', 'Wilmots', 'Preud\'homme', 'Mazzù', 'Vrancken', 'Geraerts', 'Hoefkens', 'Deila', 'Dury', 'Verheyen', 'Peeters', 'Janssens']
 };
 
 export const REGIONAL_COACH_POOLS: Record<string, string[]> = {
@@ -139,8 +149,18 @@ export const REGIONAL_COACH_POOLS: Record<string, string[]> = {
   POR: ['POR', 'POR', 'BRA', 'ESP', 'ITA', 'FRA'],
   POL: ['POL', 'POL', 'GER', 'POR', 'ESP', 'ITA'],
   TUR: ['TUR', 'TUR', 'GER', 'POR', 'ITA', 'BRA', 'ENG'],
+  // South America (additional)
+  BOL: ['BOL', 'BOL', 'ARG', 'PER', 'PAR', 'CHI', 'COL', 'ESP'],
+  PAR: ['PAR', 'PAR', 'ARG', 'URU', 'BRA', 'CHI', 'ESP'],
+  CHI: ['CHI', 'CHI', 'ARG', 'URU', 'PER', 'COL', 'ESP'],
+  // Europe (additional)
+  CRO: ['CRO', 'CRO', 'AUT', 'GER', 'ITA', 'SVK', 'GRE'],
+  GRE: ['GRE', 'GRE', 'POR', 'ESP', 'ITA', 'CRO', 'GER'],
+  NED: ['NED', 'NED', 'BEL', 'GER', 'ENG', 'ESP'],
+  BEL: ['BEL', 'BEL', 'NED', 'FRA', 'GER', 'ENG'],
   // Asia & Oceania
   JPN: ['JPN', 'JPN', 'BRA', 'GER', 'ESP', 'AUS'],
+  KOR: ['KOR', 'KOR', 'JPN', 'GER', 'POR', 'ESP', 'AUS'],
   AUS: ['AUS', 'AUS', 'ENG', 'SCO', 'JPN', 'GER'],
   IDN: ['IDN', 'IDN', 'BRA', 'ESP', 'POR', 'NED', 'JPN'],
   IND: ['IND', 'IND', 'ENG', 'ESP', 'POR', 'AUS', 'SCO']
